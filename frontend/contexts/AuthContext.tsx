@@ -36,6 +36,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   clearError: () => void;
+  setAuthData: (data: { token: string; refreshToken?: string; userId: number }) => Promise<void>;
 }
 
 // ============================================
@@ -287,6 +288,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
+  /**
+   * setAuthData - Método para guardar datos de autenticación OAuth2
+   * Usado por la página de callback después de login con Google/GitHub
+   */
+  const setAuthData = useCallback(async (data: { token: string; refreshToken?: string; userId: number }) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log('🔐 Guardando datos de autenticación OAuth2...');
+
+      // Configurar header de autorización
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
+      // Obtener información del usuario desde el backend
+      const response = await api.get<User>(API_ENDPOINTS.ME);
+      const userData = response.data;
+
+      // Guardar en estado
+      setUser(userData);
+      setToken(data.token);
+
+      // Guardar en localStorage
+      const authData: AuthResponse = {
+        token: data.token,
+        refreshToken: data.refreshToken,
+        user: userData,
+        userId: data.userId.toString(),
+        email: userData.email,
+        nickname: userData.nickname,
+        expiresIn: 86400000, // 24 horas
+      };
+
+      saveToStorage(authData);
+
+      console.log('✅ Autenticación OAuth2 completada');
+    } catch (error: any) {
+      console.error('❌ Error al guardar datos de autenticación:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Error al completar autenticación';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveToStorage]);
+
   // ============================================
   // INICIALIZACIÓN
   // ============================================
@@ -373,6 +420,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     refreshAuth,
     clearError,
+    setAuthData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
