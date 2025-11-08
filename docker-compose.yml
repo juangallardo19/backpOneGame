@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: oneonline-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: oneonline_db
+      POSTGRES_USER: oneonline_user
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-oneonline_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - oneonline-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oneonline_user -d oneonline_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend - Spring Boot
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oneonline-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: jdbc:postgresql://postgres:5432/oneonline_db
+      DATABASE_USER: oneonline_user
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-oneonline_pass}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-YXNkZmphc2xrZGZqYXNsa2RqZmxrYXNqZGZsa2Fqc2RmbGtqYXNkbGZrYWpzZGxmamFsc2RramZhbHNrZGpmYWxza2RqZmxhc2tkamZhbHNrZGZq}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+
+      # OAuth2 (opcional)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+
+      # CORS
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+
+      # Server
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    networks:
+      - oneonline-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: oneonline-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "3000:3000"
+    networks:
+      - oneonline-network
+    volumes:
+      # Para desarrollo: monta el código para hot-reload
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+networks:
+  oneonline-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
