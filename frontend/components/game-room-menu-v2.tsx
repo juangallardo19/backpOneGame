@@ -301,7 +301,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
           </Button>
 
           <div className="logo-container">
-            <Image src="/uno-logo.png" alt="UNO Logo" width={180} height={80} className="uno-logo" />
+            <Image src="/one-logo.png" alt="ONE Logo" width={180} height={80} className="uno-logo" />
           </div>
         </div>
 

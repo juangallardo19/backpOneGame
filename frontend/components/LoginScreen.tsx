@@ -189,8 +189,8 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
 
         <div className="mb-8 text-center">
           <Image
-            src="/uno-logo.png"
-            alt="UNO Logo"
+            src="/one-logo.png"
+            alt="ONE Logo"
             width={192}
             height={96}
             className="mx-auto mb-6 drop-shadow-2xl"
