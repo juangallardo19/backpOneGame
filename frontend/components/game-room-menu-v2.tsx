@@ -111,15 +111,15 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
 
       console.log("✅ Sala creada:", newRoom)
       setRoom(newRoom)
-      setRoomCode(newRoom.roomCode) // RF11: 6-char room code from backend
+      setRoomCode(newRoom.code) // RF11: 6-char room code from backend
 
       // Conectar al WebSocket de la sala
       if (token) {
         console.log("🔌 Conectando al WebSocket de la sala...")
-        await connectToGame(newRoom.roomCode, token)
+        await connectToGame(newRoom.code, token)
       }
 
-      success("¡Sala creada!", `Código: ${newRoom.roomCode}`)
+      success("¡Sala creada!", `Código: ${newRoom.code}`)
     } catch (error: any) {
       console.error("❌ Error al crear sala:", error)
       showError("Error", error.response?.data?.message || "No se pudo crear la sala")
@@ -197,7 +197,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
       return
     }
 
-    if (!room || room.currentPlayers < 2) {
+    if (!room || room.players.length < 2) {
       showError("Error", "Se necesitan al menos 2 jugadores para iniciar")
       return
     }
@@ -250,21 +250,21 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
   useEffect(() => {
     if (wsRoom) {
       setRoom(wsRoom)
-      setRoomCode(wsRoom.roomCode)
+      setRoomCode(wsRoom.code)
     }
   }, [wsRoom])
 
   // Verificar si es el líder
-  const isLeader = room && user && room.hostId === user.id
+  const isLeader = room && user && room.leaderId === user.id
 
   // Obtener lista de jugadores desde el WebSocket/room
-  const players = room?.currentPlayers ?
+  const players = room?.players && room.players.length > 0 ?
     // Si tenemos información detallada de jugadores del WebSocket
-    (gameState?.players || []).map((p, idx) => ({
-      id: p.playerId,
+    (room.players || []).map((p, idx) => ({
+      id: p.id,
       name: p.nickname,
-      isHost: p.playerId === room.hostId,
-      isBot: p.playerId.startsWith('bot_'),
+      isHost: p.id === room.leaderId,
+      isBot: p.isBot,
       isEmpty: false,
     })) :
     // Si solo tenemos el count, mostrar slots
@@ -272,13 +272,13 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
       if (idx === 0) {
         return { id: idx + 1, name: userData?.username || "JUGADOR1", isHost: true, isBot: false, isEmpty: false }
       }
-      if (idx < (room?.currentPlayers || 1)) {
+      if (idx < (room?.players.length || 1)) {
         return { id: idx + 1, name: `JUGADOR${idx + 1}`, isHost: false, isBot: false, isEmpty: false }
       }
       return { id: idx + 1, name: "VACÍO", isHost: false, isBot: false, isEmpty: true }
     })
 
-  const canStartGame = room && room.currentPlayers >= 2
+  const canStartGame = room && room.players.length >= 2
 
   return (
     <div className="glass-menu-lobby">
@@ -308,7 +308,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
         <div className="main-layout">
           {/* Columna Izquierda: Jugadores */}
           <div className="column players-column">
-            <h2 className="column-title">JUGADORES ({room?.currentPlayers || 1}/{room?.maxPlayers || 4})</h2>
+            <h2 className="column-title">JUGADORES ({room?.players.length || 1}/{room?.maxPlayers || 4})</h2>
 
             <div className="players-grid">
               {players.map((player) => (
@@ -333,7 +333,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
               ))}
             </div>
 
-            {isLeader && (room?.currentPlayers || 0) < (room?.maxPlayers || 4) && (
+            {isLeader && (room?.players.length || 0) < (room?.maxPlayers || 4) && (
               <div className="player-actions">
                 <Button
                   className="glass-button-secondary w-full"
@@ -479,7 +479,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
                 size="lg"
               >
                 <Play className="mr-2" size={20} />
-                {canStartGame ? "INICIAR JUEGO" : `ESPERANDO JUGADORES (${room?.currentPlayers || 1}/2)`}
+                {canStartGame ? "INICIAR JUEGO" : `ESPERANDO JUGADORES (${room?.players.length || 1}/2)`}
               </Button>
             )}
 

@@ -29,16 +29,18 @@ interface OneGame3DProps {
 }
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
-  const { gameState, playCard, drawCard, callUno, chatMessages } = useGame();
+  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [playerEmojis, setPlayerEmojis] = useState<Record<string, string>>({});
 
   // Get current player from gameState
-  const currentPlayer = gameState?.players?.find(p => p.playerId === user?.id);
+  const currentPlayer = gameState?.currentPlayer;
   const isMyTurn = gameState?.currentTurnPlayerId === user?.id;
 
   // RF24-RF39: Handle card play
@@ -108,6 +110,64 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
+  // RF50: Send emote
+  const handleSendEmote = async (emoji: string) => {
+    try {
+      await sendEmote(emoji);
+
+      // Show emoji on player's profile for 3 seconds
+      if (user?.id) {
+        setPlayerEmojis(prev => ({ ...prev, [user.id]: emoji }));
+        setTimeout(() => {
+          setPlayerEmojis(prev => {
+            const newEmojis = { ...prev };
+            delete newEmojis[user.id];
+            return newEmojis;
+          });
+        }, 3000);
+      }
+
+      setShowEmojiPicker(false);
+    } catch (error: any) {
+      showError("Error", error.message || "Could not send emote");
+    }
+  };
+
+  // Available emojis for quick selection
+  const availableEmojis = [
+    '😀', '😂', '😍', '🤔', '😎', '🤯',
+    '👍', '👎', '👏', '🙌', '✌️', '👋',
+    '❤️', '🔥', '⭐', '🎉', '🎊', '💯',
+    '😡', '😢', '😱', '🤬', '😴', '🥳'
+  ];
+
+  // Listen for emotes from other players (via chatMessages)
+  useEffect(() => {
+    if (!chatMessages || chatMessages.length === 0) return;
+
+    // Get the latest message
+    const latestMessage = chatMessages[chatMessages.length - 1];
+
+    // Check if it's an emote message
+    if (latestMessage.message && latestMessage.playerId && latestMessage.playerId !== user?.id) {
+      // Check if message is an emoji (single character that's an emoji)
+      const isEmoji = /^\p{Emoji}$/u.test(latestMessage.message);
+
+      if (isEmoji) {
+        // Display emoji on the player's profile for 3 seconds
+        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
+
+        setTimeout(() => {
+          setPlayerEmojis(prev => {
+            const newEmojis = { ...prev };
+            delete newEmojis[latestMessage.playerId];
+            return newEmojis;
+          });
+        }, 3000);
+      }
+    }
+  }, [chatMessages, user?.id]);
+
   // Get card color class
   const getCardColorClass = (color: string) => {
     switch (color) {
@@ -159,6 +219,16 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
               🎯 CALL ONE!
             </Button>
           )}
+
+          {/* RF50: Emoji button */}
+          <Button
+            onClick={() => setShowEmojiPicker(true)}
+            className="emoji-btn"
+            variant="outline"
+          >
+            <Smile className="mr-2" size={18} />
+            Emojis
+          </Button>
         </div>
       </div>
 
@@ -167,15 +237,19 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         {/* Other Players */}
         <div className="other-players">
           {gameState.players
-            ?.filter(p => p.playerId !== user?.id)
+            ?.filter(p => p.id !== user?.id)
             .map((player, idx) => (
-              <div key={player.playerId} className="player-card">
+              <div key={player.id} className="player-card">
                 <div className="player-info">
                   <span className="player-name">{player.nickname}</span>
                   <span className="player-cards">{player.cardCount} cards</span>
                 </div>
-                {gameState.currentTurnPlayerId === player.playerId && (
+                {gameState.currentTurnPlayerId === player.id && (
                   <div className="turn-indicator">🎯</div>
+                )}
+                {/* RF50: Show emoji on player profile */}
+                {playerEmojis[player.id] && (
+                  <div className="player-emoji">{playerEmojis[player.id]}</div>
                 )}
               </div>
             ))}
@@ -261,6 +335,32 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 setShowColorPicker(false);
                 setSelectedCardId(null);
               }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Emoji Picker Modal (RF50) */}
+      {showEmojiPicker && (
+        <div className="emoji-picker-modal">
+          <div className="modal-content emoji-modal">
+            <h3>Send an Emoji</h3>
+            <div className="emoji-grid">
+              {availableEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  className="emoji-option"
+                  onClick={() => handleSendEmote(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowEmojiPicker(false)}
             >
               Cancel
             </Button>
@@ -565,6 +665,101 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .color-btn-yellow { background: linear-gradient(135deg, #ffd43b, #fab005); color: #333; }
         .color-btn-green { background: linear-gradient(135deg, #51cf66, #2b8a3e); color: white; }
         .color-btn-blue { background: linear-gradient(135deg, #4dabf7, #1971c2); color: white; }
+
+        .emoji-picker-modal {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+        }
+
+        .emoji-modal {
+          min-width: 400px;
+          max-width: 500px;
+        }
+
+        .emoji-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+          padding: 1rem;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 12px;
+        }
+
+        .emoji-option {
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          padding: 1rem;
+          font-size: 2rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .emoji-option:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(81, 207, 102, 0.6);
+          transform: scale(1.1);
+        }
+
+        .emoji-btn {
+          background: rgba(255, 193, 7, 0.2);
+          border: 2px solid rgba(255, 193, 7, 0.5);
+          color: #ffc107;
+          padding: 0.75rem 1.5rem;
+          border-radius: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .emoji-btn:hover {
+          background: rgba(255, 193, 7, 0.3);
+          border-color: rgba(255, 193, 7, 0.8);
+          transform: scale(1.05);
+        }
+
+        .player-emoji {
+          position: absolute;
+          top: -10px;
+          right: -10px;
+          font-size: 2.5rem;
+          background: rgba(0, 0, 0, 0.7);
+          border-radius: 50%;
+          width: 60px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid rgba(255, 193, 7, 0.8);
+          animation: emojiPop 0.3s ease-out;
+          z-index: 10;
+        }
+
+        @keyframes emojiPop {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
 
         .game-loading {
           position: fixed;
