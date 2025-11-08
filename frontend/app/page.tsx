@@ -1,8 +1,13 @@
-  "use client"
+"use client"
+
+/**
+ * HomePage - Página principal
+ * ACTUALIZADO: Usa AuthContext para autenticación
+ */
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Play, Settings, Users, LogOut } from "lucide-react"
+import { Play, Settings, Users, LogOut, Trophy } from "lucide-react"
 import Image from "next/image"
 import ParticleCanvas from "@/components/ParticleCanvas"
 import UnoCardsBackground from "@/components/UnoCardsBackground"
@@ -13,33 +18,48 @@ import RoomSelectionScreen from "@/components/RoomSelectionScreen"
 import HalftoneWaves from "@/components/halftone-waves"
 import LoginScreen from "@/components/LoginScreen"
 import GamePlay from "@/components/GamePlay"
-
-interface UserData {
-  username: string
-  email?: string
-  userId?: string
-  isGuest: boolean
-  // Agregar otros campos según tu backend (avatar, nivel, etc)
-}
+import RankingScreen from "@/components/RankingScreen"
+import { useAuth } from "@/contexts/AuthContext"
+import { useNotification } from "@/contexts/NotificationContext"
 
 export default function HomePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'main' | 'room-selection' | 'game' | 'gameplay'>('main')
-  const [userData, setUserData] = useState<UserData | null>(null)
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'main' | 'room-selection' | 'game' | 'gameplay' | 'ranking'>('main')
 
-  const handleLogout = () => {
+  // Usar AuthContext en vez de estado local
+  const { user, isAuthenticated, logout, isLoading } = useAuth()
+  const { success } = useNotification()
+
+  const handleLogout = async () => {
+    await logout()
     setCurrentScreen('main')
-    setUserData(null)
+    success("Sesión cerrada", "Has cerrado sesión correctamente")
   }
 
   const handlePlayClick = () => {
-    if (!userData) {
+    if (!isAuthenticated) {
       // Si no está logueado, mostrar login primero
       setCurrentScreen('login')
     } else {
       // Si está logueado, ir a selección de sala
       setCurrentScreen('room-selection')
     }
+  }
+
+  const handleLoginSuccess = () => {
+    setCurrentScreen('room-selection')
+  }
+
+  // Loading state mientras se verifica la autenticación
+  if (isLoading) {
+    return (
+      <main className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{background: 'radial-gradient(circle at center, #ff8c00 0%, #ff4500 20%, #dc2626 40%, #8b0000 80%, #000000 100%)'}}>
+        <div className="spiral-background"></div>
+        <GalaxySpiral />
+        <ParticleCanvas />
+        <div className="relative z-10 text-white text-xl">Cargando...</div>
+      </main>
+    )
   }
 
   return (
@@ -51,11 +71,8 @@ export default function HomePage() {
 
       {currentScreen === 'login' && (
         <div className="relative z-10 animate-fade-in">
-          <LoginScreen 
-            onLoginSuccess={(data) => {
-              setUserData(data)
-              setCurrentScreen('room-selection')
-            }}
+          <LoginScreen
+            onLoginSuccess={handleLoginSuccess}
             onBack={() => setCurrentScreen('main')}
           />
         </div>
@@ -63,31 +80,37 @@ export default function HomePage() {
 
       {currentScreen === 'room-selection' && (
         <div className="relative z-10 animate-fade-in">
-          <RoomSelectionScreen 
+          <RoomSelectionScreen
             onCreateRoom={() => setCurrentScreen('game')}
             onBack={() => setCurrentScreen('main')}
           />
         </div>
       )}
 
+      {currentScreen === 'ranking' && (
+        <div className="relative z-10 animate-fade-in">
+          <RankingScreen onBack={() => setCurrentScreen('main')} />
+        </div>
+      )}
+
       {currentScreen === 'main' && (
         <>
           <div className="absolute top-8 left-8 z-20 animate-float">
-            <Image 
-              src="/uno-logo.png" 
-              alt="UNO Logo" 
+            <Image
+              src="/uno-logo.png"
+              alt="UNO Logo"
               width={384}
               height={192}
-              className="w-32 h-auto drop-shadow-2xl md:w-40 ml-0 lg:w-96" 
+              className="w-32 h-auto drop-shadow-2xl md:w-40 ml-0 lg:w-96"
               priority
             />
           </div>
 
           <div className="relative z-10 flex flex-col items-center gap-8 px-4">
-            {userData && (
+            {user && isAuthenticated && (
               <div className="glass-welcome-card mb-4">
                 <p className="text-white text-sm font-semibold">
-                  {userData.isGuest ? `👋 Invitado: ${userData.username}` : `👋 Bienvenido: ${userData.username}`}
+                  {user.id.startsWith('guest_') ? `👋 Invitado: ${user.nickname}` : `👋 Bienvenido: ${user.nickname}`}
                 </p>
               </div>
             )}
@@ -105,8 +128,8 @@ export default function HomePage() {
                 </Button>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="glass-button glass-button-secondary group"
                     onClick={() => setIsSettingsOpen(true)}
                   >
@@ -114,20 +137,27 @@ export default function HomePage() {
                     <span className="text-sm font-semibold">Configuración</span>
                   </Button>
 
-                  <Button size="lg" className="glass-button glass-button-tertiary group">
-                    <Users className="mr-1.5 h-5 w-5 transition-transform group-hover:scale-110" />
-                    <span className="text-sm font-semibold">Desarrolladores</span>
+                  <Button
+                    size="lg"
+                    className="glass-button glass-button-tertiary group"
+                    onClick={() => setCurrentScreen('ranking')}
+                    disabled={!isAuthenticated}
+                  >
+                    <Trophy className="mr-1.5 h-5 w-5 transition-transform group-hover:scale-110" />
+                    <span className="text-sm font-semibold">Ranking</span>
                   </Button>
                 </div>
 
-                <Button 
-                  size="lg" 
-                  className="glass-button glass-button-logout group text-white"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-1.5 h-5 w-5 text-white" />
-                  <span className="text-sm font-semibold">Cerrar Sesión</span>
-                </Button>
+                {isAuthenticated && (
+                  <Button
+                    size="lg"
+                    className="glass-button glass-button-logout group text-white"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-1.5 h-5 w-5 text-white" />
+                    <span className="text-sm font-semibold">Cerrar Sesión</span>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -138,10 +168,10 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 animate-fade-in">
           <HalftoneWaves />
           <div className="absolute inset-0 z-[60] flex items-center justify-center w-full h-full p-4">
-            <GameRoomMenu 
-              onBack={() => setCurrentScreen('room-selection')} 
+            <GameRoomMenu
+              onBack={() => setCurrentScreen('room-selection')}
               onStartGame={() => setCurrentScreen('gameplay')}
-              userData={userData} 
+              userData={user}
             />
           </div>
         </div>
@@ -153,9 +183,9 @@ export default function HomePage() {
         </div>
       )}
 
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
     </main>
   )
