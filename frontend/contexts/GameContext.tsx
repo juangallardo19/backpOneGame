@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { WebSocketService, GameEventType, getWebSocketService, cleanupWebSocketService } from '@/services/websocket.service';
-import { GameState, Player, Card, Room, ChatMessage, GameMove, GameStatus } from '@/types/game.types';
+import { GameState, Player, Card, Room, ChatMessage, GameMove, GameStatus, Direction } from '@/types/game.types';
 
 // ============================================
 // INTERFACES
@@ -175,7 +175,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     console.log('↩️ Dirección invertida');
     setGameState(prev => prev ? {
       ...prev,
-      direction: prev.direction === 'CLOCKWISE' ? 'COUNTER_CLOCKWISE' : 'CLOCKWISE'
+      direction: prev.direction === Direction.CLOCKWISE ? Direction.COUNTER_CLOCKWISE : Direction.CLOCKWISE
     } : null);
   }, []);
 

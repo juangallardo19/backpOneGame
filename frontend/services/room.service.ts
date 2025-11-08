@@ -9,16 +9,31 @@ import { Room } from '@/types/game.types';
 
 export const roomService = {
   /**
-   * Crear nueva sala
+   * Crear nueva sala con configuración completa
+   * RF08, RF10, RF11, RF17-RF23
    */
   createRoom: async (roomConfig: {
     name?: string;
     isPrivate?: boolean;
     maxPlayers?: number;
-    pointsToWin?: number;
+    initialHandSize?: number; // RF18: 5-10 cards
+    turnTimeLimit?: number; // RF20, RF29: Turn time in seconds
+    allowStackingCards?: boolean; // RF21, RF30: Stack +2/+4
+    pointsToWin?: number; // RF22: Points to win
+    allowBots?: boolean;
+    roomName?: string;
   }): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.ROOMS, roomConfig);
+      const response = await api.post<Room>(API_ENDPOINTS.ROOMS, {
+        isPrivate: roomConfig.isPrivate ?? false,
+        maxPlayers: roomConfig.maxPlayers ?? 4,
+        initialHandSize: roomConfig.initialHandSize ?? 7,
+        turnTimeLimit: roomConfig.turnTimeLimit ?? 60,
+        allowStackingCards: roomConfig.allowStackingCards ?? true,
+        pointsToWin: roomConfig.pointsToWin ?? 500,
+        allowBots: roomConfig.allowBots ?? true,
+        roomName: roomConfig.roomName || roomConfig.name,
+      });
       return response.data;
     } catch (error: any) {
       throw error;

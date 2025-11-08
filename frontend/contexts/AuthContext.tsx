@@ -135,9 +135,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Guardar en localStorage
       saveToStorage(authData);
 
-      // Configurar token en API para futuras peticiones
-      api.defaults.headers.common['Authorization'] = `Bearer ${authData.token}`;
-
       console.log('✅ Sesión iniciada correctamente');
     } catch (error: any) {
       console.error('❌ Error al iniciar sesión:', error);
@@ -170,9 +167,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Guardar en localStorage
       saveToStorage(authData);
-
-      // Configurar token en API
-      api.defaults.headers.common['Authorization'] = `Bearer ${authData.token}`;
 
       console.log('✅ Usuario registrado correctamente');
     } catch (error: any) {
@@ -238,9 +232,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Limpiar localStorage
       clearStorage();
 
-      // Limpiar header de autorización
-      delete api.defaults.headers.common['Authorization'];
-
       console.log('✅ Sesión cerrada');
     } catch (error: any) {
       console.error('❌ Error al cerrar sesión:', error);
@@ -273,9 +264,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Guardar en localStorage
       saveToStorage(authData);
 
-      // Actualizar header
-      api.defaults.headers.common['Authorization'] = `Bearer ${authData.token}`;
-
       console.log('✅ Token refrescado');
     } catch (error: any) {
       console.error('❌ Error al refrescar token:', error);
@@ -300,8 +288,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log('🔐 Guardando datos de autenticación OAuth2...');
 
-      // Configurar header de autorización
-      api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      // Guardar token temporalmente en localStorage para que el API client lo use
+      localStorage.setItem('uno_auth_token', data.token);
+      if (data.refreshToken) {
+        localStorage.setItem('uno_refresh_token', data.refreshToken);
+      }
 
       // Obtener información del usuario desde el backend
       const response = await api.get<User>(API_ENDPOINTS.ME);
@@ -316,9 +307,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         token: data.token,
         refreshToken: data.refreshToken,
         user: userData,
-        userId: data.userId.toString(),
-        email: userData.email,
-        nickname: userData.nickname,
         expiresIn: 86400000, // 24 horas
       };
 
@@ -349,9 +337,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (storedAuth) {
           console.log('✅ Sesión encontrada, restaurando...');
-
-          // Configurar header de autorización
-          api.defaults.headers.common['Authorization'] = `Bearer ${storedAuth.token}`;
 
           // Verificar que el token sea válido haciendo una petición al backend
           try {

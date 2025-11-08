@@ -68,8 +68,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         {/* Logo Section */}
         <div className="logo-section">
           <Image
-            src="/uno-logo.png"
-            alt="UNO Logo"
+            src="/one-logo.png"
+            alt="ONE Logo"
             width={200}
             height={100}
             className="uno-logo"

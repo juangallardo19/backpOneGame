@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Play, Settings, Users, LogOut, Trophy } from "lucide-react"
 import Image from "next/image"
 import ParticleCanvas from "@/components/ParticleCanvas"
-import UnoCardsBackground from "@/components/UnoCardsBackground"
+import OneCardsBackground from "@/components/OneCardsBackground"
 import GalaxySpiral from "@/components/GalaxySpiral"
 import SettingsModal from "@/components/SettingsModal"
 import GameRoomMenu from "@/components/game-room-menu"
@@ -67,7 +67,7 @@ export default function HomePage() {
       <div className="spiral-background"></div>
       <GalaxySpiral />
       <ParticleCanvas />
-      <UnoCardsBackground />
+      <OneCardsBackground />
 
       {currentScreen === 'login' && (
         <div className="relative z-10 animate-fade-in">
@@ -97,8 +97,8 @@ export default function HomePage() {
         <>
           <div className="absolute top-8 left-8 z-20 animate-float">
             <Image
-              src="/uno-logo.png"
-              alt="UNO Logo"
+              src="/one-logo.png"
+              alt="ONE Logo"
               width={384}
               height={192}
               className="w-32 h-auto drop-shadow-2xl md:w-40 ml-0 lg:w-96"
@@ -171,7 +171,10 @@ export default function HomePage() {
             <GameRoomMenu
               onBack={() => setCurrentScreen('room-selection')}
               onStartGame={() => setCurrentScreen('gameplay')}
-              userData={user}
+              userData={user ? {
+                username: user.nickname,
+                isGuest: typeof user.id === 'string' && user.id.startsWith('guest_')
+              } : null}
             />
           </div>
         </div>

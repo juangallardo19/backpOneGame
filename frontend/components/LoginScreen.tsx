@@ -5,7 +5,7 @@
  * ACTUALIZADO: Ahora usa AuthContext y se conecta con el backend
  */
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Mail, Eye, EyeOff } from "lucide-react"
@@ -40,12 +40,6 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
   const { login, register: registerUser, loginAsGuest, error: authError } = useAuth()
   const { success, error: showError } = useNotification()
 
-  // Refs for animations
-  const containerRefs = useRef<{ [key: string]: HTMLDivElement | null }>({
-    login: null,
-    register: null,
-    guest: null
-  })
 
   // Button animation function using keyframes
   const animateButton = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -195,8 +189,8 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
 
         <div className="mb-8 text-center">
           <Image
-            src="/uno-logo.png"
-            alt="UNO Logo"
+            src="/one-logo.png"
+            alt="ONE Logo"
             width={192}
             height={96}
             className="mx-auto mb-6 drop-shadow-2xl"
@@ -242,7 +236,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
 
         {/* Login Form */}
         {activeTab === "login" && (
-          <div ref={(el) => (containerRefs.current.login = el)} className="space-y-4">
+          <div className="space-y-4">
             <div>
               <Input
                 type="email"
@@ -319,7 +313,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
 
         {/* Register Form */}
         {activeTab === "register" && (
-          <div ref={(el) => (containerRefs.current.register = el)} className="space-y-4">
+          <div className="space-y-4">
             <Input
               type="email"
               placeholder="Email"
@@ -384,7 +378,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
 
         {/* Guest Form */}
         {activeTab === "guest" && (
-          <div ref={(el) => (containerRefs.current.guest = el)} className="space-y-4">
+          <div className="space-y-4">
             <Input
               type="text"
               placeholder="Ingresa tu nickname"
