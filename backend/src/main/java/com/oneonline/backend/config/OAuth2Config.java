@@ -28,8 +28,6 @@ import org.springframework.context.annotation.Configuration;
  * spring.security.oauth2.client.registration.github.client-secret=...
  * spring.security.oauth2.client.registration.github.scope=user:email
  *
-<<<<<<< HEAD
-=======
  * USER ATTRIBUTE MAPPING:
  * Google:
  * - email -> user.email
@@ -42,7 +40,6 @@ import org.springframework.context.annotation.Configuration;
  * - login -> user.nickname
  * - avatar_url -> user.profilePicture
  * - id -> OAuth2 provider ID
->>>>>>> origin/claude/fix-encoding-utf8-railway-011CUthQPnQYNgCyGTJarbRV
  *
  * Design Pattern: None (Configuration class)
  *
