@@ -1,5 +1,6 @@
 // URL base de tu API
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://oneonlinebackend-production.up.railway.app';
+// Next.js usa NEXT_PUBLIC_ para variables de entorno del cliente
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
 
 // Endpoints disponibles
 export const API_ENDPOINTS = {

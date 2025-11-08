@@ -1,0 +1,435 @@
+'use client';
+
+/**
+ * GameContext - Maneja el estado global del juego y WebSocket
+ * Este contexto sincroniza el estado del juego con el backend en tiempo real
+ */
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { WebSocketService, GameEventType, getWebSocketService, cleanupWebSocketService } from '@/services/websocket.service';
+import { GameState, Player, Card, Room, ChatMessage, GameMove, GameStatus } from '@/types/game.types';
+
+// ============================================
+// INTERFACES
+// ============================================
+
+interface GameContextValue {
+  // Estado del juego
+  gameState: GameState | null;
+  room: Room | null;
+  sessionId: string | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  error: string | null;
+
+  // Chat y mensajes
+  chatMessages: ChatMessage[];
+  gameMoves: GameMove[];
+
+  // Acciones del juego
+  playCard: (cardId: string, chosenColor?: string) => void;
+  drawCard: () => void;
+  callUno: () => void;
+  catchUno: (playerId: string) => void;
+
+  // Acciones de chat
+  sendMessage: (message: string) => void;
+  sendEmote: (emoteId: string) => void;
+
+  // Gestión de conexión
+  connectToGame: (sessionId: string, token?: string) => Promise<void>;
+  disconnectFromGame: () => void;
+  requestGameState: () => void;
+
+  // Utilidades
+  isMyTurn: () => boolean;
+  canPlayCardId: (cardId: string) => boolean;
+  getPlayerById: (playerId: string) => Player | null;
+}
+
+// ============================================
+// CONTEXT
+// ============================================
+
+const GameContext = createContext<GameContextValue | null>(null);
+
+export const useGame = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGame debe usarse dentro de un GameProvider');
+  }
+  return context;
+};
+
+// ============================================
+// PROVIDER
+// ============================================
+
+interface GameProviderProps {
+  children: React.ReactNode;
+}
+
+export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
+  // Estado
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [gameMoves, setGameMoves] = useState<GameMove[]>([]);
+
+  // Referencia al servicio WebSocket
+  const wsServiceRef = useRef<WebSocketService | null>(null);
+
+  // ============================================
+  // HANDLERS DE EVENTOS WEBSOCKET
+  // ============================================
+
+  const handleGameStateUpdate = useCallback((payload: any) => {
+    console.log('🎮 Estado del juego actualizado:', payload);
+    setGameState(payload);
+    setError(null);
+  }, []);
+
+  const handlePlayerJoined = useCallback((payload: any) => {
+    console.log('👤 Jugador se unió:', payload);
+    // Actualizar lista de jugadores si es necesario
+  }, []);
+
+  const handlePlayerLeft = useCallback((payload: any) => {
+    console.log('👋 Jugador salió:', payload);
+  }, []);
+
+  const handleGameStarted = useCallback((payload: any) => {
+    console.log('🎯 Juego iniciado:', payload);
+    setGameState(prev => prev ? { ...prev, status: GameStatus.PLAYING } : null);
+  }, []);
+
+  const handleGameEnded = useCallback((payload: any) => {
+    console.log('🏆 Juego terminado:', payload);
+    setGameState(prev => prev ? { ...prev, status: GameStatus.GAME_OVER, winner: payload.winner } : null);
+  }, []);
+
+  const handleCardPlayed = useCallback((payload: any) => {
+    console.log('🃏 Carta jugada:', payload);
+
+    // Agregar al historial de movimientos
+    const move: GameMove = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname || 'Jugador',
+      type: 'PLAY_CARD',
+      card: payload.card,
+      timestamp: Date.now(),
+    };
+    setGameMoves(prev => [...prev, move]);
+  }, []);
+
+  const handleCardDrawn = useCallback((payload: any) => {
+    console.log('📥 Carta robada:', payload);
+
+    const move: GameMove = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname || 'Jugador',
+      type: 'DRAW_CARD',
+      timestamp: Date.now(),
+    };
+    setGameMoves(prev => [...prev, move]);
+  }, []);
+
+  const handleTurnChanged = useCallback((payload: any) => {
+    console.log('🔄 Turno cambiado:', payload);
+    setGameState(prev => prev ? { ...prev, currentTurnPlayerId: payload.currentPlayerId } : null);
+  }, []);
+
+  const handleUnoCall = useCallback((payload: any) => {
+    console.log('🔔 UNO cantado:', payload);
+
+    const move: GameMove = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname || 'Jugador',
+      type: 'UNO_CALL',
+      timestamp: Date.now(),
+    };
+    setGameMoves(prev => [...prev, move]);
+  }, []);
+
+  const handleUnoPenalty = useCallback((payload: any) => {
+    console.log('⚠️ Penalización UNO:', payload);
+
+    const move: GameMove = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname || 'Jugador',
+      type: 'UNO_PENALTY',
+      timestamp: Date.now(),
+    };
+    setGameMoves(prev => [...prev, move]);
+  }, []);
+
+  const handleDirectionReversed = useCallback((payload: any) => {
+    console.log('↩️ Dirección invertida');
+    setGameState(prev => prev ? {
+      ...prev,
+      direction: prev.direction === 'CLOCKWISE' ? 'COUNTER_CLOCKWISE' : 'CLOCKWISE'
+    } : null);
+  }, []);
+
+  const handleColorChanged = useCallback((payload: any) => {
+    console.log('🎨 Color cambiado:', payload.color);
+  }, []);
+
+  const handleMessageReceived = useCallback((payload: any) => {
+    console.log('💬 Mensaje recibido:', payload);
+
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname,
+      message: payload.message,
+      timestamp: Date.now(),
+      type: 'MESSAGE',
+    };
+    setChatMessages(prev => [...prev, message]);
+  }, []);
+
+  const handleEmoteReceived = useCallback((payload: any) => {
+    console.log('😀 Emote recibido:', payload);
+
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      playerId: payload.playerId,
+      playerNickname: payload.playerNickname,
+      message: payload.emoteId,
+      timestamp: Date.now(),
+      type: 'EMOTE',
+    };
+    setChatMessages(prev => [...prev, message]);
+  }, []);
+
+  const handleError = useCallback((payload: any) => {
+    console.error('❌ Error del juego:', payload);
+    setError(payload.message || 'Error desconocido');
+  }, []);
+
+  // ============================================
+  // FUNCIONES DE CONEXIÓN
+  // ============================================
+
+  const connectToGame = useCallback(async (newSessionId: string, token?: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log('🎮 Conectando al juego:', newSessionId);
+
+      // Desconectar sesión anterior si existe
+      if (wsServiceRef.current) {
+        wsServiceRef.current.disconnect();
+      }
+
+      // Crear nueva instancia de WebSocket
+      const wsService = getWebSocketService(newSessionId, token);
+      wsServiceRef.current = wsService;
+      setSessionId(newSessionId);
+
+      // Suscribirse a eventos
+      wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
+      wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
+      wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
+      wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
+      wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));
+      wsService.on(GameEventType.CARD_DRAWN, (event) => handleCardDrawn(event.payload));
+      wsService.on(GameEventType.TURN_CHANGED, (event) => handleTurnChanged(event.payload));
+      wsService.on(GameEventType.ONE_CALLED, (event) => handleUnoCall(event.payload));
+      wsService.on(GameEventType.ONE_PENALTY, (event) => handleUnoPenalty(event.payload));
+      wsService.on(GameEventType.DIRECTION_REVERSED, (event) => handleDirectionReversed(event.payload));
+      wsService.on(GameEventType.COLOR_CHANGED, (event) => handleColorChanged(event.payload));
+      wsService.on(GameEventType.MESSAGE_RECEIVED, (event) => handleMessageReceived(event.payload));
+      wsService.on(GameEventType.EMOTE_RECEIVED, (event) => handleEmoteReceived(event.payload));
+      wsService.on(GameEventType.ERROR, (event) => handleError(event.payload));
+
+      // Conectar
+      await wsService.connect();
+      setIsConnected(true);
+
+      // Solicitar estado inicial del juego
+      setTimeout(() => {
+        wsService.requestGameState();
+      }, 500);
+
+      console.log('✅ Conectado al juego exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error conectando al juego:', error);
+      setError(error.message || 'Error al conectar');
+      setIsConnected(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    handleGameStateUpdate,
+    handlePlayerJoined,
+    handlePlayerLeft,
+    handleGameStarted,
+    handleGameEnded,
+    handleCardPlayed,
+    handleCardDrawn,
+    handleTurnChanged,
+    handleUnoCall,
+    handleUnoPenalty,
+    handleDirectionReversed,
+    handleColorChanged,
+    handleMessageReceived,
+    handleEmoteReceived,
+    handleError,
+  ]);
+
+  const disconnectFromGame = useCallback(() => {
+    if (sessionId) {
+      console.log('🔌 Desconectando del juego');
+      cleanupWebSocketService(sessionId);
+      wsServiceRef.current = null;
+      setSessionId(null);
+      setIsConnected(false);
+      setGameState(null);
+      setRoom(null);
+      setChatMessages([]);
+      setGameMoves([]);
+    }
+  }, [sessionId]);
+
+  const requestGameState = useCallback(() => {
+    if (wsServiceRef.current?.isConnected()) {
+      wsServiceRef.current.requestGameState();
+    }
+  }, []);
+
+  // ============================================
+  // ACCIONES DEL JUEGO
+  // ============================================
+
+  const playCard = useCallback((cardId: string, chosenColor?: string) => {
+    if (wsServiceRef.current?.isConnected()) {
+      console.log('🃏 Jugando carta:', cardId, chosenColor);
+      wsServiceRef.current.playCard(cardId, chosenColor);
+    } else {
+      console.warn('⚠️ No conectado al WebSocket');
+    }
+  }, []);
+
+  const drawCard = useCallback(() => {
+    if (wsServiceRef.current?.isConnected()) {
+      console.log('📥 Robando carta');
+      wsServiceRef.current.drawCard();
+    } else {
+      console.warn('⚠️ No conectado al WebSocket');
+    }
+  }, []);
+
+  const callUno = useCallback(() => {
+    if (wsServiceRef.current?.isConnected()) {
+      console.log('🔔 Cantando UNO');
+      wsServiceRef.current.callUno();
+    } else {
+      console.warn('⚠️ No conectado al WebSocket');
+    }
+  }, []);
+
+  const catchUno = useCallback((playerId: string) => {
+    if (wsServiceRef.current?.isConnected()) {
+      console.log('⚠️ Atrapando UNO:', playerId);
+      wsServiceRef.current.catchUno(playerId);
+    } else {
+      console.warn('⚠️ No conectado al WebSocket');
+    }
+  }, []);
+
+  const sendMessage = useCallback((message: string) => {
+    if (wsServiceRef.current?.isConnected()) {
+      wsServiceRef.current.sendMessage(message);
+    }
+  }, []);
+
+  const sendEmote = useCallback((emoteId: string) => {
+    if (wsServiceRef.current?.isConnected()) {
+      wsServiceRef.current.sendEmote(emoteId);
+    }
+  }, []);
+
+  // ============================================
+  // UTILIDADES
+  // ============================================
+
+  const isMyTurn = useCallback((): boolean => {
+    if (!gameState || !gameState.currentPlayer) return false;
+    return gameState.currentTurnPlayerId === gameState.currentPlayer.id;
+  }, [gameState]);
+
+  const canPlayCardId = useCallback((cardId: string): boolean => {
+    if (!gameState) return false;
+    return gameState.playableCardIds.includes(cardId);
+  }, [gameState]);
+
+  const getPlayerById = useCallback((playerId: string): Player | null => {
+    if (!gameState) return null;
+    return gameState.players.find(p => p.id === playerId) || null;
+  }, [gameState]);
+
+  // ============================================
+  // CLEANUP
+  // ============================================
+
+  useEffect(() => {
+    return () => {
+      // Limpiar al desmontar
+      if (sessionId) {
+        cleanupWebSocketService(sessionId);
+      }
+    };
+  }, [sessionId]);
+
+  // ============================================
+  // CONTEXT VALUE
+  // ============================================
+
+  const value: GameContextValue = {
+    // Estado
+    gameState,
+    room,
+    sessionId,
+    isConnected,
+    isLoading,
+    error,
+    chatMessages,
+    gameMoves,
+
+    // Acciones del juego
+    playCard,
+    drawCard,
+    callUno,
+    catchUno,
+
+    // Acciones de chat
+    sendMessage,
+    sendEmote,
+
+    // Gestión de conexión
+    connectToGame,
+    disconnectFromGame,
+    requestGameState,
+
+    // Utilidades
+    isMyTurn,
+    canPlayCardId,
+    getPlayerById,
+  };
+
+  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+};
+
+export default GameContext;
