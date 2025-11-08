@@ -193,6 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('👤 Iniciando como invitado...');
 
       // Crear usuario invitado (sin autenticación real)
+      // NOTA: El backend no tiene soporte para invitados, esto es solo frontend
       const guestUser: User = {
         id: `guest_${Date.now()}`,
         email: `guest_${Date.now()}@temp.com`,

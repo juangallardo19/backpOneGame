@@ -52,9 +52,11 @@ export const roomService = {
   /**
    * Unirse a sala
    */
-  joinRoom: async (code: string): Promise<Room> => {
+  joinRoom: async (code: string, nickname?: string): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.JOIN_ROOM(code));
+      const response = await api.post<Room>(API_ENDPOINTS.JOIN_ROOM(code), {
+        nickname: nickname || undefined
+      });
       return response.data;
     } catch (error: any) {
       throw error;
