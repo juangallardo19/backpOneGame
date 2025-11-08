@@ -95,7 +95,7 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
               </div>
             ) : (
               chatMessages.map((msg, index) => {
-                const isOwnMessage = msg.senderId === user?.id;
+                const isOwnMessage = msg.playerId === user?.id;
 
                 return (
                   <div
@@ -103,7 +103,7 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
                     className={`chat-message ${isOwnMessage ? 'own-message' : 'other-message'}`}
                   >
                     <div className="message-header">
-                      <span className="sender-name">{msg.senderNickname}</span>
+                      <span className="sender-name">{msg.playerNickname}</span>
                       <span className="message-time">{formatTime(msg.timestamp)}</span>
                     </div>
                     <div className="message-content">{msg.message}</div>
