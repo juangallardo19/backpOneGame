@@ -1,0 +1,366 @@
+package com.oneonline.backend.service.game;
+
+import com.oneonline.backend.model.domain.*;
+import com.oneonline.backend.model.enums.CardType;
+import com.oneonline.backend.model.enums.GameStatus;
+import com.oneonline.backend.pattern.behavioral.command.GameCommand;
+import com.oneonline.backend.pattern.behavioral.command.PlayCardCommand;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+import java.util.Stack;
+
+/**
+ * GameEngine Service
+ *
+ * Main orchestrator for game logic.
+ * Coordinates all game services to execute moves and manage game flow.
+ *
+ * RESPONSIBILITIES:
+ * - Process player moves (play card, draw card)
+ * - Validate moves using CardValidator
+ * - Apply card effects using EffectProcessor
+ * - Check win conditions
+ * - Handle penalties
+ * - Manage game commands (for undo/redo)
+ *
+ * DESIGN PATTERNS:
+ * - Command Pattern: Encapsulates moves for undo/redo
+ * - Strategy Pattern: Different card validation strategies
+ *
+ * @author Juan Gallardo
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class GameEngine {
+
+    private final CardValidator cardValidator;
+    private final EffectProcessor effectProcessor;
+    private final OneManager oneManager;
+
+    /**
+     * Command history for undo functionality
+     */
+    private final Stack<GameCommand> commandHistory = new Stack<>();
+
+    /**
+     * Process a player move (play card)
+     *
+     * Workflow:
+     * 1. Validate it's player's turn
+     * 2. Validate card can be played
+     * 3. Execute move
+     * 4. Apply card effect
+     * 5. Check ONE call
+     * 6. Check win condition
+     * 7. Advance turn
+     *
+     * @param player Player making move
+     * @param card Card to play
+     * @param session Game session
+     * @return true if move successful
+     * @throws IllegalArgumentException if move invalid
+     */
+    public boolean processMove(Player player, Card card, GameSession session) {
+        TurnManager turnManager = session.getTurnManager();
+
+        // Validate it's player's turn
+        if (!turnManager.getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
+            throw new IllegalArgumentException("Not your turn!");
+        }
+
+        // Validate move
+        if (!validateMove(player, card, session)) {
+            throw new IllegalArgumentException("Invalid card play");
+        }
+
+        // Create and execute command (for undo functionality)
+        GameCommand command = new PlayCardCommand(player, card, session);
+        command.execute();
+        commandHistory.push(command);
+
+        // Apply card effect
+        applyCardEffect(card, session, turnManager);
+
+        // Check ONE call
+        oneManager.checkOneCall(player);
+
+        // Check win condition
+        Optional<Player> winner = checkWinCondition(session);
+        if (winner.isPresent()) {
+            session.endGame(winner.get());
+            log.info("Game over! Winner: {}", winner.get().getNickname());
+            return true;
+        }
+
+        // Advance turn
+        turnManager.nextTurn();
+
+        log.info("Move processed: {} played {}", player.getNickname(), card);
+        return true;
+    }
+
+    /**
+     * Player draws a card from deck
+     *
+     * Called when:
+     * - Player has no valid cards
+     * - Player chooses to draw
+     * - Penalty (Draw Two, Draw Four, no UNO)
+     *
+     * @param player Player drawing
+     * @param session Game session
+     * @return Drawn card (or null if deck empty)
+     */
+    public Card drawCard(Player player, GameSession session) {
+        Card card = session.getDeck().drawCard();
+
+        if (card == null) {
+            // Deck empty, refill from discard pile
+            log.warn("Deck empty, refilling from discard pile");
+            session.getDeck().refillFromDiscard(session.getDiscardPile());
+            card = session.getDeck().drawCard();
+        }
+
+        if (card != null) {
+            player.drawCard(card);
+            log.info("Player {} drew a card", player.getNickname());
+        } else {
+            log.error("Failed to draw card - deck completely empty!");
+        }
+
+        return card;
+    }
+
+    /**
+     * Validate if move is legal
+     *
+     * Checks:
+     * - Player has the card
+     * - Card can be played on top card
+     * - Wild Draw Four legality (if applicable)
+     *
+     * @param player Player making move
+     * @param card Card to play
+     * @param session Game session
+     * @return true if valid
+     */
+    public boolean validateMove(Player player, Card card, GameSession session) {
+        // Check player has the card
+        if (!player.hasCard(card)) {
+            log.warn("Player {} doesn't have card {}", player.getNickname(), card);
+            return false;
+        }
+
+        Card topCard = session.getTopCard();
+
+        // Validate with CardValidator
+        if (!cardValidator.isValidMove(card, topCard)) {
+            return false;
+        }
+
+        // Special validation for Wild Draw Four
+        if (card instanceof WildDrawFourCard wildDrawFour) {
+            boolean legal = cardValidator.canPlayWildDrawFourLegally(
+                wildDrawFour, topCard, player.getHand());
+
+            if (!legal) {
+                log.warn("Wild Draw Four played illegally by {}", player.getNickname());
+                // In real game, another player can challenge
+                // For now, we allow it but log warning
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Apply card effect after it's played
+     *
+     * Different effects for different card types:
+     * - NUMBER: No effect
+     * - SKIP: Skip next player
+     * - REVERSE: Reverse turn order
+     * - DRAW_TWO: Next player draws 2
+     * - WILD: Player chooses color
+     * - WILD_DRAW_FOUR: Next player draws 4, player chooses color
+     *
+     * @param card Card played
+     * @param session Game session
+     * @param turnManager Turn manager
+     */
+    public void applyCardEffect(Card card, GameSession session, TurnManager turnManager) {
+        CardType type = card.getType();
+
+        switch (type) {
+            case NUMBER -> {
+                // No effect
+                log.debug("Number card played - no effect");
+            }
+
+            case SKIP -> {
+                effectProcessor.processSkipEffect(turnManager);
+            }
+
+            case REVERSE -> {
+                effectProcessor.processReverseEffect(turnManager);
+            }
+
+            case DRAW_TWO -> {
+                Player nextPlayer = turnManager.peekNextPlayer();
+                effectProcessor.processDrawTwoEffect(session, nextPlayer);
+            }
+
+            case WILD_DRAW_FOUR -> {
+                Player nextPlayer = turnManager.peekNextPlayer();
+                effectProcessor.processDrawFourEffect(session, nextPlayer);
+            }
+
+            case WILD -> {
+                // Color already chosen when card was played
+                log.debug("Wild card played - color chosen");
+            }
+        }
+    }
+
+    /**
+     * Check win condition
+     *
+     * Player wins if they have 0 cards.
+     *
+     * @param session Game session
+     * @return Optional<Player> winner if someone won
+     */
+    public Optional<Player> checkWinCondition(GameSession session) {
+        for (Player player : session.getPlayers()) {
+            if (player.hasWon()) {
+                return Optional.of(player);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Penalize player
+     *
+     * Used for:
+     * - Not calling UNO
+     * - Illegal Wild Draw Four
+     * - Breaking rules
+     *
+     * @param player Player to penalize
+     * @param reason Reason for penalty
+     * @param cardCount Number of cards to draw
+     * @param session Game session
+     */
+    public void penalizePlayer(Player player, String reason, int cardCount, GameSession session) {
+        log.warn("Player {} penalized: {} (+{} cards)", player.getNickname(), reason, cardCount);
+
+        for (int i = 0; i < cardCount; i++) {
+            drawCard(player, session);
+        }
+    }
+
+    /**
+     * Force player to draw pending effect cards
+     *
+     * When player cannot stack Draw Two / Draw Four.
+     *
+     * @param player Player to draw
+     * @param session Game session
+     */
+    public void processPlayerDrawPenalty(Player player, GameSession session) {
+        effectProcessor.processPendingEffects(session, player);
+    }
+
+    /**
+     * Undo last move
+     *
+     * Reverts last command (if undoable).
+     *
+     * @return true if undo successful
+     */
+    public boolean undoLastMove() {
+        if (commandHistory.isEmpty()) {
+            log.warn("No moves to undo");
+            return false;
+        }
+
+        GameCommand lastCommand = commandHistory.peek();
+
+        if (!lastCommand.isUndoable()) {
+            log.warn("Last move cannot be undone");
+            return false;
+        }
+
+        lastCommand.undo();
+        commandHistory.pop();
+
+        log.info("Move undone");
+        return true;
+    }
+
+    /**
+     * Clear command history
+     *
+     * Called at end of game.
+     */
+    public void clearHistory() {
+        commandHistory.clear();
+    }
+
+    /**
+     * Check if player must draw card
+     *
+     * Player must draw if they have no valid cards.
+     *
+     * @param player Player to check
+     * @param session Game session
+     * @return true if must draw
+     */
+    public boolean mustDrawCard(Player player, GameSession session) {
+        Card topCard = session.getTopCard();
+        return cardValidator.mustDrawCard(player.getHand(), topCard);
+    }
+
+    /**
+     * Get number of valid cards in player's hand
+     *
+     * @param player Player
+     * @param session Game session
+     * @return Number of valid cards
+     */
+    public int countValidPlays(Player player, GameSession session) {
+        Card topCard = session.getTopCard();
+        return cardValidator.countValidPlays(player.getHand(), topCard);
+    }
+
+    /**
+     * Start game session
+     *
+     * Initializes game state:
+     * - Deal cards
+     * - Set first card
+     * - Start turn manager
+     *
+     * @param session Game session to start
+     */
+    public void startGame(GameSession session) {
+        // Validate game can start
+        if (session.getPlayers().size() < 2) {
+            throw new IllegalStateException("Need at least 2 players to start");
+        }
+
+        // Game already started
+        if (session.getStatus() == GameStatus.PLAYING) {
+            log.warn("Game already started");
+            return;
+        }
+
+        session.start();
+        log.info("Game started with {} players", session.getPlayers().size());
+    }
+}

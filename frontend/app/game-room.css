@@ -1,0 +1,415 @@
+/* Global UNO card styling */
+.uno-card {
+  width: 200px;
+  height: 320px;
+  border-radius: 20px;
+  display: inline-block;
+  position: relative;
+  font-family: 'Tahoma', Arial, sans-serif;
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
+  border: 6px solid white;
+  background-color: #ded71f;
+}
+
+.uno-card.green {
+  background-color: #3e9e32;
+}
+
+.uno-card.blue {
+  background-color: #3f4cff;
+}
+
+.uno-card.red {
+  background-color: #c11f1f;
+}
+
+.uno-card.yellow {
+  background-color: #ded71f;
+}
+
+.uno-card.black {
+  background-color: #1f1b18;
+}
+
+.uno-card .ellipse {
+  background-color: white;
+  margin: auto;
+  width: 160px;
+  height: 260px;
+  position: relative;
+  top: 30px;
+  border-radius: 50%;
+  transform: skewX(-25deg);
+}
+
+.uno-card .content {
+  position: absolute;
+  left: 30%;
+  top: 25%;
+  color: #3e9e32;
+  font-size: 128px;
+  font-weight: bold;
+}
+
+.uno-card .content.green {
+  color: #3e9e32;
+}
+
+.uno-card .content.blue {
+  color: #3f4cff;
+}
+
+.uno-card .content.red {
+  color: #c11f1f;
+}
+
+.uno-card .content.yellow {
+  color: #ded71f;
+}
+
+.uno-card .content.black {
+  color: #1f1b18;
+}
+
+.uno-card .content .skip {
+  margin-left: -10%;
+  width: 80px;
+  height: 80px;
+  border: 16px solid currentColor;
+  border-radius: 50%;
+  margin-top: 20%;
+  position: relative;
+}
+
+.uno-card .content .skip::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 20%;
+  background-color: currentColor;
+  position: absolute;
+  top: 40%;
+  transform: rotate(-45deg);
+}
+
+.uno-card .content .plus-two {
+  position: relative;
+  width: 50px;
+  height: 80px;
+}
+
+.uno-card .content .plus-two::before,
+.uno-card .content .plus-two::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 80px;
+  background-color: currentColor;
+  border-radius: 10%;
+  border: 5px solid white;
+  position: absolute;
+}
+
+.uno-card .content .plus-two::before {
+  left: 35px;
+}
+
+.uno-card .content .plus-two::after {
+  top: 50px;
+}
+
+.uno-card .content .reverse {
+  height: 160px;
+  margin-top: -60%;
+  margin-left: 100%;
+}
+
+.uno-card .content .reverse .arrows {
+  display: inline-block;
+  transform: rotate(-45deg);
+}
+
+.uno-card .content .reverse .arrows .arrow {
+  width: 40px;
+  height: 40px;
+  background-color: currentColor;
+  position: relative;
+}
+
+.uno-card .content .reverse .arrows .arrow::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 40px;
+  background-color: inherit;
+  border-top-left-radius: 100%;
+  position: absolute;
+  left: -39px;
+}
+
+.uno-card .content .reverse .arrows .arrow::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border: 40px solid currentColor;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right: none;
+  position: absolute;
+  right: -39px;
+  top: -20px;
+}
+
+.uno-card .content .reverse .arrows .arrow:last-child {
+  transform: rotate(180deg);
+  top: 8px;
+  right: 53px;
+}
+
+.uno-card .content .wild {
+  margin: -50px 0 0 -40px;
+  background-color: white;
+  width: 160px;
+  height: 260px;
+  border-radius: 50%;
+  transform: skewX(-25deg);
+  overflow: hidden;
+  font-size: 0;
+  border: 2px solid white;
+}
+
+.uno-card .content .wild .segment {
+  display: inline-block;
+  width: 80px;
+  height: 130px;
+}
+
+.uno-card .content .wild .segment.red {
+  background-color: #c11f1f;
+}
+
+.uno-card .content .wild .segment.green {
+  background-color: #3e9e32;
+}
+
+.uno-card .content .wild .segment.yellow {
+  background-color: #ded71f;
+}
+
+.uno-card .content .wild .segment.blue {
+  background-color: #3f4cff;
+}
+
+.uno-card .small-content,
+.uno-card .small-content-reverse {
+  position: absolute;
+  font-size: 32px;
+  color: white;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uno-card .small-content {
+  top: 5px;
+  left: 10px;
+}
+
+.uno-card .small-content-reverse {
+  right: 10px;
+  bottom: 5px;
+  transform: rotate(180deg);
+}
+
+.uno-card .small-content .skip,
+.uno-card .small-content-reverse .skip {
+  width: 21.333px;
+  height: 21.333px;
+  border: 4.266px solid white;
+  border-radius: 50%;
+  margin-top: 20%;
+  position: relative;
+}
+
+.uno-card .small-content .skip::before,
+.uno-card .small-content-reverse .skip::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 20%;
+  background-color: white;
+  position: absolute;
+  top: 40%;
+  transform: rotate(-45deg);
+}
+
+.uno-card .small-content .reverse,
+.uno-card .small-content-reverse .reverse {
+  height: 42.666px;
+  margin-top: -60%;
+  margin-left: 100%;
+}
+
+.uno-card .small-content .reverse .arrows,
+.uno-card .small-content-reverse .reverse .arrows {
+  display: inline-block;
+  transform: rotate(-45deg);
+}
+
+.uno-card .small-content .reverse .arrows .arrow,
+.uno-card .small-content-reverse .reverse .arrows .arrow {
+  width: 10.666px;
+  height: 10.666px;
+  background-color: white;
+  position: relative;
+}
+
+.uno-card .small-content .reverse .arrows .arrow::before,
+.uno-card .small-content-reverse .reverse .arrows .arrow::before {
+  content: '';
+  display: block;
+  width: 10.666px;
+  height: 10.666px;
+  background-color: inherit;
+  border-top-left-radius: 100%;
+  position: absolute;
+  left: -9.666px;
+}
+
+.uno-card .small-content .reverse .arrows .arrow::after,
+.uno-card .small-content-reverse .reverse .arrows .arrow::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border: 10.666px solid white;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right: none;
+  position: absolute;
+  right: -9.666px;
+  top: -5.333px;
+}
+
+.uno-card .small-content .reverse .arrows .arrow:last-child,
+.uno-card .small-content-reverse .reverse .arrows .arrow:last-child {
+  transform: rotate(180deg);
+  top: 2.133px;
+  right: 14.222px;
+}
+
+.uno-card .small-content .wild,
+.uno-card .small-content-reverse .wild {
+  margin: -6.666px 0 0 -5.333px;
+  background-color: white;
+  width: 21.333px;
+  height: 34.666px;
+  border-radius: 50%;
+  transform: skewX(-25deg);
+  overflow: hidden;
+  font-size: 0;
+  border: 1px solid white;
+}
+
+.uno-card .small-content .wild .segment,
+.uno-card .small-content-reverse .wild .segment {
+  display: inline-block;
+  width: 10.666px;
+  height: 17.333px;
+}
+
+.uno-card .small-content .wild .segment.red,
+.uno-card .small-content-reverse .wild .segment.red {
+  background-color: #c11f1f;
+}
+
+.uno-card .small-content .wild .segment.green,
+.uno-card .small-content-reverse .wild .segment.green {
+  background-color: #3e9e32;
+}
+
+.uno-card .small-content .wild .segment.yellow,
+.uno-card .small-content-reverse .wild .segment.yellow {
+  background-color: #ded71f;
+}
+
+.uno-card .small-content .wild .segment.blue,
+.uno-card .small-content-reverse .wild .segment.blue {
+  background-color: #3f4cff;
+}
+
+.uno-card .small-content .plus-two,
+.uno-card .small-content-reverse .plus-two {
+  font-size: 32px;
+}
+
+.plus-four {
+  width: 160px;
+  height: 260px;
+  position: relative;
+  margin: -50px 0 0 -40px;
+}
+
+.plus-four div[class^='card'] {
+  width: 50px;
+  height: 80px;
+  border-radius: 10%;
+  border: 5px solid white;
+  position: absolute;
+}
+
+.plus-four .card1 {
+  background-color: #3e9e32;
+  left: 5%;
+  top: 50%;
+}
+
+.plus-four .card2 {
+  background-color: #3f4cff;
+  top: 25%;
+  left: 25%;
+}
+
+.plus-four .card3 {
+  background-color: #c11f1f;
+  top: 35%;
+  left: 45%;
+}
+
+.plus-four .card4 {
+  background-color: #ded71f;
+  top: 10%;
+  left: 65%;
+}
+
+.uno-card.back {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 60%, #050505 100%);
+  border: 6px solid #f7f7f7;
+  overflow: hidden;
+}
+
+.uno-card.back .uno-back-ring {
+  position: absolute;
+  width: 220px;
+  height: 340px;
+  background: linear-gradient(45deg, #d62828, #f77f00, #fcbf49);
+  border-radius: 50%;
+  transform: rotate(-20deg);
+  top: -40px;
+  left: -20px;
+}
+
+.uno-card.back .uno-back-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  font-family: 'Source Sans Pro', Arial, sans-serif;
+  font-size: 78px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -4px;
+  text-shadow: 3px 3px 0 #000, -3px -3px 0 #000;
+}
