@@ -5,38 +5,51 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Plus, LogIn } from "lucide-react"
 import Image from "next/image"
+import { roomService } from "@/services/room.service"
+import { useNotification } from "@/contexts/NotificationContext"
+import { Room } from "@/types/game.types"
 
 interface RoomSelectionScreenProps {
   onCreateRoom: () => void
+  onJoinRoomSuccess?: (room: Room) => void
   onBack: () => void
 }
 
-export default function RoomSelectionScreen({ onCreateRoom, onBack }: RoomSelectionScreenProps) {
+export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, onBack }: RoomSelectionScreenProps) {
   const [showJoinRoom, setShowJoinRoom] = useState(false)
   const [roomCode, setRoomCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const { success, error: showError } = useNotification()
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
-      alert("Por favor ingresa un código de sala")
+      showError("Error", "Por favor ingresa un código de sala")
       return
     }
 
     if (roomCode.trim().length !== 6) {
-      alert("El código debe tener 6 caracteres (3 letras + 3 números)")
+      showError("Error", "El código debe tener 6 caracteres")
       return
     }
 
     setIsLoading(true)
     try {
-      // TODO: Aquí irá la lógica para conectarse a la sala del backend
-      console.log("Joining room with code:", roomCode)
-      // Por ahora solo simulamos
-      alert(`Conectando a la sala ${roomCode}...`)
-      // En un futuro: onJoinRoom(roomCode)
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Error al conectar a la sala")
+      console.log("🔍 Conectando a sala con código:", roomCode)
+
+      // Conectar al backend para unirse a la sala
+      const room = await roomService.joinRoom(roomCode)
+
+      console.log("✅ Unido a la sala exitosamente:", room)
+      success("¡Éxito!", `Te has unido a la sala ${roomCode}`)
+
+      // Llamar al callback si existe
+      if (onJoinRoomSuccess) {
+        onJoinRoomSuccess(room)
+      }
+    } catch (error: any) {
+      console.error("❌ Error al unirse a la sala:", error)
+      const errorMessage = error.response?.data?.message || error.message || "No se pudo conectar a la sala"
+      showError("Error al conectar", errorMessage)
     } finally {
       setIsLoading(false)
     }
