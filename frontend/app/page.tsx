@@ -171,7 +171,10 @@ export default function HomePage() {
             <GameRoomMenu
               onBack={() => setCurrentScreen('room-selection')}
               onStartGame={() => setCurrentScreen('gameplay')}
-              userData={user}
+              userData={user ? {
+                username: user.nickname,
+                isGuest: typeof user.id === 'string' && user.id.startsWith('guest_')
+              } : null}
             />
           </div>
         </div>
