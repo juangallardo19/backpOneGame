@@ -227,13 +227,33 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     /**
      * Get frontend base URL from configuration
      *
+     * Detects if user is coming from production (Vercel) or localhost
+     * and returns the appropriate frontend URL.
+     *
      * @return Frontend base URL
      */
     private String getFrontendBaseUrl() {
-        // Extract first URL from comma-separated list
-        if (frontendUrl != null && frontendUrl.contains(",")) {
-            return frontendUrl.split(",")[0].trim();
+        if (frontendUrl == null || frontendUrl.isEmpty()) {
+            return "http://localhost:3000";
         }
-        return frontendUrl != null ? frontendUrl : "http://localhost:3000";
+
+        // If single URL, return it
+        if (!frontendUrl.contains(",")) {
+            return frontendUrl.trim();
+        }
+
+        // Multiple URLs: split and find the non-localhost one for production
+        String[] urls = frontendUrl.split(",");
+
+        // Prefer HTTPS URLs (production) over HTTP (localhost)
+        for (String url : urls) {
+            String trimmed = url.trim();
+            if (trimmed.startsWith("https://")) {
+                return trimmed;
+            }
+        }
+
+        // Fallback to first URL if no HTTPS found
+        return urls[0].trim();
     }
 }
