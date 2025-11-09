@@ -87,19 +87,25 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
     try {
       console.log("🔍 Uniendo a sala pública:", room.code)
 
-      // Join room
+      // Join room via backend API
       const joinedRoom = await roomService.joinRoom(room.code)
-
       console.log("✅ Unido a la sala exitosamente:", joinedRoom)
+      console.log("👥 Jugadores en la sala:", joinedRoom.players)
+
       success("¡Éxito!", `Te has unido a la sala ${room.code}`)
 
-      // Connect to WebSocket
+      // Connect to WebSocket - this will fetch room data and set wsRoom in context
       const token = localStorage.getItem('uno_auth_token')
       if (token) {
+        console.log("🔌 Conectando al WebSocket...")
         await connectToGame(room.code, token)
+        console.log("✅ WebSocket conectado, esperando sincronización...")
+
+        // Wait a bit for WebSocket to sync room state
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
 
-      // Navigate to room
+      // Navigate to room (GameRoomMenu will use wsRoom from context)
       if (onJoinRoomSuccess) {
         onJoinRoomSuccess(joinedRoom)
       } else {
@@ -129,19 +135,25 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
     try {
       console.log("🔍 Conectando a sala privada con código:", roomCode)
 
-      // Conectar al backend para unirse a la sala
+      // Join room via backend API
       const room = await roomService.joinRoom(roomCode)
-
       console.log("✅ Unido a la sala exitosamente:", room)
+      console.log("👥 Jugadores en la sala:", room.players)
+
       success("¡Éxito!", `Te has unido a la sala ${roomCode}`)
 
-      // Conectar al WebSocket de la sala
+      // Connect to WebSocket - this will fetch room data and set wsRoom in context
       const token = localStorage.getItem('uno_auth_token')
       if (token) {
+        console.log("🔌 Conectando al WebSocket...")
         await connectToGame(roomCode, token)
+        console.log("✅ WebSocket conectado, esperando sincronización...")
+
+        // Wait a bit for WebSocket to sync room state
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
 
-      // Llamar al callback para navegar a la sala
+      // Navigate to room (GameRoomMenu will use wsRoom from context)
       if (onJoinRoomSuccess) {
         onJoinRoomSuccess(room)
       } else {
