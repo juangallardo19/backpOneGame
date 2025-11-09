@@ -78,6 +78,9 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   useEffect(() => {
     if (wsRoom) {
       console.log('📡 Sincronizando con sala del WebSocket:', wsRoom)
+      console.log('👥 Jugadores en wsRoom:', wsRoom.players)
+      console.log('🔑 Room code:', wsRoom.code)
+      console.log('👑 Leader ID:', wsRoom.leaderId)
       setRoom(wsRoom)
     }
   }, [wsRoom])
@@ -86,6 +89,17 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   const isLeader = room && user && room.players.some(p =>
     p.userEmail === user.email && p.id === room.leaderId
   )
+
+  // Debug: Log isLeader calculation
+  useEffect(() => {
+    if (room && user) {
+      console.log('🔐 Calculando isLeader...')
+      console.log('  Usuario actual:', user.email)
+      console.log('  Leader ID de sala:', room.leaderId)
+      console.log('  Jugadores:', room.players.map(p => ({ email: p.userEmail, id: p.id, isLeader: p.id === room.leaderId })))
+      console.log('  ¿Es líder?:', isLeader)
+    }
+  }, [room, user, isLeader])
 
   // Crear nueva sala
   const handleCreateRoom = async () => {

@@ -186,7 +186,11 @@ public class Room {
             return null;
         }
 
+        // Generate unique player ID for bot
+        String botId = com.oneonline.backend.util.CodeGenerator.generatePlayerId();
+
         BotPlayer bot = BotPlayer.builder()
+                .playerId(botId) // CRITICAL FIX: Generate playerId for bot
                 .nickname("Bot_" + (bots.size() + 1))
                 .temporary(false)
                 .build();
