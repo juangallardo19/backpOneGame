@@ -87,7 +87,7 @@ public class GameSession {
      * Start the game session
      */
     public void start() {
-        if (room == null || room.getPlayers().size() < 2) {
+        if (room == null || room.getTotalPlayerCount() < 2) {
             throw new IllegalStateException("Need at least 2 players to start");
         }
 
@@ -97,17 +97,17 @@ public class GameSession {
         mainDeck.initialize();
         mainDeck.shuffle();
 
-        // Deal cards to players
+        // Deal cards to ALL players (humans + bots)
         int cardCount = room.getConfig().getInitialCardCount();
-        for (Player player : room.getPlayers()) {
+        for (Player player : room.getAllPlayers()) {
             for (int i = 0; i < cardCount; i++) {
                 player.drawCard(mainDeck.drawCard());
             }
         }
 
-        // Setup turn order
+        // Setup turn order with ALL players (humans + bots)
         turnOrder.clear();
-        turnOrder.addAll(room.getPlayers());
+        turnOrder.addAll(room.getAllPlayers());
 
         // Place first card on discard pile
         Card firstCard = mainDeck.drawCard();
@@ -264,8 +264,8 @@ public class GameSession {
         this.winner = winner;
         this.currentState = GameStatus.GAME_OVER;
 
-        // Calculate scores
-        for (Player player : room.getPlayers()) {
+        // Calculate scores from ALL players (humans + bots)
+        for (Player player : room.getAllPlayers()) {
             if (player != winner) {
                 int points = player.calculateHandPoints();
                 winner.setScore(winner.getScore() + points);

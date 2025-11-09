@@ -416,6 +416,9 @@ public class RoomController {
             // Register session with GameManager
             GameManager.getInstance().startGameSession(session);
 
+            // CRITICAL: Initialize the game (deal cards, setup turn order, etc.)
+            session.start();
+
             // Update room status
             room.setStatus(com.oneonline.backend.model.enums.RoomStatus.IN_PROGRESS);
             room.setGameSession(session);
