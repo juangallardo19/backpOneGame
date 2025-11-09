@@ -9,6 +9,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
 import { useGame } from "@/contexts/GameContext"
+import GamePlay from "@/components/GamePlay"
 
 export default function GamePage() {
   const router = useRouter()
@@ -46,10 +47,6 @@ export default function GamePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900">
-      <h1 className="text-white text-3xl text-center py-8">Juego en Progreso</h1>
-      <p className="text-white text-center">Sala: {room?.code || 'N/A'}</p>
-      {/* Aquí puedes renderizar el componente del juego cuando esté listo */}
-    </div>
+    <GamePlay onBack={() => router.push('/room')} />
   )
 }

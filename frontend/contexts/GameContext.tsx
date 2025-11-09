@@ -104,7 +104,21 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   const handleGameStarted = useCallback((payload: any) => {
     console.log('🎯 Juego iniciado:', payload);
-    setGameState(prev => prev ? { ...prev, status: GameStatus.PLAYING } : null);
+
+    // If payload contains full game state, use it
+    if (payload && payload.gameId) {
+      setGameState(payload);
+    } else {
+      // Otherwise, just update status and request full state
+      setGameState(prev => prev ? { ...prev, status: GameStatus.PLAYING } : null);
+
+      // Request full game state after game starts
+      if (wsServiceRef.current?.isConnected()) {
+        setTimeout(() => {
+          wsServiceRef.current?.requestGameState();
+        }, 200);
+      }
+    }
   }, []);
 
   const handleGameEnded = useCallback((payload: any) => {
