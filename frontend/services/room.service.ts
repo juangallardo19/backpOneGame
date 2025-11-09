@@ -11,16 +11,34 @@ import { Room } from '@/types/game.types';
  * Helper function to map backend RoomResponse to frontend Room interface
  */
 const mapBackendRoomToFrontend = (backendRoom: any): Room => {
+  // Map players from backend PlayerInfo to frontend Player
+  const players = (backendRoom.players || []).map((p: any) => ({
+    id: p.playerId,
+    nickname: p.nickname,
+    isBot: p.isBot || false,
+    status: p.status || 'WAITING',
+    cardCount: 0, // Will be updated during game
+    hasCalledUno: false,
+    profilePicture: undefined,
+    position: undefined,
+  }));
+
   return {
     code: backendRoom.roomCode,
-    name: backendRoom.roomName,
+    name: backendRoom.roomName || `Sala ${backendRoom.roomCode}`,
     leaderId: backendRoom.hostId,
-    isPrivate: backendRoom.isPrivate,
-    status: backendRoom.status,
-    players: backendRoom.players || [],
-    maxPlayers: backendRoom.maxPlayers,
-    config: backendRoom.config,
-    createdAt: backendRoom.createdAt,
+    isPrivate: backendRoom.isPrivate || false,
+    status: backendRoom.status || 'WAITING',
+    players: players,
+    maxPlayers: backendRoom.maxPlayers || 4,
+    config: {
+      maxPlayers: backendRoom.maxPlayers || 4,
+      pointsToWin: backendRoom.config?.pointsToWin || 500,
+      turnTimeLimit: backendRoom.config?.turnTimeLimit || 60,
+      allowStackingDrawCards: backendRoom.config?.allowStackingCards || true,
+      preset: 'CLASSIC', // Default preset
+    },
+    createdAt: backendRoom.createdAt ? new Date(backendRoom.createdAt).toISOString() : new Date().toISOString(),
   };
 };
 
@@ -64,7 +82,14 @@ export const roomService = {
   getPublicRooms: async (): Promise<Room[]> => {
     try {
       const response = await api.get<any[]>(API_ENDPOINTS.PUBLIC_ROOMS);
-      return response.data.map(mapBackendRoomToFrontend);
+      const rooms = response.data.map(mapBackendRoomToFrontend);
+
+      // Filter out private rooms and empty rooms
+      return rooms.filter(room =>
+        !room.isPrivate && // Only public rooms
+        room.players.length > 0 && // Only rooms with players
+        room.status !== 'FINISHED' // Exclude finished games
+      );
     } catch (error: any) {
       throw error;
     }
