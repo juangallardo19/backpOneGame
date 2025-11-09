@@ -147,10 +147,14 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
       const updatedRoom = await roomService.addBot(roomCode, "NORMAL")
 
       console.log("✅ Bot agregado:", updatedRoom)
+
+      // Actualizar estado local inmediatamente
+      setRoom(updatedRoom)
+
       success("Bot agregado", "Un bot se ha unido a la sala")
 
-      // El WebSocket debería emitir un evento PLAYER_JOINED con el bot
-      // y actualizar automáticamente la lista de jugadores
+      // El WebSocket también emitirá un evento PLAYER_JOINED con el bot
+      // pero actualizamos el estado local inmediatamente para mejor UX
     } catch (error: any) {
       console.error("❌ Error al agregar bot:", error)
       showError("Error", error.response?.data?.message || "No se pudo agregar el bot")
