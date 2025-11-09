@@ -110,7 +110,7 @@ export default function HomePage() {
             {user && isAuthenticated && (
               <div className="glass-welcome-card mb-4">
                 <p className="text-white text-sm font-semibold">
-                  {user.id.startsWith('guest_') ? `👋 Invitado: ${user.nickname}` : `👋 Bienvenido: ${user.nickname}`}
+                  {(typeof user.id === 'string' && user.id.startsWith('guest_')) ? `👋 Invitado: ${user.nickname}` : `👋 Bienvenido: ${user.nickname}`}
                 </p>
               </div>
             )}

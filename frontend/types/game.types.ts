@@ -159,7 +159,7 @@ export interface RankingEntry {
  * Usuario autenticado
  */
 export interface User {
-  id: string;
+  id: string | number; // Can be number from backend or string for guests
   email: string;
   nickname: string;
   profilePicture?: string;
