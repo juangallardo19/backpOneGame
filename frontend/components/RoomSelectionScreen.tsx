@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Plus, LogIn } from "lucide-react"
@@ -23,7 +22,6 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
   const [isLoading, setIsLoading] = useState(false)
   const { success, error: showError } = useNotification()
   const { connectToGame } = useGame()
-  const router = useRouter()
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
@@ -52,12 +50,12 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         await connectToGame(roomCode, token)
       }
 
-      // Redirigir a la página de sala
-      router.push('/room')
-
-      // Llamar al callback si existe
+      // Llamar al callback para navegar a la sala
       if (onJoinRoomSuccess) {
         onJoinRoomSuccess(room)
+      } else {
+        // Si no hay callback, ir a crear sala por defecto
+        onCreateRoom()
       }
     } catch (error: any) {
       console.error("❌ Error al unirse a la sala:", error)
