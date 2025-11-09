@@ -239,20 +239,27 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
     success("Copiado", `Código ${text} copiado al portapapeles`)
   }
 
-  // Auto-crear sala si no existe
-  useEffect(() => {
-    if (!existingRoomCode && !room) {
-      handleCreateRoom()
-    }
-  }, [])
-
   // Sincronizar con room del WebSocket
   useEffect(() => {
     if (wsRoom) {
+      console.log('📡 Sincronizando con sala del WebSocket:', wsRoom)
       setRoom(wsRoom)
       setRoomCode(wsRoom.code)
     }
   }, [wsRoom])
+
+  // Auto-crear sala si no existe (solo si no hay sala en WebSocket)
+  useEffect(() => {
+    // Esperar un momento para que wsRoom se inicialice si existe
+    const timer = setTimeout(() => {
+      if (!existingRoomCode && !room && !wsRoom) {
+        console.log('🏠 No hay sala existente, creando una nueva...')
+        handleCreateRoom()
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [existingRoomCode, room, wsRoom])
 
   // Verificar si es el líder
   const isLeader = room && user && room.leaderId === user.id

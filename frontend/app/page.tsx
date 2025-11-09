@@ -6,7 +6,6 @@
  */
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Play, Settings, Users, LogOut, Trophy } from "lucide-react"
 import Image from "next/image"
@@ -14,7 +13,7 @@ import ParticleCanvas from "@/components/ParticleCanvas"
 import OneCardsBackground from "@/components/OneCardsBackground"
 import GalaxySpiral from "@/components/GalaxySpiral"
 import SettingsModal from "@/components/SettingsModal"
-import GameRoomMenu from "@/components/game-room-menu"
+import GameRoomMenuV2 from "@/components/game-room-menu-v2"
 import RoomSelectionScreen from "@/components/RoomSelectionScreen"
 import HalftoneWaves from "@/components/halftone-waves"
 import LoginScreen from "@/components/LoginScreen"
@@ -25,9 +24,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useNotification } from "@/contexts/NotificationContext"
 
 export default function HomePage() {
-  const router = useRouter()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [currentScreen, setCurrentScreen] = useState<'main' | 'ranking'>('main')
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'main' | 'room-selection' | 'game' | 'gameplay' | 'ranking'>('main')
 
   // Usar AuthContext en vez de estado local
   const { user, isAuthenticated, logout, isLoading } = useAuth()
@@ -35,18 +33,22 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await logout()
-    router.push('/')
+    setCurrentScreen('main')
     success("Sesión cerrada", "Has cerrado sesión correctamente")
   }
 
   const handlePlayClick = () => {
     if (!isAuthenticated) {
-      // Si no está logueado, redirigir a página de login
-      router.push('/login')
+      // Si no está logueado, mostrar login primero
+      setCurrentScreen('login')
     } else {
-      // Si está logueado, ir directamente a la sala de juego
-      router.push('/room')
+      // Si está logueado, ir a selección de sala
+      setCurrentScreen('room-selection')
     }
+  }
+
+  const handleLoginSuccess = () => {
+    setCurrentScreen('room-selection')
   }
 
   // Loading state mientras se verifica la autenticación
@@ -67,6 +69,25 @@ export default function HomePage() {
       <GalaxySpiral />
       <ParticleCanvas />
       <OneCardsBackground />
+
+      {currentScreen === 'login' && (
+        <div className="relative z-10 animate-fade-in">
+          <LoginScreen
+            onLoginSuccess={handleLoginSuccess}
+            onBack={() => setCurrentScreen('main')}
+          />
+        </div>
+      )}
+
+      {currentScreen === 'room-selection' && (
+        <div className="relative z-10 animate-fade-in">
+          <RoomSelectionScreen
+            onCreateRoom={() => setCurrentScreen('game')}
+            onJoinRoomSuccess={() => setCurrentScreen('game')}
+            onBack={() => setCurrentScreen('main')}
+          />
+        </div>
+      )}
 
       {currentScreen === 'ranking' && (
         <div className="relative z-10 animate-fade-in">
@@ -147,6 +168,28 @@ export default function HomePage() {
             </div>
           </div>
         </>
+      )}
+
+      {currentScreen === 'game' && (
+        <div className="fixed inset-0 z-50 animate-fade-in">
+          <HalftoneWaves />
+          <div className="absolute inset-0 z-[60] flex items-center justify-center w-full h-full p-4">
+            <GameRoomMenuV2
+              onBack={() => setCurrentScreen('room-selection')}
+              onStartGame={() => setCurrentScreen('gameplay')}
+              userData={user ? {
+                username: user.nickname,
+                isGuest: typeof user.id === 'string' && user.id.startsWith('guest_')
+              } : null}
+            />
+          </div>
+        </div>
+      )}
+
+      {currentScreen === 'gameplay' && (
+        <div className="fixed inset-0 z-50 animate-fade-in">
+          <GamePlay onBack={() => setCurrentScreen('game')} />
+        </div>
       )}
 
       <SettingsModal
