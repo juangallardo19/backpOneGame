@@ -246,6 +246,34 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         wsServiceRef.current.disconnect();
       }
 
+      // Obtener información de la sala desde el backend ANTES de conectar WebSocket
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'}/api/rooms/${newSessionId}`, {
+          headers: {
+            'Authorization': `Bearer ${token || localStorage.getItem('uno_auth_token')}`
+          }
+        });
+
+        if (response.ok) {
+          const roomData = await response.json();
+          console.log('📡 Información de sala obtenida:', roomData);
+
+          // Convertir RoomResponse a Room format
+          setRoom({
+            id: roomData.roomId,
+            code: roomData.roomCode,
+            leaderId: roomData.hostId,
+            isPrivate: roomData.isPrivate,
+            maxPlayers: roomData.maxPlayers,
+            players: [],
+            status: roomData.status,
+            createdAt: new Date().toISOString()
+          } as Room);
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudo obtener info de sala, continuando...', err);
+      }
+
       // Crear nueva instancia de WebSocket
       const wsService = getWebSocketService(newSessionId, token);
       wsServiceRef.current = wsService;
