@@ -260,15 +260,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
           // Convertir RoomResponse a Room format
           setRoom({
-            id: roomData.roomId,
             code: roomData.roomCode,
+            name: roomData.roomName || `Sala ${roomData.roomCode}`,
             leaderId: roomData.hostId,
             isPrivate: roomData.isPrivate,
-            maxPlayers: roomData.maxPlayers,
+            status: roomData.status || 'WAITING',
             players: [],
-            status: roomData.status,
+            maxPlayers: roomData.maxPlayers || 4,
+            config: {
+              maxPlayers: roomData.maxPlayers || 4,
+              pointsToWin: 500,
+              turnTimeLimit: 60,
+              allowStackingDrawCards: true,
+              preset: 'CLASSIC'
+            },
             createdAt: new Date().toISOString()
-          } as Room);
+          });
         }
       } catch (err) {
         console.warn('⚠️ No se pudo obtener info de sala, continuando...', err);
