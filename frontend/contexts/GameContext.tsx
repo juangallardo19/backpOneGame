@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { WebSocketService, GameEventType, getWebSocketService, cleanupWebSocketService } from '@/services/websocket.service';
-import { GameState, Player, Card, Room, ChatMessage, GameMove, GameStatus, Direction } from '@/types/game.types';
+import { GameState, Player, Card, Room, ChatMessage, GameMove, GameStatus, Direction, PlayerStatus } from '@/types/game.types';
 
 // ============================================
 // INTERFACES
@@ -113,10 +113,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         nickname: payload.nickname,
         userEmail: payload.userEmail || '',
         isBot: payload.isBot || false,
-        hand: [],
-        score: 0,
+        status: PlayerStatus.ACTIVE,
+        cardCount: 0,
         hasCalledUno: false,
-        isConnected: true,
       };
 
       console.log('✅ Adding player to room:', newPlayer);
