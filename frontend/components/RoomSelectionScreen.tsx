@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Plus, LogIn } from "lucide-react"
 import Image from "next/image"
 import { roomService } from "@/services/room.service"
 import { useNotification } from "@/contexts/NotificationContext"
+import { useGame } from "@/contexts/GameContext"
 import { Room } from "@/types/game.types"
 
 interface RoomSelectionScreenProps {
@@ -20,6 +22,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
   const [roomCode, setRoomCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { success, error: showError } = useNotification()
+  const { connectToGame } = useGame()
+  const router = useRouter()
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
@@ -41,6 +45,15 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
       console.log("✅ Unido a la sala exitosamente:", room)
       success("¡Éxito!", `Te has unido a la sala ${roomCode}`)
+
+      // Conectar al WebSocket de la sala
+      const token = localStorage.getItem('uno_auth_token')
+      if (token) {
+        await connectToGame(roomCode, token)
+      }
+
+      // Redirigir a la página de sala
+      router.push('/room')
 
       // Llamar al callback si existe
       if (onJoinRoomSuccess) {
