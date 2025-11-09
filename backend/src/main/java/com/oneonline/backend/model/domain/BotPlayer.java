@@ -1,8 +1,8 @@
 package com.oneonline.backend.model.domain;
 
 import com.oneonline.backend.model.enums.CardColor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,13 +16,17 @@ import java.util.stream.Collectors;
  * 3. UNO calling: 90% success rate
  */
 @Data
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class BotPlayer extends Player {
 
     /**
      * Whether this is a temporary bot replacing a disconnected player
      */
-    private boolean temporary;
+    @Builder.Default
+    private boolean temporary = false;
 
     /**
      * Reference to the original player (for reconnection)
@@ -38,60 +42,6 @@ public class BotPlayer extends Player {
      * UNO calling success rate (90%)
      */
     private static final double ONE_CALL_SUCCESS_RATE = 0.9;
-
-    /**
-     * Constructor for BotPlayer with builder-like pattern
-     */
-    public BotPlayer() {
-        super();
-    }
-
-    /**
-     * Builder-style static method to create BotPlayer
-     */
-    public static BotPlayerBuilder builder() {
-        return new BotPlayerBuilder();
-    }
-
-    /**
-     * Custom builder for BotPlayer
-     */
-    public static class BotPlayerBuilder {
-        private String playerId;
-        private String nickname;
-        private boolean temporary;
-        private Player originalPlayer;
-
-        public BotPlayerBuilder playerId(String playerId) {
-            this.playerId = playerId;
-            return this;
-        }
-
-        public BotPlayerBuilder nickname(String nickname) {
-            this.nickname = nickname;
-            return this;
-        }
-
-        public BotPlayerBuilder temporary(boolean temporary) {
-            this.temporary = temporary;
-            return this;
-        }
-
-        public BotPlayerBuilder originalPlayer(Player originalPlayer) {
-            this.originalPlayer = originalPlayer;
-            return this;
-        }
-
-        public BotPlayer build() {
-            BotPlayer bot = new BotPlayer();
-            bot.setPlayerId(playerId != null ? playerId : UUID.randomUUID().toString());
-            bot.setNickname(nickname != null ? nickname : "Bot_" + RANDOM.nextInt(1000));
-            bot.temporary = temporary;
-            bot.originalPlayer = originalPlayer;
-            bot.setConnected(true);
-            return bot;
-        }
-    }
 
     /**
      * Choose the best card to play using AI strategy

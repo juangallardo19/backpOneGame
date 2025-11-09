@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -409,7 +410,9 @@ public class RoomController {
                 .currentPlayers(room.getTotalPlayerCount()) // Total count including bots
                 .maxPlayers(room.getConfiguration() != null ? room.getConfiguration().getMaxPlayers() : 4)
                 .config(config)
-                .createdAt(room.getCreatedAt() != null ? room.getCreatedAt().getTime() : System.currentTimeMillis())
+                .createdAt(room.getCreatedAt() != null ?
+                    room.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() :
+                    System.currentTimeMillis())
                 .build();
     }
 }
