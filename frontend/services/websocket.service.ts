@@ -1,8 +1,10 @@
 /**
- * WebSocket Service para comunicación en tiempo real con el backend
- * Maneja eventos del juego: jugadores, cartas, turnos, etc.
+ * WebSocket Service usando STOMP over WebSocket
+ * Se conecta al backend Spring Boot con protocolo STOMP
  */
 
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { API_BASE_URL } from './api-config';
 
 // Tipos de eventos que el backend puede enviar
@@ -79,27 +81,26 @@ export interface GameStateUpdate {
 type EventCallback = (event: GameEvent) => void;
 
 export class WebSocketService {
-  private ws: WebSocket | null = null;
-  private sessionId: string;
+  private client: Client | null = null;
+  private roomCode: string; // Changed from sessionId to roomCode
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 2000;
   private eventCallbacks: Map<GameEventType | 'ALL', Set<EventCallback>> = new Map();
   private isConnecting = false;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
   private token: string | null = null;
+  private subscription: StompSubscription | null = null;
 
-  constructor(sessionId: string, token?: string) {
-    this.sessionId = sessionId;
+  constructor(roomCode: string, token?: string) {
+    this.roomCode = roomCode;
     this.token = token || null;
   }
 
   /**
-   * Conectar al WebSocket del juego
+   * Conectar al WebSocket usando STOMP
    */
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (this.client && this.client.connected) {
         resolve();
         return;
       }
@@ -112,47 +113,67 @@ export class WebSocketService {
       this.isConnecting = true;
 
       try {
-        // Convertir HTTP/HTTPS a WS/WSS
-        const wsUrl = API_BASE_URL.replace('https://', 'wss://').replace('http://', 'ws://');
-        const url = `${wsUrl}/ws/game/${this.sessionId}${this.token ? `?token=${this.token}` : ''}`;
+        // Crear cliente STOMP con SockJS
+        this.client = new Client({
+          // Use SockJS for connection
+          webSocketFactory: () => {
+            // SockJS endpoint is /ws (not /ws/game/{roomCode})
+            return new SockJS(`${API_BASE_URL}/ws`) as any;
+          },
 
-        console.log('🔌 Conectando WebSocket:', url);
-        this.ws = new WebSocket(url);
+          // Connection headers (JWT token)
+          connectHeaders: this.token
+            ? {
+                Authorization: `Bearer ${this.token}`,
+              }
+            : {},
 
-        this.ws.onopen = () => {
-          console.log('✅ WebSocket conectado');
-          this.isConnecting = false;
-          this.reconnectAttempts = 0;
-          this.startHeartbeat();
-          resolve();
-        };
+          // Debug logging
+          debug: (str: string) => {
+            console.log('🔌 STOMP:', str);
+          },
 
-        this.ws.onmessage = (event) => {
-          try {
-            const message: GameEvent = JSON.parse(event.data);
-            console.log('📨 Evento recibido:', message.type, message.payload);
-            this.handleEvent(message);
-          } catch (error) {
-            console.error('Error parseando mensaje:', error);
-          }
-        };
+          // Reconnect configuration
+          reconnectDelay: 5000,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
 
-        this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-          this.isConnecting = false;
-          reject(error);
-        };
+          // Connection callbacks
+          onConnect: () => {
+            console.log('✅ STOMP conectado');
+            this.isConnecting = false;
+            this.reconnectAttempts = 0;
 
-        this.ws.onclose = (event) => {
-          console.log('🔌 WebSocket cerrado:', event.code, event.reason);
-          this.isConnecting = false;
-          this.stopHeartbeat();
+            // Subscribe to game topic
+            this.subscribeToGameTopic();
 
-          // Intentar reconectar si no fue cierre intencional
-          if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.attemptReconnect();
-          }
-        };
+            resolve();
+          },
+
+          onStompError: (frame) => {
+            console.error('❌ STOMP error:', frame);
+            this.isConnecting = false;
+            reject(new Error(frame.headers['message'] || 'STOMP connection error'));
+          },
+
+          onWebSocketClose: (event) => {
+            console.log('🔌 WebSocket cerrado:', event.code, event.reason);
+            this.isConnecting = false;
+
+            // Attempt reconnect if not intentional closure
+            if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+              this.attemptReconnect();
+            }
+          },
+
+          onWebSocketError: (error) => {
+            console.error('❌ WebSocket error:', error);
+            this.isConnecting = false;
+          },
+        });
+
+        // Activate the client
+        this.client.activate();
       } catch (error) {
         this.isConnecting = false;
         reject(error);
@@ -161,13 +182,74 @@ export class WebSocketService {
   }
 
   /**
+   * Subscribe to game topic
+   */
+  private subscribeToGameTopic(): void {
+    if (!this.client || !this.client.connected) {
+      console.error('Cannot subscribe: client not connected');
+      return;
+    }
+
+    // Subscribe to /topic/game/{roomCode}
+    console.log(`📡 Subscribing to /topic/game/${this.roomCode}`);
+
+    this.subscription = this.client.subscribe(
+      `/topic/game/${this.roomCode}`,
+      (message: IMessage) => {
+        try {
+          const payload = JSON.parse(message.body);
+          console.log('📨 Mensaje recibido:', payload);
+
+          // Convert STOMP message to GameEvent format
+          const gameEvent: GameEvent = this.convertToGameEvent(payload);
+          this.handleEvent(gameEvent);
+        } catch (error) {
+          console.error('Error parseando mensaje STOMP:', error);
+        }
+      }
+    );
+
+    // Also subscribe to error queue
+    this.client.subscribe(`/user/queue/errors`, (message: IMessage) => {
+      try {
+        const error = JSON.parse(message.body);
+        console.error('❌ Error del servidor:', error);
+        this.handleEvent({
+          type: GameEventType.ERROR,
+          payload: error,
+        });
+      } catch (err) {
+        console.error('Error parseando error message:', err);
+      }
+    });
+
+    console.log('✅ Suscrito al topic del juego');
+  }
+
+  /**
+   * Convert backend STOMP message to GameEvent format
+   */
+  private convertToGameEvent(payload: any): GameEvent {
+    // Backend sends messages with a "type" field
+    const type = payload.type as GameEventType;
+
+    return {
+      type: type || GameEventType.GAME_STATE_UPDATE,
+      payload: payload.data || payload,
+      timestamp: payload.timestamp || Date.now(),
+    };
+  }
+
+  /**
    * Intentar reconexión automática
    */
   private attemptReconnect(): void {
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * this.reconnectAttempts;
+    const delay = 2000 * this.reconnectAttempts;
 
-    console.log(`🔄 Reintentando conexión en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.log(
+      `🔄 Reintentando conexión en ${delay}ms (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
 
     setTimeout(() => {
       this.connect().catch((error) => {
@@ -177,31 +259,16 @@ export class WebSocketService {
   }
 
   /**
-   * Heartbeat para mantener conexión viva
+   * Send message to server using STOMP
    */
-  private startHeartbeat(): void {
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.send({ type: 'PING', payload: {} });
-      }
-    }, 30000); // Cada 30 segundos
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-
-  /**
-   * Enviar mensaje al servidor
-   */
-  private send(message: any): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+  private send(destination: string, body: any): void {
+    if (this.client && this.client.connected) {
+      this.client.publish({
+        destination,
+        body: JSON.stringify(body),
+      });
     } else {
-      console.warn('WebSocket no está conectado');
+      console.warn('STOMP client no está conectado');
     }
   }
 
@@ -257,12 +324,9 @@ export class WebSocketService {
    * Jugar una carta
    */
   playCard(cardId: string, chosenColor?: string): void {
-    this.send({
-      type: 'PLAY_CARD',
-      payload: {
-        cardId,
-        chosenColor,
-      },
+    this.send(`/app/game/${this.roomCode}/play-card`, {
+      cardId,
+      chosenColor,
     });
   }
 
@@ -270,72 +334,65 @@ export class WebSocketService {
    * Robar carta del mazo
    */
   drawCard(): void {
-    this.send({
-      type: 'DRAW_CARD',
-      payload: {},
-    });
+    this.send(`/app/game/${this.roomCode}/draw-card`, {});
   }
 
   /**
    * Cantar UNO
    */
   callUno(): void {
-    this.send({
-      type: 'CALL_UNO',
-      payload: {},
-    });
+    this.send(`/app/game/${this.roomCode}/call-uno`, {});
   }
 
   /**
    * Atrapar a jugador que no dijo UNO
    */
   catchUno(playerId: string): void {
-    this.send({
-      type: 'CATCH_UNO',
-      payload: { playerId },
-    });
+    this.send(`/app/game/${this.roomCode}/catch-uno`, { playerId });
   }
 
   /**
    * Enviar mensaje de chat
    */
   sendMessage(message: string): void {
-    this.send({
-      type: 'SEND_MESSAGE',
-      payload: { message },
-    });
+    this.send(`/app/game/${this.roomCode}/chat`, { message });
   }
 
   /**
    * Enviar emote
    */
   sendEmote(emoteId: string): void {
-    this.send({
-      type: 'SEND_EMOTE',
-      payload: { emoteId },
-    });
+    this.send(`/app/game/${this.roomCode}/emote`, { emoteId });
+  }
+
+  /**
+   * Notificar al servidor que el jugador se unió
+   */
+  notifyJoin(): void {
+    this.send(`/app/game/${this.roomCode}/join`, {});
   }
 
   /**
    * Solicitar estado actual del juego
    */
   requestGameState(): void {
-    this.send({
-      type: 'REQUEST_GAME_STATE',
-      payload: {},
-    });
+    this.send(`/app/game/${this.roomCode}/state`, {});
   }
 
   /**
    * Desconectar WebSocket
    */
   disconnect(): void {
-    console.log('🔌 Desconectando WebSocket');
-    this.stopHeartbeat();
+    console.log('🔌 Desconectando STOMP');
 
-    if (this.ws) {
-      this.ws.close(1000, 'Cliente desconectado');
-      this.ws = null;
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = null;
+    }
+
+    if (this.client) {
+      this.client.deactivate();
+      this.client = null;
     }
 
     this.eventCallbacks.clear();
@@ -345,27 +402,17 @@ export class WebSocketService {
    * Verificar si está conectado
    */
   isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+    return this.client !== null && this.client.connected;
   }
 
   /**
    * Obtener estado de la conexión
    */
   getConnectionState(): 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' {
-    if (!this.ws) return 'CLOSED';
-
-    switch (this.ws.readyState) {
-      case WebSocket.CONNECTING:
-        return 'CONNECTING';
-      case WebSocket.OPEN:
-        return 'OPEN';
-      case WebSocket.CLOSING:
-        return 'CLOSING';
-      case WebSocket.CLOSED:
-        return 'CLOSED';
-      default:
-        return 'CLOSED';
-    }
+    if (!this.client) return 'CLOSED';
+    if (this.client.connected) return 'OPEN';
+    if (this.isConnecting) return 'CONNECTING';
+    return 'CLOSED';
   }
 }
 
@@ -373,23 +420,23 @@ export class WebSocketService {
 const wsInstances = new Map<string, WebSocketService>();
 
 /**
- * Obtener o crear instancia de WebSocket para una sesión
+ * Obtener o crear instancia de WebSocket para un roomCode
  */
-export function getWebSocketService(sessionId: string, token?: string): WebSocketService {
-  if (!wsInstances.has(sessionId)) {
-    wsInstances.set(sessionId, new WebSocketService(sessionId, token));
+export function getWebSocketService(roomCode: string, token?: string): WebSocketService {
+  if (!wsInstances.has(roomCode)) {
+    wsInstances.set(roomCode, new WebSocketService(roomCode, token));
   }
-  return wsInstances.get(sessionId)!;
+  return wsInstances.get(roomCode)!;
 }
 
 /**
  * Limpiar instancia de WebSocket
  */
-export function cleanupWebSocketService(sessionId: string): void {
-  const instance = wsInstances.get(sessionId);
+export function cleanupWebSocketService(roomCode: string): void {
+  const instance = wsInstances.get(roomCode);
   if (instance) {
     instance.disconnect();
-    wsInstances.delete(sessionId);
+    wsInstances.delete(roomCode);
   }
 }
 
