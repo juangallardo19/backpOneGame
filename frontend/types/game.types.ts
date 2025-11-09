@@ -129,7 +129,7 @@ export interface Room {
  * Estadísticas de jugador
  */
 export interface PlayerStats {
-  userId: string;
+  userId: string | number; // Can be number from backend or string for guests
   nickname: string;
   totalWins: number;
   totalGames: number;
@@ -146,7 +146,7 @@ export interface PlayerStats {
  */
 export interface RankingEntry {
   rank: number;
-  userId: string;
+  userId: string | number; // Can be number from backend or string for guests
   nickname: string;
   totalWins: number;
   totalGames: number;
