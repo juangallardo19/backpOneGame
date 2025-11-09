@@ -46,6 +46,18 @@ public class GameConfiguration {
     private boolean allowStackingCards = true;
 
     /**
+     * Whether bots are allowed in the room
+     */
+    @Builder.Default
+    private boolean allowBots = true;
+
+    /**
+     * Maximum number of bots allowed (0-3)
+     */
+    @Builder.Default
+    private int maxBots = 3;
+
+    /**
      * Points required to win the game (100/200/500)
      */
     @Builder.Default
@@ -71,6 +83,24 @@ public class GameConfiguration {
                 .pointsToWin(200)
                 .tournamentMode(false)
                 .build();
+    }
+
+    /**
+     * Alias for initialCardCount (for compatibility)
+     *
+     * @return Initial hand size
+     */
+    public int getInitialHandSize() {
+        return initialCardCount;
+    }
+
+    /**
+     * Alias setter for initialCardCount (for compatibility)
+     *
+     * @param size Initial hand size
+     */
+    public void setInitialHandSize(int size) {
+        this.initialCardCount = size;
     }
 
     /**

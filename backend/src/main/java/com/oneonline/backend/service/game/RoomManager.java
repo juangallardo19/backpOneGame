@@ -182,27 +182,21 @@ public class RoomManager {
             throw new IllegalArgumentException("Room is full, cannot add bot");
         }
 
-        // Count existing bots
-        long botCount = room.getPlayers().stream()
-            .filter(p -> p instanceof BotPlayer)
-            .count();
+        // Count existing bots from the bots list
+        int botCount = room.getBots().size();
 
         if (botCount >= 3) {
             throw new IllegalArgumentException("Maximum 3 bots per room");
         }
 
-        // Create bot with auto-generated name
-        String botName = "Bot" + (botCount + 1);
-        BotPlayer bot = BotPlayer.builder()
-            .playerId(CodeGenerator.generatePlayerId())
-            .nickname(botName)
-            .temporary(false)
-            .build();
+        // Use Room's addBot() method which handles everything correctly
+        BotPlayer bot = room.addBot();
 
-        // Add bot to room
-        room.addPlayer(bot);
+        if (bot == null) {
+            throw new IllegalArgumentException("Failed to add bot to room");
+        }
 
-        log.info("Bot {} added to room {}", botName, roomCode);
+        log.info("Bot {} added to room {}", bot.getNickname(), roomCode);
         return bot;
     }
 
@@ -217,23 +211,25 @@ public class RoomManager {
     public Room removeBot(String roomCode, String botId) {
         Room room = gameManager.getRoom(roomCode);
 
-        // Verify it's a bot
-        Optional<Player> playerOpt = room.getPlayers().stream()
-            .filter(p -> p.getPlayerId().equals(botId))
+        // Find bot in the bots list
+        Optional<BotPlayer> botOpt = room.getBots().stream()
+            .filter(b -> b.getPlayerId().equals(botId))
             .findFirst();
 
-        if (playerOpt.isEmpty()) {
+        if (botOpt.isEmpty()) {
             throw new IllegalArgumentException("Bot not found: " + botId);
         }
 
-        if (!(playerOpt.get() instanceof BotPlayer)) {
-            throw new IllegalArgumentException("Player is not a bot: " + botId);
+        BotPlayer bot = botOpt.get();
+
+        // Remove bot using Room's removeBot method
+        boolean removed = room.removeBot(bot);
+
+        if (!removed) {
+            throw new IllegalArgumentException("Failed to remove bot: " + botId);
         }
 
-        // Remove bot
-        room.removePlayerById(botId);
-
-        log.info("Bot {} removed from room {}", playerOpt.get().getNickname(), roomCode);
+        log.info("Bot {} removed from room {}", bot.getNickname(), roomCode);
         return room;
     }
 

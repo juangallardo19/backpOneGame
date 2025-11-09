@@ -100,9 +100,11 @@ public class RoomController {
         // Build game configuration
         GameConfiguration config = new GameConfigBuilder()
                 .withMaxPlayers(request.getMaxPlayers() != null ? request.getMaxPlayers() : 4)
+                .withInitialCardCount(request.getInitialHandSize() != null ? request.getInitialHandSize() : 7)
                 .withTurnTimeLimit(request.getTurnTimeLimit() != null ? request.getTurnTimeLimit() : 60)
                 .withAllowStackingCards(request.getAllowStackingCards() != null ? request.getAllowStackingCards() : true)
                 .withPointsToWin(request.getPointsToWin() != null ? request.getPointsToWin() : 500)
+                .withTournamentMode(request.getTournamentMode() != null ? request.getTournamentMode() : false)
                 .build();
 
         // Create room
@@ -373,8 +375,8 @@ public class RoomController {
      * @return RoomResponse DTO
      */
     private RoomResponse mapToRoomResponse(Room room) {
-        // Map players to PlayerInfo DTOs
-        List<RoomResponse.PlayerInfo> playerInfoList = room.getPlayers().stream()
+        // Map ALL players (humans + bots) to PlayerInfo DTOs
+        List<RoomResponse.PlayerInfo> playerInfoList = room.getAllPlayers().stream()
                 .map(player -> RoomResponse.PlayerInfo.builder()
                         .playerId(player.getPlayerId())
                         .nickname(player.getNickname())
@@ -403,8 +405,8 @@ public class RoomController {
                 .hostId(room.getLeader() != null ? room.getLeader().getPlayerId() : null)
                 .isPrivate(room.isPrivate())
                 .status(room.getStatus() != null ? room.getStatus().name() : "WAITING")
-                .players(playerInfoList) // ADD PLAYERS LIST!
-                .currentPlayers(room.getPlayers().size())
+                .players(playerInfoList) // Includes ALL players (humans + bots)
+                .currentPlayers(room.getTotalPlayerCount()) // Total count including bots
                 .maxPlayers(room.getConfiguration() != null ? room.getConfiguration().getMaxPlayers() : 4)
                 .config(config)
                 .createdAt(room.getCreatedAt() != null ? room.getCreatedAt().getTime() : System.currentTimeMillis())

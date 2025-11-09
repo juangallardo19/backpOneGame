@@ -66,6 +66,11 @@ public class CreateRoomRequest {
     private Integer pointsToWin = 500;
 
     /**
+     * Tournament mode flag (stricter rules, no reconnection).
+     */
+    private Boolean tournamentMode = false;
+
+    /**
      * Custom room name (optional).
      */
     private String roomName;
