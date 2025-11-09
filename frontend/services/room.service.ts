@@ -147,7 +147,8 @@ export const roomService = {
    */
   kickPlayer: async (code: string, playerId: string): Promise<void> => {
     try {
-      await api.delete(API_ENDPOINTS.KICK_PLAYER(code, playerId));
+      // FIXED: Backend expects PUT, not DELETE
+      await api.put(API_ENDPOINTS.KICK_PLAYER(code, playerId));
     } catch (error: any) {
       throw error;
     }
