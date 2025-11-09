@@ -84,12 +84,93 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const wsServiceRef = useRef<WebSocketService | null>(null);
 
   // ============================================
+  // TRANSFORM BACKEND DATA
+  // ============================================
+
+  /**
+   * Transform backend GameStateResponse to frontend GameState format
+   */
+  const transformBackendGameState = useCallback((backendState: any): GameState | null => {
+    if (!backendState) return null;
+
+    console.log('🔄 Transformando estado del backend:', backendState);
+
+    // Map backend hand to frontend cards
+    const hand: Card[] = (backendState.hand || []).map((card: any) => ({
+      id: card.cardId,
+      color: card.color,
+      type: card.type,
+      value: card.value,
+    }));
+
+    // Map backend players to frontend players
+    const players: Player[] = (backendState.players || []).map((p: any) => ({
+      id: p.playerId,
+      nickname: p.nickname,
+      userEmail: '', // Not sent by backend in game state
+      isBot: p.isBot || false,
+      status: PlayerStatus.ACTIVE,
+      cardCount: p.cardCount || 0,
+      hasCalledUno: p.calledOne || false,
+    }));
+
+    // Find current player from hand data
+    const currentPlayerId = backendState.currentPlayerId;
+    const currentPlayerData = players.find(p => p.id === currentPlayerId);
+
+    const currentPlayer: Player | null = hand.length > 0 ? {
+      ...currentPlayerData!,
+      hand,
+    } as any : null;
+
+    // Calculate playable cards (for now, allow all cards - backend should validate)
+    const playableCardIds = hand.map(card => card.id);
+
+    // Map top card
+    const topCard: Card | null = backendState.topCard ? {
+      id: backendState.topCard.cardId,
+      color: backendState.topCard.color,
+      type: backendState.topCard.type,
+      value: backendState.topCard.value,
+    } : null;
+
+    const transformed: GameState = {
+      sessionId: backendState.sessionId,
+      status: backendState.status || GameStatus.PLAYING,
+      config: {
+        maxPlayers: 4,
+        pointsToWin: 500,
+        turnTimeLimit: backendState.turnTimeLimit || 60,
+        allowStackingDrawCards: true,
+        preset: 'CLASSIC',
+      },
+      players,
+      currentPlayer,
+      currentTurnPlayerId: backendState.currentPlayerId,
+      topCard,
+      drawPileCount: backendState.deckSize || 0,
+      discardPileCount: backendState.discardPileSize || 0,
+      direction: backendState.direction === 'CLOCKWISE' ? Direction.CLOCKWISE : Direction.COUNTER_CLOCKWISE,
+      winner: null,
+      canDraw: true,
+      canPlay: true,
+      playableCardIds,
+    };
+
+    console.log('✅ Estado transformado:', transformed);
+    return transformed;
+  }, []);
+
+  // ============================================
   // HANDLERS DE EVENTOS WEBSOCKET
   // ============================================
 
   const handleGameStateUpdate = useCallback((payload: any) => {
     console.log('🎮 Estado del juego actualizado:', payload);
-    setGameState(payload);
+
+    // Transform backend response to frontend GameState format
+    const transformedState = transformBackendGameState(payload);
+    setGameState(transformedState);
     setError(null);
   }, []);
 
@@ -297,8 +378,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           const gameStateData = await response.json();
           console.log('📡 Estado del juego obtenido:', gameStateData);
 
-          // Set the game state directly
-          setGameState(gameStateData);
+          // Transform and set the game state
+          const transformedState = transformBackendGameState(gameStateData);
+          setGameState(transformedState);
 
           // Also try to get room data
           const roomData = gameStateData.room || {};
@@ -383,6 +465,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, [
+    transformBackendGameState,
     handleGameStateUpdate,
     handlePlayerJoined,
     handlePlayerLeft,

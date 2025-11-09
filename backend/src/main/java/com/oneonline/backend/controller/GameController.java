@@ -229,15 +229,18 @@ public class GameController {
      * - Deck size
      *
      * @param sessionId Game session ID
+     * @param authentication Current user
      * @return GameStateResponse
      */
     @GetMapping("/{sessionId}/state")
-    public ResponseEntity<GameStateResponse> getGameState(@PathVariable String sessionId) {
-        log.debug("Fetching game state for session: {}", sessionId);
+    public ResponseEntity<GameStateResponse> getGameState(
+            @PathVariable String sessionId,
+            Authentication authentication) {
+        log.debug("Fetching game state for session: {} and user: {}", sessionId, authentication.getName());
 
         GameSession session = gameManager.getSession(sessionId);
 
-        GameStateResponse response = mapToGameStateResponse(session);
+        GameStateResponse response = mapToGameStateResponse(session, authentication);
         return ResponseEntity.ok(response);
     }
 
@@ -316,9 +319,33 @@ public class GameController {
      * Map GameSession to GameStateResponse DTO
      *
      * @param session Game session
+     * @param authentication Current user (optional - only needed for hand data)
      * @return GameStateResponse DTO
      */
-    private GameStateResponse mapToGameStateResponse(GameSession session) {
+    private GameStateResponse mapToGameStateResponse(GameSession session, Authentication authentication) {
+        // Find current player if authentication is provided
+        Player currentPlayer = null;
+        List<GameStateResponse.CardInfo> hand = null;
+
+        if (authentication != null) {
+            currentPlayer = session.getPlayers().stream()
+                    .filter(p -> p.getNickname().equals(authentication.getName()))
+                    .findFirst()
+                    .orElse(null);
+
+            // Include player's hand
+            if (currentPlayer != null) {
+                hand = currentPlayer.getHand().stream()
+                        .map(card -> GameStateResponse.CardInfo.builder()
+                                .cardId(card.getId())
+                                .type(card.getType().name())
+                                .color(card.getColor().name())
+                                .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                                .build())
+                        .collect(Collectors.toList());
+            }
+        }
+
         return GameStateResponse.builder()
                 .sessionId(session.getSessionId())
                 .roomCode(session.getRoom().getRoomCode())
@@ -333,12 +360,30 @@ public class GameController {
                                 .isBot(p instanceof BotPlayer)
                                 .build())
                         .collect(Collectors.toList()))
-                .currentTurn(session.getTurnManager().getCurrentPlayer().getPlayerId())
-                .topCard(session.getTopCard())
+                .currentPlayerId(session.getTurnManager().getCurrentPlayer().getPlayerId())
+                .topCard(session.getTopCard() != null ? GameStateResponse.CardInfo.builder()
+                        .cardId(session.getTopCard().getId())
+                        .type(session.getTopCard().getType().name())
+                        .color(session.getTopCard().getColor().name())
+                        .value(session.getTopCard() instanceof NumberCard ?
+                                ((NumberCard) session.getTopCard()).getValue() : null)
+                        .build() : null)
+                .hand(hand)
                 .deckSize(session.getDeck().getRemainingCards())
                 .discardPileSize(session.getDiscardPile().size())
                 .direction(session.getTurnManager().isClockwise() ? "CLOCKWISE" : "COUNTER_CLOCKWISE")
                 .pendingDrawCount(session.getPendingDrawCount())
+                .clockwise(session.getTurnManager().isClockwise())
                 .build();
+    }
+
+    /**
+     * Map GameSession to GameStateResponse DTO (without authentication)
+     *
+     * @param session Game session
+     * @return GameStateResponse DTO
+     */
+    private GameStateResponse mapToGameStateResponse(GameSession session) {
+        return mapToGameStateResponse(session, null);
     }
 }
