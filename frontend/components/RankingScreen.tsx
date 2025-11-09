@@ -43,7 +43,7 @@ const RankingScreen: React.FC<RankingScreenProps> = ({ onBack }) => {
       setRankings(rankingData);
 
       // Cargar estadísticas del usuario si está autenticado
-      if (user && !user.id.startsWith('guest_')) {
+      if (user && !(typeof user.id === 'string' && user.id.startsWith('guest_'))) {
         try {
           const stats = await rankingService.getTopN(100); // Ajustar según tu API
           // Buscar las stats del usuario actual
