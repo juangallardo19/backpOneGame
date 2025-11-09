@@ -17,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -337,7 +339,7 @@ public class GameController {
             if (currentPlayer != null) {
                 hand = currentPlayer.getHand().stream()
                         .map(card -> GameStateResponse.CardInfo.builder()
-                                .cardId(card.getId())
+                                .cardId(card.getCardId())
                                 .type(card.getType().name())
                                 .color(card.getColor().name())
                                 .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
@@ -362,7 +364,7 @@ public class GameController {
                         .collect(Collectors.toList()))
                 .currentPlayerId(session.getTurnManager().getCurrentPlayer().getPlayerId())
                 .topCard(session.getTopCard() != null ? GameStateResponse.CardInfo.builder()
-                        .cardId(session.getTopCard().getId())
+                        .cardId(session.getTopCard().getCardId())
                         .type(session.getTopCard().getType().name())
                         .color(session.getTopCard().getColor().name())
                         .value(session.getTopCard() instanceof NumberCard ?
