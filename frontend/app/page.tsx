@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Play, Settings, Users, LogOut, Trophy } from "lucide-react"
 import Image from "next/image"
@@ -19,12 +20,14 @@ import HalftoneWaves from "@/components/halftone-waves"
 import LoginScreen from "@/components/LoginScreen"
 import GamePlay from "@/components/GamePlay"
 import RankingScreen from "@/components/RankingScreen"
+import UserProfileCard from "@/components/UserProfileCard"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNotification } from "@/contexts/NotificationContext"
 
 export default function HomePage() {
+  const router = useRouter()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'main' | 'room-selection' | 'game' | 'gameplay' | 'ranking'>('main')
+  const [currentScreen, setCurrentScreen] = useState<'main' | 'ranking'>('main')
 
   // Usar AuthContext en vez de estado local
   const { user, isAuthenticated, logout, isLoading } = useAuth()
@@ -32,22 +35,18 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await logout()
-    setCurrentScreen('main')
+    router.push('/')
     success("Sesión cerrada", "Has cerrado sesión correctamente")
   }
 
   const handlePlayClick = () => {
     if (!isAuthenticated) {
-      // Si no está logueado, mostrar login primero
-      setCurrentScreen('login')
+      // Si no está logueado, redirigir a página de login
+      router.push('/login')
     } else {
-      // Si está logueado, ir a selección de sala
-      setCurrentScreen('room-selection')
+      // Si está logueado, ir directamente a la sala de juego
+      router.push('/room')
     }
-  }
-
-  const handleLoginSuccess = () => {
-    setCurrentScreen('room-selection')
   }
 
   // Loading state mientras se verifica la autenticación
@@ -69,24 +68,6 @@ export default function HomePage() {
       <ParticleCanvas />
       <OneCardsBackground />
 
-      {currentScreen === 'login' && (
-        <div className="relative z-10 animate-fade-in">
-          <LoginScreen
-            onLoginSuccess={handleLoginSuccess}
-            onBack={() => setCurrentScreen('main')}
-          />
-        </div>
-      )}
-
-      {currentScreen === 'room-selection' && (
-        <div className="relative z-10 animate-fade-in">
-          <RoomSelectionScreen
-            onCreateRoom={() => setCurrentScreen('game')}
-            onBack={() => setCurrentScreen('main')}
-          />
-        </div>
-      )}
-
       {currentScreen === 'ranking' && (
         <div className="relative z-10 animate-fade-in">
           <RankingScreen onBack={() => setCurrentScreen('main')} />
@@ -106,14 +87,18 @@ export default function HomePage() {
             />
           </div>
 
+          {/* User Profile Card in top-right corner */}
+          {user && isAuthenticated && (
+            <div className="absolute top-8 right-8 z-20">
+              <UserProfileCard
+                user={user}
+                onLogout={handleLogout}
+                onSettings={() => setIsSettingsOpen(true)}
+              />
+            </div>
+          )}
+
           <div className="relative z-10 flex flex-col items-center gap-8 px-4">
-            {user && isAuthenticated && (
-              <div className="glass-welcome-card mb-4">
-                <p className="text-white text-sm font-semibold">
-                  {(typeof user.id === 'string' && user.id.startsWith('guest_')) ? `👋 Invitado: ${user.nickname}` : `👋 Bienvenido: ${user.nickname}`}
-                </p>
-              </div>
-            )}
 
             <div className="glass-menu-card animate-fade-in px-0 my-0 relative z-10">
               <span className="shine shine-top"></span>
@@ -162,28 +147,6 @@ export default function HomePage() {
             </div>
           </div>
         </>
-      )}
-
-      {currentScreen === 'game' && (
-        <div className="fixed inset-0 z-50 animate-fade-in">
-          <HalftoneWaves />
-          <div className="absolute inset-0 z-[60] flex items-center justify-center w-full h-full p-4">
-            <GameRoomMenu
-              onBack={() => setCurrentScreen('room-selection')}
-              onStartGame={() => setCurrentScreen('gameplay')}
-              userData={user ? {
-                username: user.nickname,
-                isGuest: typeof user.id === 'string' && user.id.startsWith('guest_')
-              } : null}
-            />
-          </div>
-        </div>
-      )}
-
-      {currentScreen === 'gameplay' && (
-        <div className="fixed inset-0 z-50 animate-fade-in">
-          <GamePlay onBack={() => setCurrentScreen('game')} />
-        </div>
       )}
 
       <SettingsModal

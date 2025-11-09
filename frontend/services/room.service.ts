@@ -70,6 +70,7 @@ export const roomService = {
   joinRoom: async (code: string, nickname?: string): Promise<Room> => {
     try {
       const response = await api.post<Room>(API_ENDPOINTS.JOIN_ROOM(code), {
+        roomCode: code, // Backend requires this in body for validation
         nickname: nickname || undefined
       });
       return response.data;
