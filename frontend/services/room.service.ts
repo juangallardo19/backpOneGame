@@ -15,6 +15,7 @@ const mapBackendRoomToFrontend = (backendRoom: any): Room => {
   const players = (backendRoom.players || []).map((p: any) => ({
     id: p.playerId,
     nickname: p.nickname,
+    userEmail: p.userEmail, // Email for identifying current user
     isBot: p.isBot || false,
     status: p.status || 'WAITING',
     cardCount: 0, // Will be updated during game

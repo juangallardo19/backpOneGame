@@ -84,6 +84,7 @@ public class RoomResponse {
     public static class PlayerInfo {
         private String playerId;
         private String nickname;
+        private String userEmail; // Email of the authenticated user (for identifying current user)
         private Boolean isBot;
         private String status;
         private Boolean isHost;
