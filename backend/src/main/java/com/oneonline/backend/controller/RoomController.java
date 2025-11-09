@@ -257,6 +257,11 @@ public class RoomController {
 
         log.info("Player {} kicked from room {}", playerId, code);
 
+        // If room was closed (no players remaining), return success message
+        if (updatedRoom == null) {
+            return ResponseEntity.ok("Room closed - no players remaining");
+        }
+
         RoomResponse response = mapToRoomResponse(updatedRoom);
         return ResponseEntity.ok(response);
     }
