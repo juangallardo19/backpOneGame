@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Plus, LogIn } from "lucide-react"
+import { ArrowLeft, Plus, LogIn, Users, Lock, RefreshCw } from "lucide-react"
 import Image from "next/image"
 import { roomService } from "@/services/room.service"
 import { useNotification } from "@/contexts/NotificationContext"
@@ -18,10 +18,33 @@ interface RoomSelectionScreenProps {
 
 export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, onBack }: RoomSelectionScreenProps) {
   const [showJoinRoom, setShowJoinRoom] = useState(false)
+  const [showPrivateCodeInput, setShowPrivateCodeInput] = useState(false)
   const [roomCode, setRoomCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [publicRooms, setPublicRooms] = useState<Room[]>([])
+  const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const { success, error: showError } = useNotification()
   const { connectToGame } = useGame()
+
+  // Load public rooms when entering join room screen
+  useEffect(() => {
+    if (showJoinRoom && !showPrivateCodeInput) {
+      loadPublicRooms()
+    }
+  }, [showJoinRoom, showPrivateCodeInput])
+
+  const loadPublicRooms = async () => {
+    setIsLoadingRooms(true)
+    try {
+      const rooms = await roomService.getPublicRooms()
+      setPublicRooms(rooms)
+    } catch (error: any) {
+      console.error("Error loading public rooms:", error)
+      showError("Error", "No se pudieron cargar las salas públicas")
+    } finally {
+      setIsLoadingRooms(false)
+    }
+  }
 
   const handleCreateRoom = async () => {
     setIsLoading(true)
@@ -59,7 +82,39 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
     }
   }
 
-  const handleJoinRoom = async () => {
+  const handleJoinPublicRoom = async (room: Room) => {
+    setIsLoading(true)
+    try {
+      console.log("🔍 Uniendo a sala pública:", room.code)
+
+      // Join room
+      const joinedRoom = await roomService.joinRoom(room.code)
+
+      console.log("✅ Unido a la sala exitosamente:", joinedRoom)
+      success("¡Éxito!", `Te has unido a la sala ${room.code}`)
+
+      // Connect to WebSocket
+      const token = localStorage.getItem('uno_auth_token')
+      if (token) {
+        await connectToGame(room.code, token)
+      }
+
+      // Navigate to room
+      if (onJoinRoomSuccess) {
+        onJoinRoomSuccess(joinedRoom)
+      } else {
+        onCreateRoom()
+      }
+    } catch (error: any) {
+      console.error("❌ Error al unirse a la sala:", error)
+      const errorMessage = error.response?.data?.message || error.message || "No se pudo unir a la sala"
+      showError("Error al unirse", errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleJoinPrivateRoom = async () => {
     if (!roomCode.trim()) {
       showError("Error", "Por favor ingresa un código de sala")
       return
@@ -72,7 +127,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
     setIsLoading(true)
     try {
-      console.log("🔍 Conectando a sala con código:", roomCode)
+      console.log("🔍 Conectando a sala privada con código:", roomCode)
 
       // Conectar al backend para unirse a la sala
       const room = await roomService.joinRoom(roomCode)
@@ -151,7 +206,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
                 <LogIn className="mr-3 h-8 w-8 transition-transform group-hover:scale-110" />
                 <div className="flex flex-col items-start">
                   <span className="text-lg font-bold">ENTRAR A SALA</span>
-                  <span className="text-xs font-normal opacity-90">Usa un código de sala</span>
+                  <span className="text-xs font-normal opacity-90">Únete a una partida</span>
                 </div>
               </Button>
             </div>
@@ -166,11 +221,100 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
               VOLVER
             </Button>
           </>
+        ) : !showPrivateCodeInput ? (
+          <>
+            {/* Join Room - Public Rooms List */}
+            <div className="join-room-container fade-in-up">
+              <div className="flex items-center justify-between">
+                <h2 className="section-title">Salas Públicas</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="glass-button text-white"
+                  onClick={loadPublicRooms}
+                  disabled={isLoadingRooms}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingRooms ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+
+              {/* Public Rooms List */}
+              <div className="public-rooms-list">
+                {isLoadingRooms ? (
+                  <div className="empty-state">
+                    <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
+                    <p>Cargando salas...</p>
+                  </div>
+                ) : publicRooms.length === 0 ? (
+                  <div className="empty-state">
+                    <Users className="w-12 h-12 text-gray-400" />
+                    <p>No hay salas públicas disponibles</p>
+                    <p className="text-sm">¡Crea una nueva sala!</p>
+                  </div>
+                ) : (
+                  publicRooms.map((room) => (
+                    <div key={room.code} className="room-card glass-button">
+                      <div className="room-info">
+                        <div className="room-header">
+                          <h3 className="room-name">{room.name || `Sala ${room.code}`}</h3>
+                          <span className="room-code">{room.code}</span>
+                        </div>
+                        <div className="room-details">
+                          <span className="players-count">
+                            <Users className="w-4 h-4" />
+                            {room.players.length}/{room.maxPlayers}
+                          </span>
+                          <span className={`room-status status-${room.status.toLowerCase()}`}>
+                            {room.status === 'WAITING' ? 'Esperando' : room.status === 'IN_GAME' ? 'En juego' : 'Finalizada'}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        className="join-room-btn glass-button"
+                        onClick={() => handleJoinPublicRoom(room)}
+                        disabled={isLoading || room.status !== 'WAITING' || room.players.length >= room.maxPlayers}
+                      >
+                        {room.status !== 'WAITING' ? 'En Juego' :
+                         room.players.length >= room.maxPlayers ? 'Llena' :
+                         'Unirse'}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Private Code Button */}
+              <Button
+                size="lg"
+                variant="outline"
+                className="private-code-button glass-button group"
+                onClick={() => setShowPrivateCodeInput(true)}
+              >
+                <Lock className="mr-3 h-6 w-6 transition-transform group-hover:scale-110" />
+                <div className="flex flex-col items-start">
+                  <span className="text-base font-bold">SALA PRIVADA</span>
+                  <span className="text-xs font-normal opacity-90">Ingresar código</span>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="back-from-join-button glass-button bg-transparent text-white mt-3"
+                onClick={() => {
+                  setShowJoinRoom(false)
+                  setPublicRooms([])
+                }}
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                VOLVER
+              </Button>
+            </div>
+          </>
         ) : (
           <>
-            {/* Join Room Form */}
+            {/* Join Room - Private Code Input */}
             <div className="join-room-container fade-in-up">
-              <h2 className="section-title">Ingresa el código de sala</h2>
+              <h2 className="section-title">Sala Privada</h2>
 
               <div className="form-group">
                 <label className="form-label">Código de Sala</label>
@@ -196,7 +340,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
               <Button
                 size="lg"
                 className="join-submit-button glass-button bg-blue-600 hover:bg-blue-700 w-full"
-                onClick={handleJoinRoom}
+                onClick={handleJoinPrivateRoom}
                 disabled={isLoading}
               >
                 <span className="text-lg font-bold">ENTRAR A SALA</span>
@@ -206,7 +350,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
                 variant="outline"
                 className="back-from-join-button glass-button bg-transparent text-white w-full mt-3"
                 onClick={() => {
-                  setShowJoinRoom(false)
+                  setShowPrivateCodeInput(false)
                   setRoomCode("")
                 }}
               >
@@ -229,8 +373,9 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
           position: relative;
           width: 90vw;
-          max-width: 500px;
+          max-width: 600px;
           min-height: 500px;
+          max-height: 90vh;
           display: flex;
           flex-direction: column;
           border-radius: var(--radius);
@@ -250,6 +395,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           backdrop-filter: blur(12px);
           box-shadow: hsl(var(--hue2) 50% 2%) 0px 10px 16px -8px,
             hsl(var(--hue2) 50% 4%) 0px 20px 36px -14px;
+          overflow-y: auto;
         }
 
         .shine,
@@ -519,7 +665,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           width: 100%;
         }
 
-        /* Join Room Form Styles */
+        /* Join Room Styles */
         .join-room-container {
           display: flex;
           flex-direction: column;
@@ -535,6 +681,157 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           letter-spacing: 0.05em;
         }
 
+        /* Public Rooms List */
+        .public-rooms-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          max-height: 400px;
+          overflow-y: auto;
+          padding: 0.5rem;
+        }
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          padding: 3rem 1rem;
+          color: rgba(255, 255, 255, 0.6);
+          text-align: center;
+        }
+
+        .empty-state p {
+          margin: 0;
+          font-size: 0.875rem;
+        }
+
+        .room-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem;
+          background: rgba(0, 0, 0, 0.3) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border-radius: 10px;
+          transition: all 0.2s ease;
+        }
+
+        .room-card:hover {
+          background: rgba(0, 0, 0, 0.4) !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .room-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .room-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .room-name {
+          font-size: 1rem;
+          font-weight: 600;
+          color: white;
+          margin: 0;
+        }
+
+        .room-code {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: rgba(59, 130, 246, 1);
+          background: rgba(59, 130, 246, 0.2);
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          letter-spacing: 0.05em;
+        }
+
+        .room-details {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .players-count {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .room-status {
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .status-waiting {
+          background: rgba(16, 185, 129, 0.2);
+          color: rgba(16, 185, 129, 1);
+        }
+
+        .status-in_game {
+          background: rgba(251, 191, 36, 0.2);
+          color: rgba(251, 191, 36, 1);
+        }
+
+        .status-finished {
+          background: rgba(156, 163, 175, 0.2);
+          color: rgba(156, 163, 175, 1);
+        }
+
+        .join-room-btn {
+          padding: 0.5rem 1.5rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          background: rgba(59, 130, 246, 0.3) !important;
+          border-color: rgba(59, 130, 246, 0.5) !important;
+          color: white;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+
+        .join-room-btn:hover:not(:disabled) {
+          background: rgba(59, 130, 246, 0.5) !important;
+          border-color: rgba(59, 130, 246, 0.7) !important;
+          transform: scale(1.05);
+        }
+
+        .join-room-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Private Code Button */
+        .private-code-button {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          width: 100%;
+          padding: 1rem;
+          border-radius: 10px;
+          background: rgba(139, 92, 246, 0.2) !important;
+          border: 1px solid rgba(139, 92, 246, 0.4) !important;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .private-code-button:hover {
+          background: rgba(139, 92, 246, 0.3) !important;
+          border-color: rgba(139, 92, 246, 0.6) !important;
+          transform: translateY(-2px);
+        }
+
+        /* Form Styles */
         .form-group {
           display: flex;
           flex-direction: column;
@@ -669,6 +966,25 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
             hsl(var(--hue1) 30% 22% / 0.7) 24% 32%,
             hsl(var(--hue1) 5% 10% / 0.2) 95%
           );
+        }
+
+        /* Scrollbar */
+        .public-rooms-list::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .public-rooms-list::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 4px;
+        }
+
+        .public-rooms-list::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 4px;
+        }
+
+        .public-rooms-list::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.4);
         }
       `}</style>
     </div>

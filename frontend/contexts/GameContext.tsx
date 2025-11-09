@@ -307,6 +307,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       await wsService.connect();
       setIsConnected(true);
 
+      // Notificar al servidor que nos unimos
+      wsService.notifyJoin();
+
       // Solicitar estado inicial del juego
       setTimeout(() => {
         wsService.requestGameState();
