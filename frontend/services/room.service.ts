@@ -7,6 +7,23 @@ import api from './api';
 import { API_ENDPOINTS } from './api-config';
 import { Room } from '@/types/game.types';
 
+/**
+ * Helper function to map backend RoomResponse to frontend Room interface
+ */
+const mapBackendRoomToFrontend = (backendRoom: any): Room => {
+  return {
+    code: backendRoom.roomCode,
+    name: backendRoom.roomName,
+    leaderId: backendRoom.hostId,
+    isPrivate: backendRoom.isPrivate,
+    status: backendRoom.status,
+    players: backendRoom.players || [],
+    maxPlayers: backendRoom.maxPlayers,
+    config: backendRoom.config,
+    createdAt: backendRoom.createdAt,
+  };
+};
+
 export const roomService = {
   /**
    * Crear nueva sala con configuración completa
@@ -24,7 +41,7 @@ export const roomService = {
     roomName?: string;
   }): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.ROOMS, {
+      const response = await api.post<any>(API_ENDPOINTS.ROOMS, {
         isPrivate: roomConfig.isPrivate ?? false,
         maxPlayers: roomConfig.maxPlayers ?? 4,
         initialHandSize: roomConfig.initialHandSize ?? 7,
@@ -34,7 +51,8 @@ export const roomService = {
         allowBots: roomConfig.allowBots ?? true,
         roomName: roomConfig.roomName || roomConfig.name,
       });
-      return response.data;
+
+      return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;
     }
@@ -45,8 +63,8 @@ export const roomService = {
    */
   getPublicRooms: async (): Promise<Room[]> => {
     try {
-      const response = await api.get<Room[]>(API_ENDPOINTS.PUBLIC_ROOMS);
-      return response.data;
+      const response = await api.get<any[]>(API_ENDPOINTS.PUBLIC_ROOMS);
+      return response.data.map(mapBackendRoomToFrontend);
     } catch (error: any) {
       throw error;
     }
@@ -57,8 +75,8 @@ export const roomService = {
    */
   getRoomByCode: async (code: string): Promise<Room> => {
     try {
-      const response = await api.get<Room>(API_ENDPOINTS.ROOM_DETAIL(code));
-      return response.data;
+      const response = await api.get<any>(API_ENDPOINTS.ROOM_DETAIL(code));
+      return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;
     }
@@ -69,11 +87,11 @@ export const roomService = {
    */
   joinRoom: async (code: string, nickname?: string): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.JOIN_ROOM(code), {
+      const response = await api.post<any>(API_ENDPOINTS.JOIN_ROOM(code), {
         roomCode: code, // Backend requires this in body for validation
         nickname: nickname || undefined
       });
-      return response.data;
+      return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;
     }
@@ -106,8 +124,8 @@ export const roomService = {
    */
   addBot: async (code: string, difficulty: 'EASY' | 'NORMAL' | 'HARD' = 'NORMAL'): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.ADD_BOT(code), { difficulty });
-      return response.data;
+      const response = await api.post<any>(API_ENDPOINTS.ADD_BOT(code), { difficulty });
+      return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;
     }
@@ -129,8 +147,8 @@ export const roomService = {
    */
   transferLeader: async (code: string, newLeaderId: string): Promise<Room> => {
     try {
-      const response = await api.post<Room>(API_ENDPOINTS.TRANSFER_LEADER(code, newLeaderId));
-      return response.data;
+      const response = await api.post<any>(API_ENDPOINTS.TRANSFER_LEADER(code, newLeaderId));
+      return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;
     }
