@@ -56,6 +56,7 @@ export const roomService = {
     turnTimeLimit?: number; // RF20, RF29: Turn time in seconds
     allowStackingCards?: boolean; // RF21, RF30: Stack +2/+4
     pointsToWin?: number; // RF22: Points to win
+    tournamentMode?: boolean; // Tournament mode flag
     allowBots?: boolean;
     roomName?: string;
   }): Promise<Room> => {
@@ -67,6 +68,7 @@ export const roomService = {
         turnTimeLimit: roomConfig.turnTimeLimit ?? 60,
         allowStackingCards: roomConfig.allowStackingCards ?? true,
         pointsToWin: roomConfig.pointsToWin ?? 500,
+        tournamentMode: roomConfig.tournamentMode ?? false,
         allowBots: roomConfig.allowBots ?? true,
         roomName: roomConfig.roomName || roomConfig.name,
       });
@@ -85,11 +87,12 @@ export const roomService = {
       const response = await api.get<any[]>(API_ENDPOINTS.PUBLIC_ROOMS);
       const rooms = response.data.map(mapBackendRoomToFrontend);
 
-      // Filter out private rooms and empty rooms
+      // Filter: show all public rooms that are waiting or in progress
       return rooms.filter(room =>
         !room.isPrivate && // Only public rooms
-        room.players.length > 0 && // Only rooms with players
         room.status !== 'FINISHED' // Exclude finished games
+        // NOTE: We removed the players.length > 0 check so public rooms always appear
+        // even if only the host is waiting for others to join
       );
     } catch (error: any) {
       throw error;

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -32,6 +33,17 @@ public class Room {
      * 6-character alphanumeric code for joining the room
      */
     private String roomCode;
+
+    /**
+     * Optional custom room name (e.g., "Tournament Finals")
+     */
+    private String roomName;
+
+    /**
+     * Timestamp when room was created
+     */
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     /**
      * Room leader (creator) who can modify settings

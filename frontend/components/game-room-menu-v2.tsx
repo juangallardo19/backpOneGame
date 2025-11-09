@@ -68,18 +68,20 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
     {
       id: "clasico",
       name: "CLÁSICO",
-      description: "Partida normal - 500 puntos para ganar",
+      description: "Partida casual - configuración personalizable",
       icon: "/icons/game-controller.png",
       color: "red",
-      config: { initialCards: 7, turnTimeLimit: 60, stackCards: true, pointsToWin: 500 }
+      config: { initialCards: 7, turnTimeLimit: 60, stackCards: true, pointsToWin: 500 },
+      customizable: true // Permite personalizar configuraciones
     },
     {
       id: "torneo",
       name: "TORNEO",
-      description: "Modo competitivo - 1000 puntos, turnos rápidos (45s)",
+      description: "Modo competitivo - primero en llegar a 1000 puntos gana",
       icon: "/icons/trophy-icon.png",
       color: "orange",
-      config: { initialCards: 7, turnTimeLimit: 45, stackCards: true, pointsToWin: 1000 }
+      config: { initialCards: 7, turnTimeLimit: 45, stackCards: false, pointsToWin: 1000 },
+      customizable: false // Configuración fija para torneos
     },
   ]
 
@@ -108,6 +110,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
         turnTimeLimit, // RF20, RF29: Turn time limit
         allowStackingCards: stackCards, // RF21, RF30: Stack +2/+4
         pointsToWin, // RF22: Points to win
+        tournamentMode: selectedPreset === "torneo", // Tournament mode flag
         allowBots: true,
       })
 
@@ -376,65 +379,74 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
 
             {/* Configuraciones (RF18-RF23) */}
             <div className="config-options">
-              {/* RF18: Initial cards count */}
-              <div className="config-item">
-                <Label>CARTAS INICIALES</Label>
-                <Select value={initialCards.toString()} onValueChange={(v) => setInitialCards(parseInt(v))}>
-                  <SelectTrigger className="glass-input">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5 cartas</SelectItem>
-                    <SelectItem value="7">7 cartas (clásico)</SelectItem>
-                    <SelectItem value="10">10 cartas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Mostrar configuraciones según el modo seleccionado */}
+              {selectedPreset === "clasico" ? (
+                <>
+                  {/* MODO CLÁSICO: Configuraciones personalizables */}
+                  {/* RF18: Initial cards count */}
+                  <div className="config-item">
+                    <Label>CARTAS INICIALES</Label>
+                    <Select value={initialCards.toString()} onValueChange={(v) => setInitialCards(parseInt(v))}>
+                      <SelectTrigger className="glass-input">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 cartas</SelectItem>
+                        <SelectItem value="7">7 cartas (clásico)</SelectItem>
+                        <SelectItem value="10">10 cartas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* RF20, RF29: Turn time limit */}
-              <div className="config-item">
-                <Label>TIEMPO POR TURNO</Label>
-                <Select value={turnTimeLimit.toString()} onValueChange={(v) => setTurnTimeLimit(parseInt(v))}>
-                  <SelectTrigger className="glass-input">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 segundos</SelectItem>
-                    <SelectItem value="45">45 segundos</SelectItem>
-                    <SelectItem value="60">60 segundos (clásico)</SelectItem>
-                    <SelectItem value="90">90 segundos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* RF20, RF29: Turn time limit */}
+                  <div className="config-item">
+                    <Label>TIEMPO POR TURNO</Label>
+                    <Select value={turnTimeLimit.toString()} onValueChange={(v) => setTurnTimeLimit(parseInt(v))}>
+                      <SelectTrigger className="glass-input">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 segundos</SelectItem>
+                        <SelectItem value="45">45 segundos</SelectItem>
+                        <SelectItem value="60">60 segundos (clásico)</SelectItem>
+                        <SelectItem value="90">90 segundos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* RF22: Points to win */}
-              <div className="config-item">
-                <Label>PUNTOS PARA GANAR</Label>
-                <Select value={pointsToWin.toString()} onValueChange={(v) => setPointsToWin(parseInt(v))}>
-                  <SelectTrigger className="glass-input">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="200">200 puntos</SelectItem>
-                    <SelectItem value="500">500 puntos (clásico)</SelectItem>
-                    <SelectItem value="1000">1000 puntos (torneo)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* RF21, RF30: Stack +2/+4 cards */}
-              <div className="config-item">
-                <Label>ACUMULAR +2 Y +4</Label>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={stackCards}
-                    onCheckedChange={setStackCards}
-                  />
-                  <span className="text-sm text-white/70">
-                    {stackCards ? "Activado" : "Desactivado"}
-                  </span>
-                </div>
-              </div>
+                  {/* RF21, RF30: Stack +2/+4 cards */}
+                  <div className="config-item">
+                    <Label>ACUMULAR +2 Y +4</Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={stackCards}
+                        onCheckedChange={setStackCards}
+                      />
+                      <span className="text-sm text-white/70">
+                        {stackCards ? "Activado" : "Desactivado"}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* MODO TORNEO: Configuraciones fijas */}
+                  <div className="tournament-config-info">
+                    <div className="config-info-item">
+                      <Label className="text-orange-400">⚡ CONFIGURACIÓN DE TORNEO</Label>
+                      <div className="tournament-settings">
+                        <p className="text-sm text-white/90 mb-2">📋 <strong>7 cartas iniciales</strong></p>
+                        <p className="text-sm text-white/90 mb-2">⏱️ <strong>45 segundos por turno</strong></p>
+                        <p className="text-sm text-white/90 mb-2">🎯 <strong>Primero en llegar a 1000 puntos gana</strong></p>
+                        <p className="text-sm text-white/90 mb-2">🚫 <strong>No se pueden acumular +2/+4</strong></p>
+                      </div>
+                      <p className="text-xs text-white/60 mt-3">
+                        💡 Esta configuración está optimizada para partidas competitivas y no se puede modificar.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
