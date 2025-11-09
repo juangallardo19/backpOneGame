@@ -213,12 +213,19 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
       console.log("✅ Juego iniciado:", result)
       console.log("📝 Session ID:", result.sessionId)
 
+      // CRITICAL: Connect to game WebSocket with the sessionId
+      console.log("🔌 Conectando al WebSocket del juego con sessionId:", result.sessionId)
+      await connectToGame(result.sessionId, token || '')
+
       success("¡Juego iniciado!", "La partida ha comenzado")
 
-      // Navigate to game with the sessionId
-      if (onStartGame) {
-        onStartGame()
-      }
+      // Wait a bit for WebSocket to connect and sync state
+      setTimeout(() => {
+        // Navigate to game with the sessionId
+        if (onStartGame) {
+          onStartGame()
+        }
+      }, 500)
     } catch (error: any) {
       console.error("❌ Error al iniciar juego:", error)
       const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"

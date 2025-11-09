@@ -285,17 +285,24 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         wsServiceRef.current.disconnect();
       }
 
-      // Obtener información de la sala desde el backend ANTES de conectar WebSocket
+      // Obtener estado del juego desde el backend ANTES de conectar WebSocket
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'}/api/rooms/${newSessionId}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'}/api/game/${newSessionId}/state`, {
           headers: {
             'Authorization': `Bearer ${token || localStorage.getItem('uno_auth_token')}`
           }
         });
 
         if (response.ok) {
-          const roomData = await response.json();
-          console.log('📡 Información de sala obtenida:', roomData);
+          const gameStateData = await response.json();
+          console.log('📡 Estado del juego obtenido:', gameStateData);
+
+          // Set the game state directly
+          setGameState(gameStateData);
+
+          // Also try to get room data
+          const roomData = gameStateData.room || {};
+          console.log('📡 Información de sala:', roomData);
 
           // Map players from backend PlayerInfo to frontend Player format
           const players = (roomData.players || []).map((p: any) => ({
