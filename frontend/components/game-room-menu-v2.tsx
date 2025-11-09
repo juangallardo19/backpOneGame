@@ -251,7 +251,10 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
   }, [wsRoom])
 
   // Verificar si es el líder
-  const isLeader = room && user && room.leaderId === user.id
+  // Compare by email: find if any player in the room has the same email as current user AND is the leader
+  const isLeader = room && user && room.players.some(p =>
+    p.userEmail === user.email && p.id === room.leaderId
+  )
 
   // Obtener lista de jugadores desde el WebSocket/room
   const players = room?.players && room.players.length > 0 ?

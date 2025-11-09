@@ -2,6 +2,7 @@ package com.oneonline.backend.model.domain;
 
 import com.oneonline.backend.model.enums.PlayerStatus;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
  * Player data persists only during the game session.
  */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Player {
@@ -24,7 +26,18 @@ public class Player {
     /**
      * Unique identifier for this player
      */
+    @Builder.Default
     private String playerId = UUID.randomUUID().toString();
+
+    /**
+     * User ID from the authentication system (for identifying the actual user)
+     */
+    private Long userId;
+
+    /**
+     * User email from authentication (for identifying current user)
+     */
+    private String userEmail;
 
     /**
      * Player's nickname

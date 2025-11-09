@@ -64,6 +64,7 @@ export interface Card {
 export interface Player {
   id: string;
   nickname: string;
+  userEmail?: string; // Email del usuario autenticado (para identificar al usuario actual)
   isBot: boolean;
   status: PlayerStatus;
   cardCount: number; // Número de cartas (otros jugadores no ven las cartas)
