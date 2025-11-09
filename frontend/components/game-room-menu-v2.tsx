@@ -212,12 +212,14 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
     }
 
     try {
-      console.log("🎮 Iniciando juego...")
+      console.log("🎮 Iniciando juego desde sala:", roomCode)
 
-      // Iniciar juego via API (RF17)
-      const gameState = await gameService.startGame(roomCode)
+      // FIXED: Use the new endpoint that starts game from roomCode
+      const result = await gameService.startGameFromRoom(roomCode)
 
-      console.log("✅ Juego iniciado:", gameState)
+      console.log("✅ Juego iniciado:", result)
+      console.log("📝 Session ID:", result.sessionId)
+
       success("¡Juego iniciado!", "La partida ha comenzado")
 
       // Navegar a la pantalla de juego
@@ -226,7 +228,8 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
       }
     } catch (error: any) {
       console.error("❌ Error al iniciar juego:", error)
-      showError("Error", error.response?.data?.message || "No se pudo iniciar el juego")
+      const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"
+      showError("Error", errorMessage)
     }
   }
 

@@ -298,11 +298,36 @@ public class RoomManager {
             throw new IllegalArgumentException("Player not found: " + targetPlayerId);
         }
 
+        // Get player reference before removing
+        Player kickedPlayer = targetOpt.get();
+
         // Remove player
         room.removePlayerById(targetPlayerId);
 
         log.info("Player {} kicked from room {} by leader {}",
-            targetOpt.get().getNickname(), roomCode, room.getLeader().getNickname());
+            kickedPlayer.getNickname(), roomCode, room.getLeader().getNickname());
+
+        // CRITICAL: Notify all clients via WebSocket that player was kicked
+        webSocketObserver.onPlayerLeft(kickedPlayer, room);
+
+        // If room empty (no human players), remove it
+        if (room.getPlayers().isEmpty()) {
+            gameManager.removeRoom(roomCode);
+            webSocketObserver.onRoomDeleted(room);
+            log.info("Room {} closed (no players remaining)", roomCode);
+            return null;
+        }
+
+        // If kicked player was leader, transfer leadership to next player
+        if (kickedPlayer.getPlayerId().equals(room.getLeader().getPlayerId())) {
+            Player newLeader = room.getPlayers().get(0);
+            room.setLeader(newLeader);
+            newLeader.setRoomLeader(true);
+            log.info("Leadership transferred to {} in room {}", newLeader.getNickname(), roomCode);
+
+            // Notify leadership change
+            webSocketObserver.onRoomUpdated(room);
+        }
 
         return room;
     }
