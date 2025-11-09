@@ -91,9 +91,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
    * Transform backend GameStateResponse to frontend GameState format
    */
   const transformBackendGameState = useCallback((backendState: any): GameState | null => {
-    if (!backendState) return null;
+    if (!backendState) {
+      console.error('❌ transformBackendGameState: backendState es null/undefined');
+      return null;
+    }
 
     console.log('🔄 Transformando estado del backend:', backendState);
+    console.log('📋 Campos recibidos:', {
+      sessionId: backendState.sessionId,
+      status: backendState.status,
+      hand: backendState.hand,
+      handLength: backendState.hand?.length,
+      players: backendState.players,
+      playersCount: backendState.players?.length,
+      currentPlayerId: backendState.currentPlayerId,
+      topCard: backendState.topCard,
+    });
 
     // Map backend hand to frontend cards
     const hand: Card[] = (backendState.hand || []).map((card: any) => ({
@@ -118,10 +131,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const currentPlayerId = backendState.currentPlayerId;
     const currentPlayerData = players.find(p => p.id === currentPlayerId);
 
-    const currentPlayer: Player | null = hand.length > 0 ? {
+    // Create currentPlayer if we have hand OR if this player exists in players list
+    const currentPlayer: Player | null = (hand.length > 0 || currentPlayerData) ? {
       ...currentPlayerData!,
       hand,
     } as any : null;
+
+    console.log('👤 Current player detectado:', {
+      currentPlayerId,
+      hasHand: hand.length > 0,
+      handSize: hand.length,
+      currentPlayer
+    });
 
     // Calculate playable cards (for now, allow all cards - backend should validate)
     const playableCardIds = hand.map(card => card.id);
@@ -368,10 +389,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       // Obtener estado del juego desde el backend ANTES de conectar WebSocket
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'}/api/game/${newSessionId}/state`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
+        const stateUrl = `${apiUrl}/api/game/${newSessionId}/state`;
+
+        console.log('🌐 Solicitando estado del juego:', stateUrl);
+        console.log('🔑 Token:', token ? 'Presente' : 'No presente');
+
+        const response = await fetch(stateUrl, {
           headers: {
             'Authorization': `Bearer ${token || localStorage.getItem('uno_auth_token')}`
           }
+        });
+
+        console.log('📊 Respuesta del servidor:', {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
         });
 
         if (response.ok) {
@@ -380,6 +413,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
           // Transform and set the game state
           const transformedState = transformBackendGameState(gameStateData);
+          console.log('✨ Estado transformado final:', transformedState);
           setGameState(transformedState);
 
           // Also try to get room data
@@ -417,9 +451,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             },
             createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
           });
+        } else {
+          // Response not OK - log error
+          const errorText = await response.text();
+          console.error('❌ Error al obtener estado del juego:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
         }
       } catch (err) {
-        console.warn('⚠️ No se pudo obtener info de sala, continuando...', err);
+        console.error('❌ Error en fetch de estado del juego:', err);
       }
 
       // Crear nueva instancia de WebSocket
