@@ -297,23 +297,36 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           const roomData = await response.json();
           console.log('📡 Información de sala obtenida:', roomData);
 
+          // Map players from backend PlayerInfo to frontend Player format
+          const players = (roomData.players || []).map((p: any) => ({
+            id: p.playerId,
+            nickname: p.nickname,
+            userEmail: p.userEmail || '',
+            isBot: p.isBot || false,
+            status: p.status || PlayerStatus.ACTIVE,
+            cardCount: 0,
+            hasCalledUno: false,
+          }));
+
+          console.log('👥 Jugadores mapeados:', players);
+
           // Convertir RoomResponse a Room format
           setRoom({
             code: roomData.roomCode,
             name: roomData.roomName || `Sala ${roomData.roomCode}`,
             leaderId: roomData.hostId,
-            isPrivate: roomData.isPrivate,
+            isPrivate: roomData.isPrivate || false,
             status: roomData.status || 'WAITING',
-            players: [],
+            players: players, // NOW we map the players correctly!
             maxPlayers: roomData.maxPlayers || 4,
             config: {
               maxPlayers: roomData.maxPlayers || 4,
-              pointsToWin: 500,
-              turnTimeLimit: 60,
-              allowStackingDrawCards: true,
+              pointsToWin: roomData.config?.pointsToWin || 500,
+              turnTimeLimit: roomData.config?.turnTimeLimit || 60,
+              allowStackingDrawCards: roomData.config?.allowStackingCards || true,
               preset: 'CLASSIC'
             },
-            createdAt: new Date().toISOString()
+            createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
           });
         }
       } catch (err) {

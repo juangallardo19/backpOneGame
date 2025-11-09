@@ -84,8 +84,12 @@ export const roomService = {
    */
   getPublicRooms: async (): Promise<Room[]> => {
     try {
-      const response = await api.get<any[]>(API_ENDPOINTS.PUBLIC_ROOMS);
-      const rooms = response.data.map(mapBackendRoomToFrontend);
+      const response = await api.get<any>(API_ENDPOINTS.PUBLIC_ROOMS);
+
+      // Backend returns List<RoomResponse> directly, which Axios puts in response.data
+      // Ensure response.data is an array before mapping
+      const roomsData = Array.isArray(response.data) ? response.data : [];
+      const rooms = roomsData.map(mapBackendRoomToFrontend);
 
       // Filter: show all public rooms that are waiting or in progress
       return rooms.filter(room =>
@@ -95,6 +99,7 @@ export const roomService = {
         // even if only the host is waiting for others to join
       );
     } catch (error: any) {
+      console.error('Error fetching public rooms:', error);
       throw error;
     }
   },
