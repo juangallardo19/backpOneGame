@@ -156,7 +156,7 @@ const RankingScreen: React.FC<RankingScreenProps> = ({ onBack }) => {
 
 interface GlobalRankingTabProps {
   rankings: RankingEntry[];
-  currentUserId?: string;
+  currentUserId?: string | number;
 }
 
 const GlobalRankingTab: React.FC<GlobalRankingTabProps> = ({ rankings, currentUserId }) => {
