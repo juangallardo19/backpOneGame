@@ -239,7 +239,7 @@ public class RoomController {
      * @return Updated room
      */
     @PutMapping("/{code}/kick/{playerId}")
-    public ResponseEntity<RoomResponse> kickPlayer(
+    public ResponseEntity<?> kickPlayer(
             @PathVariable String code,
             @PathVariable String playerId,
             Authentication authentication) {

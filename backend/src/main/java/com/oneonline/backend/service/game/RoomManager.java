@@ -325,8 +325,7 @@ public class RoomManager {
             newLeader.setRoomLeader(true);
             log.info("Leadership transferred to {} in room {}", newLeader.getNickname(), roomCode);
 
-            // Notify leadership change
-            webSocketObserver.onRoomUpdated(room);
+            // NOTE: onPlayerLeft() already notified clients, no additional notification needed
         }
 
         return room;
