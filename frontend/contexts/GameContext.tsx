@@ -95,11 +95,51 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   const handlePlayerJoined = useCallback((payload: any) => {
     console.log('👤 Jugador se unió:', payload);
-    // Actualizar lista de jugadores si es necesario
+
+    // CRITICAL: Update room state with new player
+    setRoom(prevRoom => {
+      if (!prevRoom) return prevRoom;
+
+      // Check if player already exists
+      const existingPlayer = prevRoom.players.find(p => p.id === payload.playerId);
+      if (existingPlayer) {
+        console.log('⚠️ Player already in room, skipping');
+        return prevRoom;
+      }
+
+      // Add new player to room
+      const newPlayer: Player = {
+        id: payload.playerId,
+        nickname: payload.nickname,
+        userEmail: payload.userEmail || '',
+        isBot: payload.isBot || false,
+        hand: [],
+        score: 0,
+        hasCalledUno: false,
+        isConnected: true,
+      };
+
+      console.log('✅ Adding player to room:', newPlayer);
+
+      return {
+        ...prevRoom,
+        players: [...prevRoom.players, newPlayer],
+      };
+    });
   }, []);
 
   const handlePlayerLeft = useCallback((payload: any) => {
     console.log('👋 Jugador salió:', payload);
+
+    // CRITICAL: Update room state by removing player
+    setRoom(prevRoom => {
+      if (!prevRoom) return prevRoom;
+
+      return {
+        ...prevRoom,
+        players: prevRoom.players.filter(p => p.id !== payload.playerId),
+      };
+    });
   }, []);
 
   const handleGameStarted = useCallback((payload: any) => {

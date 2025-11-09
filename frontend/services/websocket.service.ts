@@ -190,21 +190,38 @@ export class WebSocketService {
       return;
     }
 
-    // Subscribe to /topic/game/{roomCode}
-    console.log(`📡 Subscribing to /topic/game/${this.roomCode}`);
-
-    this.subscription = this.client.subscribe(
-      `/topic/game/${this.roomCode}`,
+    // ⬇️ CRITICAL FIX: Subscribe to ROOM topic for room events (player joined/left)
+    console.log(`📡 Subscribing to /topic/room/${this.roomCode}`);
+    this.client.subscribe(
+      `/topic/room/${this.roomCode}`,
       (message: IMessage) => {
         try {
           const payload = JSON.parse(message.body);
-          console.log('📨 Mensaje recibido:', payload);
+          console.log('📨 [ROOM EVENT] Mensaje recibido:', payload);
 
           // Convert STOMP message to GameEvent format
           const gameEvent: GameEvent = this.convertToGameEvent(payload);
           this.handleEvent(gameEvent);
         } catch (error) {
-          console.error('Error parseando mensaje STOMP:', error);
+          console.error('Error parseando mensaje STOMP (room):', error);
+        }
+      }
+    );
+
+    // ⬇️ Also subscribe to GAME topic for game events (card played, turn changed, etc)
+    console.log(`📡 Subscribing to /topic/game/${this.roomCode}`);
+    this.subscription = this.client.subscribe(
+      `/topic/game/${this.roomCode}`,
+      (message: IMessage) => {
+        try {
+          const payload = JSON.parse(message.body);
+          console.log('📨 [GAME EVENT] Mensaje recibido:', payload);
+
+          // Convert STOMP message to GameEvent format
+          const gameEvent: GameEvent = this.convertToGameEvent(payload);
+          this.handleEvent(gameEvent);
+        } catch (error) {
+          console.error('Error parseando mensaje STOMP (game):', error);
         }
       }
     );
@@ -223,15 +240,15 @@ export class WebSocketService {
       }
     });
 
-    console.log('✅ Suscrito al topic del juego');
+    console.log('✅ Suscrito a los topics de sala y juego');
   }
 
   /**
    * Convert backend STOMP message to GameEvent format
    */
   private convertToGameEvent(payload: any): GameEvent {
-    // Backend sends messages with a "type" field
-    const type = payload.type as GameEventType;
+    // Backend sends messages with an "eventType" field (not "type")
+    const type = (payload.eventType || payload.type) as GameEventType;
 
     return {
       type: type || GameEventType.GAME_STATE_UPDATE,

@@ -52,10 +52,11 @@ public class WebSocketObserver implements GameObserver {
         Map<String, Object> event = createEvent("PLAYER_JOINED", Map.of(
                 "playerId", player.getPlayerId(),
                 "nickname", player.getNickname(),
-                "roomId", room.getRoomId(),
-                "playerCount", room.getPlayers().size()
+                "isBot", player instanceof com.oneonline.backend.model.domain.BotPlayer,
+                "roomCode", room.getRoomCode(),
+                "totalPlayerCount", room.getTotalPlayerCount()
         ));
-        sendToRoom(room.getRoomId(), event);
+        sendToRoom(room.getRoomCode(), event); // Use roomCode (ABC123) instead of roomId (UUID)
     }
 
     /**
@@ -66,10 +67,11 @@ public class WebSocketObserver implements GameObserver {
         Map<String, Object> event = createEvent("PLAYER_LEFT", Map.of(
                 "playerId", player.getPlayerId(),
                 "nickname", player.getNickname(),
-                "roomId", room.getRoomId(),
-                "playerCount", room.getPlayers().size()
+                "isBot", player instanceof com.oneonline.backend.model.domain.BotPlayer,
+                "roomCode", room.getRoomCode(),
+                "totalPlayerCount", room.getTotalPlayerCount()
         ));
-        sendToRoom(room.getRoomId(), event);
+        sendToRoom(room.getRoomCode(), event); // Use roomCode instead of roomId
     }
 
     /**
