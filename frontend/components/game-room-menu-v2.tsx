@@ -68,6 +68,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
     {
       id: "clasico",
       name: "CLÁSICO",
+      description: "Partida normal - 500 puntos para ganar",
       icon: "/icons/game-controller.png",
       color: "red",
       config: { initialCards: 7, turnTimeLimit: 60, stackCards: true, pointsToWin: 500 }
@@ -75,6 +76,7 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
     {
       id: "torneo",
       name: "TORNEO",
+      description: "Modo competitivo - 1000 puntos, turnos rápidos (45s)",
       icon: "/icons/trophy-icon.png",
       color: "orange",
       config: { initialCards: 7, turnTimeLimit: 45, stackCards: true, pointsToWin: 1000 }
@@ -353,13 +355,17 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
                     key={preset.id}
                     className={`preset-card ${selectedPreset === preset.id ? 'selected' : ''}`}
                     onClick={() => applyPreset(preset.id)}
+                    title={preset.description}
                   >
                     <div className="preset-icon">
                       {preset.icon && (
                         <img src={preset.icon} alt={preset.name} className="w-8 h-8" />
                       )}
                     </div>
-                    <span className="preset-name">{preset.name}</span>
+                    <div className="preset-info">
+                      <span className="preset-name">{preset.name}</span>
+                      <span className="preset-description">{preset.description}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -665,6 +671,26 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+
+        .preset-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.25rem;
+          text-align: center;
+        }
+
+        .preset-name {
+          font-weight: 700;
+          font-size: 0.875rem;
+          color: white;
+        }
+
+        .preset-description {
+          font-size: 0.625rem;
+          color: rgba(255, 255, 255, 0.6);
+          line-height: 1.2;
         }
 
         .preset-card.selected {
