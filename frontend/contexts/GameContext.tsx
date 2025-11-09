@@ -131,11 +131,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const currentPlayerId = backendState.currentPlayerId;
     const currentPlayerData = players.find(p => p.id === currentPlayerId);
 
-    // Create currentPlayer if we have hand OR if this player exists in players list
-    const currentPlayer: Player | null = (hand.length > 0 || currentPlayerData) ? {
-      ...currentPlayerData!,
-      hand,
-    } as any : null;
+    // Create currentPlayer with hand (required by CurrentPlayer type)
+    // If we don't have hand data yet, use empty array
+    const currentPlayer: CurrentPlayer | null = currentPlayerData ? {
+      ...currentPlayerData,
+      hand: hand || [],  // Always provide hand array, even if empty
+    } as CurrentPlayer : null;
 
     console.log('👤 Current player detectado:', {
       currentPlayerId,
