@@ -354,6 +354,11 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
                     className={`preset-card ${selectedPreset === preset.id ? 'selected' : ''}`}
                     onClick={() => applyPreset(preset.id)}
                   >
+                    <div className="preset-icon">
+                      {preset.icon && (
+                        <img src={preset.icon} alt={preset.name} className="w-8 h-8" />
+                      )}
+                    </div>
                     <span className="preset-name">{preset.name}</span>
                   </button>
                 ))}
@@ -642,6 +647,10 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
         }
 
         .preset-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
           padding: 1rem;
           background: rgba(255, 255, 255, 0.05);
           border: 2px solid transparent;
@@ -650,6 +659,12 @@ export default function GameRoomMenuV2({ onBack, onStartGame, userData, roomCode
           transition: all 0.3s ease;
           color: white;
           font-weight: 600;
+        }
+
+        .preset-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .preset-card.selected {
