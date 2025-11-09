@@ -23,6 +23,42 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
   const { success, error: showError } = useNotification()
   const { connectToGame } = useGame()
 
+  const handleCreateRoom = async () => {
+    setIsLoading(true)
+    try {
+      console.log("🏠 Creando nueva sala...")
+
+      // Crear sala en el backend
+      const newRoom = await roomService.createRoom({
+        isPrivate: false,
+        maxPlayers: 4,
+        initialHandSize: 7,
+        turnTimeLimit: 60,
+        allowStackingCards: true,
+        pointsToWin: 500,
+        allowBots: true,
+      })
+
+      console.log("✅ Sala creada exitosamente:", newRoom)
+      success("¡Sala creada!", `Código: ${newRoom.code}`)
+
+      // Conectar al WebSocket de la sala
+      const token = localStorage.getItem('uno_auth_token')
+      if (token) {
+        await connectToGame(newRoom.code, token)
+      }
+
+      // Navegar a la pantalla de configuración de sala
+      onCreateRoom()
+    } catch (error: any) {
+      console.error("❌ Error al crear sala:", error)
+      const errorMessage = error.response?.data?.message || error.message || "No se pudo crear la sala"
+      showError("Error al crear sala", errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
       showError("Error", "Por favor ingresa un código de sala")
@@ -95,11 +131,14 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
               <Button
                 size="lg"
                 className="room-option-button create-room-button glass-button group"
-                onClick={onCreateRoom}
+                onClick={handleCreateRoom}
+                disabled={isLoading}
               >
                 <Plus className="mr-3 h-8 w-8 transition-transform group-hover:scale-110" />
                 <div className="flex flex-col items-start">
-                  <span className="text-lg font-bold">CREAR SALA</span>
+                  <span className="text-lg font-bold">
+                    {isLoading ? "CREANDO..." : "CREAR SALA"}
+                  </span>
                   <span className="text-xs font-normal opacity-90">Inicia un nuevo juego</span>
                 </div>
               </Button>
