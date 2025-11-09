@@ -13,7 +13,7 @@ import ParticleCanvas from "@/components/ParticleCanvas"
 import OneCardsBackground from "@/components/OneCardsBackground"
 import GalaxySpiral from "@/components/GalaxySpiral"
 import SettingsModal from "@/components/SettingsModal"
-import GameRoomMenuV2 from "@/components/game-room-menu-v2"
+import GameRoomMenu from "@/components/GameRoomMenu"
 import RoomSelectionScreen from "@/components/RoomSelectionScreen"
 import HalftoneWaves from "@/components/halftone-waves"
 import LoginScreen from "@/components/LoginScreen"
@@ -174,13 +174,9 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 animate-fade-in">
           <HalftoneWaves />
           <div className="absolute inset-0 z-[60] flex items-center justify-center w-full h-full p-4">
-            <GameRoomMenuV2
+            <GameRoomMenu
               onBack={() => setCurrentScreen('room-selection')}
               onStartGame={() => setCurrentScreen('gameplay')}
-              userData={user ? {
-                username: user.nickname,
-                isGuest: typeof user.id === 'string' && user.id.startsWith('guest_')
-              } : null}
             />
           </div>
         </div>
