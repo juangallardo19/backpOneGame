@@ -9,7 +9,22 @@ import { GameState } from '@/types/game.types';
 
 export const gameService = {
   /**
-   * Iniciar juego
+   * Iniciar juego desde roomCode (nuevo endpoint)
+   */
+  startGameFromRoom: async (roomCode: string): Promise<{ sessionId: string; roomCode: string; status: string }> => {
+    try {
+      const response = await api.post<{ sessionId: string; roomCode: string; status: string }>(
+        API_ENDPOINTS.START_GAME_FROM_ROOM(roomCode)
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error starting game from room:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Iniciar juego (endpoint antiguo, requiere sessionId)
    */
   startGame: async (sessionId: string): Promise<GameState> => {
     try {

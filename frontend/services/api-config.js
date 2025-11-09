@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   ADD_BOT: (code) => `/api/rooms/${code}/bot`,
   REMOVE_BOT: (code, botId) => `/api/rooms/${code}/bot/${botId}`,
   TRANSFER_LEADER: (code, newLeaderId) => `/api/rooms/${code}/leader/${newLeaderId}`,
+  START_GAME_FROM_ROOM: (code) => `/api/rooms/${code}/start`, // NEW: Start game from room
   
   // Game
   START_GAME: (sessionId) => `/api/game/${sessionId}/start`,

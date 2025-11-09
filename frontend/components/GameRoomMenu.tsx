@@ -205,17 +205,24 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
 
     try {
-      console.log("🎮 Iniciando juego...")
-      const gameState = await gameService.startGame(room.code)
-      console.log("✅ Juego iniciado:", gameState)
+      console.log("🎮 Iniciando juego desde sala:", room.code)
+
+      // Use the new endpoint that starts game from roomCode
+      const result = await gameService.startGameFromRoom(room.code)
+
+      console.log("✅ Juego iniciado:", result)
+      console.log("📝 Session ID:", result.sessionId)
+
       success("¡Juego iniciado!", "La partida ha comenzado")
 
+      // Navigate to game with the sessionId
       if (onStartGame) {
         onStartGame()
       }
     } catch (error: any) {
       console.error("❌ Error al iniciar juego:", error)
-      showError("Error", error.response?.data?.message || "No se pudo iniciar el juego")
+      const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"
+      showError("Error", errorMessage)
     }
   }
 
@@ -237,6 +244,22 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     success("Copiado", `Código ${text} copiado al portapapeles`)
   }
 
+  // Transferir liderazgo
+  const handleTransferLeader = async (playerId: string) => {
+    if (!room) return
+
+    try {
+      console.log("👑 Transfiriendo liderazgo a:", playerId)
+      const updatedRoom = await roomService.transferLeader(room.code, playerId)
+      console.log("✅ Liderazgo transferido")
+      setRoom(updatedRoom)
+      success("Liderazgo transferido", "El nuevo líder ha sido asignado")
+    } catch (error: any) {
+      console.error("❌ Error al transferir liderazgo:", error)
+      showError("Error", error.response?.data?.message || "No se pudo transferir el liderazgo")
+    }
+  }
+
   // Determinar si se puede iniciar el juego
   const canStartGame = room && room.players.length >= 2 && room.players.length <= room.maxPlayers
 
@@ -250,27 +273,53 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     return (
       <div className="players-grid">
         {/* Jugadores actuales */}
-        {players.map((player) => (
-          <div key={player.id} className="player-card">
-            <div className="player-info">
-              {player.id === room.leaderId && <Crown className="crown-icon" size={16} />}
-              {player.isBot && <Bot className="bot-icon" size={16} />}
-              <span className="player-name">{player.nickname}</span>
-            </div>
+        {players.map((player) => {
+          const isPlayerLeader = player.id === room.leaderId
 
-            {/* Botón de remover (solo líder puede remover otros jugadores/bots) */}
-            {isLeader && player.id !== room.leaderId && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="remove-btn"
-                onClick={() => player.isBot ? handleRemoveBot(player.id) : handleKickPlayer(player.id)}
-              >
-                ✕
-              </Button>
-            )}
-          </div>
-        ))}
+          return (
+            <div key={player.id} className={`player-card ${isPlayerLeader ? 'leader-card' : ''}`}>
+              <div className="player-info">
+                {isPlayerLeader && (
+                  <div className="leader-badge">
+                    <Crown className="crown-icon" size={18} />
+                    <span className="leader-label">LÍDER</span>
+                  </div>
+                )}
+                {player.isBot && <Bot className="bot-icon" size={16} />}
+                <span className="player-name">{player.nickname}</span>
+              </div>
+
+              {/* Acciones del líder */}
+              {isLeader && player.id !== room.leaderId && (
+                <div className="player-actions">
+                  {/* Botón expulsar */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="action-btn kick-btn"
+                    onClick={() => player.isBot ? handleRemoveBot(player.id) : handleKickPlayer(player.id)}
+                    title={player.isBot ? "Eliminar bot" : "Expulsar jugador"}
+                  >
+                    ✕
+                  </Button>
+
+                  {/* Botón transferir liderazgo (solo para jugadores humanos) */}
+                  {!player.isBot && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="action-btn transfer-btn"
+                      onClick={() => handleTransferLeader(player.id)}
+                      title="Transferir liderazgo"
+                    >
+                      <Crown size={14} />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
 
         {/* Slots vacíos */}
         {Array.from({ length: emptySlots }, (_, idx) => (
@@ -721,6 +770,12 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           background: rgba(255, 255, 255, 0.05);
           border-radius: 8px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+
+        .player-card.leader-card {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+          border: 2px solid rgba(255, 215, 0, 0.4);
         }
 
         .player-card.empty {
@@ -730,7 +785,25 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .player-info {
           display: flex;
           align-items: center;
+          gap: 0.75rem;
+          flex: 1;
+        }
+
+        .leader-badge {
+          display: flex;
+          align-items: center;
           gap: 0.5rem;
+          background: rgba(255, 215, 0, 0.2);
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 215, 0, 0.4);
+        }
+
+        .leader-label {
+          color: #FFD700;
+          font-weight: 700;
+          font-size: 0.75rem;
+          letter-spacing: 0.05em;
         }
 
         .player-name {
@@ -745,6 +818,44 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
         .bot-icon {
           color: #60A5FA;
+        }
+
+        .player-actions {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .action-btn {
+          padding: 0.5rem;
+          min-width: 36px;
+          height: 36px;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .kick-btn {
+          color: #EF4444;
+          font-weight: 700;
+          background: rgba(239, 68, 68, 0.1);
+        }
+
+        .kick-btn:hover {
+          background: rgba(239, 68, 68, 0.2);
+          transform: scale(1.1);
+        }
+
+        .transfer-btn {
+          color: #FFD700;
+          background: rgba(255, 215, 0, 0.1);
+        }
+
+        .transfer-btn:hover {
+          background: rgba(255, 215, 0, 0.2);
+          transform: scale(1.1);
         }
 
         .remove-btn {

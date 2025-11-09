@@ -6,9 +6,11 @@ import com.oneonline.backend.dto.request.JoinRoomRequest;
 import com.oneonline.backend.dto.response.RoomResponse;
 import com.oneonline.backend.model.domain.BotPlayer;
 import com.oneonline.backend.model.domain.GameConfiguration;
+import com.oneonline.backend.model.domain.GameSession;
 import com.oneonline.backend.model.domain.Player;
 import com.oneonline.backend.model.domain.Room;
 import com.oneonline.backend.pattern.creational.builder.GameConfigBuilder;
+import com.oneonline.backend.service.game.GameManager;
 import com.oneonline.backend.service.game.RoomManager;
 import com.oneonline.backend.util.CodeGenerator;
 import jakarta.validation.Valid;
@@ -22,7 +24,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -367,6 +371,71 @@ public class RoomController {
 
         RoomResponse response = mapToRoomResponse(room);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Start game from room
+     *
+     * POST /api/rooms/{code}/start
+     *
+     * Creates a game session from the room and starts the game.
+     * Requires at least 2 players (human or bot).
+     *
+     * @param code Room code
+     * @param authentication Current user (must be leader)
+     * @return Room with updated status
+     */
+    @PostMapping("/{code}/start")
+    public ResponseEntity<?> startGame(
+            @PathVariable String code,
+            Authentication authentication) {
+
+        log.info("Start game request for room {} by {}", code, authentication.getName());
+
+        Room room = roomManager.findRoom(code)
+                .orElseThrow(() -> new IllegalArgumentException("Room not found: " + code));
+
+        // Verify caller is leader
+        if (!room.getLeader().getUserEmail().equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Only room leader can start the game");
+        }
+
+        // Validate minimum players
+        if (room.getTotalPlayerCount() < 2) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Need at least 2 players to start the game");
+        }
+
+        try {
+            // Create game session from room
+            GameSession session = GameSession.builder()
+                    .room(room)
+                    .build();
+
+            // Register session with GameManager
+            GameManager.getInstance().startGameSession(session);
+
+            // Update room status
+            room.setStatus(com.oneonline.backend.model.enums.RoomStatus.IN_PROGRESS);
+            room.setGameSession(session);
+
+            log.info("Game started for room {}, session ID: {}", code, session.getSessionId());
+
+            // Return session info so frontend knows the sessionId
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessionId", session.getSessionId());
+            response.put("roomCode", code);
+            response.put("status", "STARTED");
+            response.put("message", "Game started successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error starting game for room {}: {}", code, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to start game: " + e.getMessage());
+        }
     }
 
     /**
