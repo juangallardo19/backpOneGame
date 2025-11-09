@@ -4,6 +4,7 @@ import com.oneonline.backend.model.domain.BotPlayer;
 import com.oneonline.backend.model.domain.GameConfiguration;
 import com.oneonline.backend.model.domain.Player;
 import com.oneonline.backend.model.domain.Room;
+import com.oneonline.backend.pattern.behavioral.observer.GameObserver;
 import com.oneonline.backend.pattern.creational.builder.RoomBuilder;
 import com.oneonline.backend.util.CodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.util.Optional;
  * - Player capacity validation
  * - Bot management
  * - Leadership operations
+ * - WebSocket notifications for room events
  *
  * @author Juan Gallardo
  */
@@ -37,6 +39,7 @@ import java.util.Optional;
 public class RoomManager {
 
     private final GameManager gameManager = GameManager.getInstance();
+    private final GameObserver webSocketObserver; // ⬅️ ESTE ES EL CAMBIO CLAVE
 
     /**
      * Create a new game room
@@ -67,6 +70,13 @@ public class RoomManager {
         gameManager.createRoom(room);
 
         log.info("Room created: {} by {}", roomCode, creator.getNickname());
+
+        // NOTIFY: Room created via WebSocket
+        webSocketObserver.onRoomCreated(room);
+
+        // NOTIFY: Creator joined room via WebSocket
+        webSocketObserver.onPlayerJoined(creator, room);
+
         return room;
     }
 
@@ -91,6 +101,13 @@ public class RoomManager {
         gameManager.createRoom(room);
 
         log.info("Private room created: {} by {}", roomCode, creator.getNickname());
+
+        // NOTIFY: Private room created via WebSocket
+        webSocketObserver.onRoomCreated(room);
+
+        // NOTIFY: Creator joined room via WebSocket
+        webSocketObserver.onPlayerJoined(creator, room);
+
         return room;
     }
 
@@ -124,6 +141,11 @@ public class RoomManager {
         room.addPlayer(player);
 
         log.info("Player {} joined room {}", player.getNickname(), roomCode);
+
+        // NOTIFY: Player joined room via WebSocket - THIS IS THE KEY FIX!
+        // This notifies all other players in the room that someone joined
+        webSocketObserver.onPlayerJoined(player, room);
+
         return room;
     }
 
@@ -146,9 +168,13 @@ public class RoomManager {
 
         log.info("Player {} left room {}", player.getNickname(), roomCode);
 
+        // NOTIFY: Player left room via WebSocket
+        webSocketObserver.onPlayerLeft(player, room);
+
         // If room empty, remove it
         if (room.getPlayers().isEmpty()) {
             gameManager.removeRoom(roomCode);
+            webSocketObserver.onRoomDeleted(room);
             log.info("Room {} closed (no players)", roomCode);
             return null;
         }
@@ -197,6 +223,10 @@ public class RoomManager {
         }
 
         log.info("Bot {} added to room {}", bot.getNickname(), roomCode);
+
+        // NOTIFY: Bot joined room via WebSocket (treat bot like a player joining)
+        webSocketObserver.onPlayerJoined(bot, room);
+
         return bot;
     }
 
@@ -230,6 +260,10 @@ public class RoomManager {
         }
 
         log.info("Bot {} removed from room {}", bot.getNickname(), roomCode);
+
+        // NOTIFY: Bot left room via WebSocket
+        webSocketObserver.onPlayerLeft(bot, room);
+
         return room;
     }
 
