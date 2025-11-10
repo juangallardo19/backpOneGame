@@ -24,7 +24,7 @@ import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
-import { Card, Player } from '@/types/game.types';
+import { Card, Player, CurrentPlayer } from '@/types/game.types';
 
 interface OneGame3DProps {
   onBack?: () => void;
@@ -42,7 +42,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const [playerEmojis, setPlayerEmojis] = useState<Record<string, string>>({});
 
   // Get current player from gameState
-  const currentPlayer = gameState?.currentPlayer;
+  const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
   // FIXED: Use the isMyTurn function from context instead of comparing user.id
   // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
   const isMyTurn = isMyTurnFn();
@@ -171,20 +171,20 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // Listen to emotes from other players
   useEffect(() => {
     const latestMessage = chatMessages[chatMessages.length - 1];
-    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.userId !== user?.id) {
+    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.playerId !== currentPlayer?.id) {
       // Show emoji on that player
-      if (latestMessage.userId) {
-        setPlayerEmojis(prev => ({ ...prev, [latestMessage.userId!]: latestMessage.message }));
+      if (latestMessage.playerId) {
+        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
         setTimeout(() => {
           setPlayerEmojis(prev => {
             const newEmojis = { ...prev };
-            delete newEmojis[latestMessage.userId!];
+            delete newEmojis[latestMessage.playerId];
             return newEmojis;
           });
         }, 3000);
       }
     }
-  }, [chatMessages, user?.id]);
+  }, [chatMessages, currentPlayer?.id]);
 
   // Get card color class
   const getCardColorClass = (color: string) => {
