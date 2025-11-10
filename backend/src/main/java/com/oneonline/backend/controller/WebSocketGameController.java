@@ -1,9 +1,7 @@
 package com.oneonline.backend.controller;
 
 import com.oneonline.backend.dto.response.GameStateResponse;
-import com.oneonline.backend.model.domain.Card;
-import com.oneonline.backend.model.domain.GameSession;
-import com.oneonline.backend.model.domain.Player;
+import com.oneonline.backend.model.domain.*;
 import com.oneonline.backend.service.game.GameEngine;
 import com.oneonline.backend.service.game.GameManager;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +11,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -67,13 +66,12 @@ public class WebSocketGameController {
      * @param principal Authenticated user
      */
     @MessageMapping("/game/{sessionId}/play-card")
-    @SendTo("/topic/game/{sessionId}")
-    public GameStateResponse handlePlayCard(
+    public void handlePlayCard(
             @DestinationVariable String sessionId,
             @Payload Map<String, Object> payload,
             Principal principal) {
 
-        log.info("WebSocket: Player {} playing card in session {}", principal.getName(), sessionId);
+        log.info("🎴 [WebSocket] Player {} playing card in session {}", principal.getName(), sessionId);
 
         try {
             GameSession session = gameManager.getSession(sessionId);
@@ -86,23 +84,50 @@ public class WebSocketGameController {
 
             // Find card
             String cardId = (String) payload.get("cardId");
-            Card card = player.getHand().stream()
-                    .filter(c -> c.toString().contains(cardId))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Card not found"));
+            String chosenColor = (String) payload.get("chosenColor");
 
-            // Process move
+            Card card = player.getHand().stream()
+                    .filter(c -> c.getCardId().equals(cardId) || c.toString().contains(cardId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Card not found in hand"));
+
+            // If wild card and color chosen, set it
+            if (card instanceof WildCard wildCard && chosenColor != null) {
+                wildCard.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
+            }
+
+            log.info("🃏 [WebSocket] Playing card: {} {}", card.getColor(), card.getValue());
+
+            // Process move through GameEngine (this triggers Observer notifications)
             gameEngine.processMove(player, card, session);
 
-            // Broadcast updated game state to all players
-            GameStateResponse response = buildGameStateResponse(session);
+            // Build and broadcast general game state (without hands)
+            GameStateResponse generalState = buildGameStateResponse(session);
+            messagingTemplate.convertAndSend(
+                    "/topic/game/" + sessionId,
+                    Map.of(
+                            "eventType", "GAME_STATE_UPDATE",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", generalState
+                    )
+            );
 
-            log.info("WebSocket: Card played successfully, broadcasting to all players");
+            // Send each player their personal hand
+            for (Player p : session.getPlayers()) {
+                if (!(p instanceof BotPlayer)) {
+                    GameStateResponse personalState = buildPersonalGameState(session, p);
+                    messagingTemplate.convertAndSendToUser(
+                            p.getNickname(),
+                            "/queue/game-state",
+                            personalState
+                    );
+                }
+            }
 
-            return response;
+            log.info("✅ [WebSocket] Card played successfully, state broadcasted");
 
         } catch (Exception e) {
-            log.error("WebSocket: Error processing card play: {}", e.getMessage());
+            log.error("❌ [WebSocket] Error processing card play: {}", e.getMessage(), e);
 
             // Send error to specific user
             messagingTemplate.convertAndSendToUser(
@@ -110,8 +135,6 @@ public class WebSocketGameController {
                     "/queue/errors",
                     Map.of("error", e.getMessage())
             );
-
-            return null;
         }
     }
 
@@ -125,12 +148,11 @@ public class WebSocketGameController {
      * @param principal Authenticated user
      */
     @MessageMapping("/game/{sessionId}/draw-card")
-    @SendTo("/topic/game/{sessionId}")
-    public GameStateResponse handleDrawCard(
+    public void handleDrawCard(
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("WebSocket: Player {} drawing card in session {}", principal.getName(), sessionId);
+        log.info("📥 [WebSocket] Player {} drawing card in session {}", principal.getName(), sessionId);
 
         try {
             GameSession session = gameManager.getSession(sessionId);
@@ -141,25 +163,50 @@ public class WebSocketGameController {
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Player not in game"));
 
-            // Draw card
+            // Check if it's player's turn
+            if (!session.getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
+                throw new IllegalStateException("Not your turn!");
+            }
+
+            // Draw card through GameEngine (triggers Observer notifications)
             gameEngine.drawCard(player, session);
 
-            // Advance turn
-            session.getTurnManager().nextTurn();
+            // Advance turn (after drawing, turn ends)
+            session.nextTurn();
 
-            // Broadcast updated game state
-            return buildGameStateResponse(session);
+            // Build and broadcast general game state
+            GameStateResponse generalState = buildGameStateResponse(session);
+            messagingTemplate.convertAndSend(
+                    "/topic/game/" + sessionId,
+                    Map.of(
+                            "eventType", "GAME_STATE_UPDATE",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", generalState
+                    )
+            );
+
+            // Send each player their personal hand
+            for (Player p : session.getPlayers()) {
+                if (!(p instanceof BotPlayer)) {
+                    GameStateResponse personalState = buildPersonalGameState(session, p);
+                    messagingTemplate.convertAndSendToUser(
+                            p.getNickname(),
+                            "/queue/game-state",
+                            personalState
+                    );
+                }
+            }
+
+            log.info("✅ [WebSocket] Card drawn successfully, state broadcasted");
 
         } catch (Exception e) {
-            log.error("WebSocket: Error processing card draw: {}", e.getMessage());
+            log.error("❌ [WebSocket] Error processing card draw: {}", e.getMessage(), e);
 
             messagingTemplate.convertAndSendToUser(
                     principal.getName(),
                     "/queue/errors",
                     Map.of("error", e.getMessage())
             );
-
-            return null;
         }
     }
 
@@ -327,16 +374,108 @@ public class WebSocketGameController {
      * @return GameStateResponse DTO
      */
     private GameStateResponse buildGameStateResponse(GameSession session) {
+        // Build player states for all players
+        List<GameStateResponse.PlayerState> playerStates = session.getPlayers().stream()
+                .map(p -> GameStateResponse.PlayerState.builder()
+                        .playerId(p.getPlayerId())
+                        .nickname(p.getNickname())
+                        .cardCount(p.getHandSize())
+                        .score(p.getScore())
+                        .calledOne(p.hasCalledOne())
+                        .isBot(p instanceof BotPlayer)
+                        .status(p.getStatus() != null ? p.getStatus().name() : "ACTIVE")
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        // Build top card info if exists
+        GameStateResponse.CardInfo topCardInfo = null;
+        if (session.getTopCard() != null) {
+            Card topCard = session.getTopCard();
+            topCardInfo = GameStateResponse.CardInfo.builder()
+                    .cardId(topCard.getCardId())
+                    .type(topCard.getType().name())
+                    .color(topCard.getColor().name())
+                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .build();
+        }
+
         return GameStateResponse.builder()
                 .sessionId(session.getSessionId())
                 .roomCode(session.getRoom().getRoomCode())
                 .status(session.getStatus().name())
-                .currentTurn(session.getTurnManager().getCurrentPlayer().getPlayerId())
-                .topCard(session.getTopCard())
+                .currentPlayerId(session.getCurrentPlayer().getPlayerId())
+                .topCard(topCardInfo)
+                .currentColor(session.getTopCard() != null ? session.getTopCard().getColor().name() : null)
+                .clockwise(session.isClockwise())
                 .deckSize(session.getDeck().getRemainingCards())
-                .discardPileSize(session.getDiscardPile().size())
-                .direction(session.getTurnManager().isClockwise() ? "CLOCKWISE" : "COUNTER_CLOCKWISE")
                 .pendingDrawCount(session.getPendingDrawCount())
+                .players(playerStates)
+                .turnOrder(session.getPlayers().stream()
+                        .map(Player::getPlayerId)
+                        .collect(java.util.stream.Collectors.toList()))
+                .startedAt(System.currentTimeMillis())
+                .build();
+    }
+
+    /**
+     * Build personalized game state for a specific player (includes their hand).
+     *
+     * @param session Game session
+     * @param player Player to build state for
+     * @return GameStateResponse with player's hand included
+     */
+    private GameStateResponse buildPersonalGameState(GameSession session, Player player) {
+        // Build player states for all players
+        List<GameStateResponse.PlayerState> playerStates = session.getPlayers().stream()
+                .map(p -> GameStateResponse.PlayerState.builder()
+                        .playerId(p.getPlayerId())
+                        .nickname(p.getNickname())
+                        .cardCount(p.getHandSize())
+                        .score(p.getScore())
+                        .calledOne(p.hasCalledOne())
+                        .isBot(p instanceof BotPlayer)
+                        .status(p.getStatus() != null ? p.getStatus().name() : "ACTIVE")
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        // Build top card info if exists
+        GameStateResponse.CardInfo topCardInfo = null;
+        if (session.getTopCard() != null) {
+            Card topCard = session.getTopCard();
+            topCardInfo = GameStateResponse.CardInfo.builder()
+                    .cardId(topCard.getCardId())
+                    .type(topCard.getType().name())
+                    .color(topCard.getColor().name())
+                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .build();
+        }
+
+        // Build player's hand
+        List<GameStateResponse.CardInfo> hand = player.getHand().stream()
+                .map(card -> GameStateResponse.CardInfo.builder()
+                        .cardId(card.getCardId())
+                        .type(card.getType().name())
+                        .color(card.getColor().name())
+                        .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        return GameStateResponse.builder()
+                .sessionId(session.getSessionId())
+                .roomCode(session.getRoom().getRoomCode())
+                .status(session.getStatus().name())
+                .currentPlayerId(session.getCurrentPlayer().getPlayerId())
+                .topCard(topCardInfo)
+                .currentColor(session.getTopCard() != null ? session.getTopCard().getColor().name() : null)
+                .clockwise(session.isClockwise())
+                .deckSize(session.getDeck().getRemainingCards())
+                .pendingDrawCount(session.getPendingDrawCount())
+                .players(playerStates)
+                .hand(hand)  // CRITICAL: Include player's hand
+                .turnOrder(session.getPlayers().stream()
+                        .map(Player::getPlayerId)
+                        .collect(java.util.stream.Collectors.toList()))
+                .startedAt(System.currentTimeMillis())
                 .build();
     }
 }
