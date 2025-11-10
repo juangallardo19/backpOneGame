@@ -28,7 +28,7 @@ import java.util.Map;
  * SUPPORTED ACTIONS:
  * - play-card: Player plays a card
  * - draw-card: Player draws a card
- * - call-uno: Player calls UNO
+ * - call-uno: Player calls ONE
  * - chat: Send chat message
  * - player-joined: Player joined game
  * - player-left: Player left game
@@ -274,7 +274,7 @@ public class WebSocketGameController {
     }
 
     /**
-     * Handle UNO call via WebSocket
+     * Handle ONE call via WebSocket
      *
      * Client sends to: /app/game/{sessionId}/call-uno
      * Server broadcasts to: /topic/game/{sessionId}
@@ -287,10 +287,10 @@ public class WebSocketGameController {
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("WebSocket: Player {} calling UNO in session {}", principal.getName(), sessionId);
+        log.info("WebSocket: Player {} calling ONE in session {}", principal.getName(), sessionId);
 
         try {
-            // Broadcast UNO call to all players
+            // Broadcast ONE call to all players
             messagingTemplate.convertAndSend(
                     "/topic/game/" + sessionId,
                     Map.of(
@@ -301,7 +301,7 @@ public class WebSocketGameController {
             );
 
         } catch (Exception e) {
-            log.error("WebSocket: Error processing UNO call: {}", e.getMessage());
+            log.error("WebSocket: Error processing ONE call: {}", e.getMessage());
         }
     }
 

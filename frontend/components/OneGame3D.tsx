@@ -13,7 +13,7 @@
  * - Connected to GameContext for all actions
  * - Chat integration (LEFT)
  * - Player stats table (LEFT)
- * - UNO button (RIGHT)
+ * - ONE button (RIGHT)
  * - Emotes support
  */
 
@@ -47,12 +47,12 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
   const isMyTurn = isMyTurnFn();
 
-  // Check if player should call UNO
+  // Check if player should call ONE
   const shouldCallUno = currentPlayer && currentPlayer.hand.length === 1 && !currentPlayer.calledOne;
 
   // Log gameState changes
   useEffect(() => {
-    console.log('🎮 ========== ONE GAME 3D - GAMESTATE ACTUALIZADO ==========');
+    console.log('🎮 ========== ONE GAME 3D - GAMESTATE UPDATED ==========');
     console.log('   📊 gameState:', gameState);
     console.log('   👤 user:', user);
     console.log('   🎴 currentPlayer:', currentPlayer);
@@ -62,7 +62,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     console.log('   🎲 currentTurnPlayerId:', gameState?.currentTurnPlayerId);
     console.log('   🆔 currentPlayer.id:', currentPlayer?.id);
     if (currentPlayer?.hand) {
-      console.log('   🎴 Cartas en mano:');
+      console.log('   🎴 Cards in hand:');
       for (const card of currentPlayer.hand) {
         console.log(`      - ${card.color} ${card.value} (${card.id})`);
       }
@@ -120,18 +120,18 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     console.log('   🎮 gameState:', gameState);
 
     if (!isMyTurn) {
-      console.log('   ❌ No es tu turno');
+      console.log('   ❌ Not your turn');
       showError("Not your turn", "Wait for your turn to draw");
       return;
     }
 
     try {
-      console.log('   📤 Llamando drawCard()...');
+      console.log('   📤 Calling drawCard()...');
       await drawCard();
-      console.log('   ✅ drawCard() completado');
+      console.log('   ✅ drawCard() completed');
       success("Card drawn", "You drew a card");
     } catch (error: any) {
-      console.error('   ❌ Error en drawCard():', error);
+      console.error('   ❌ Error in drawCard():', error);
       showError("Error", error.message || "Could not draw card");
     }
     console.log('✅ =================================================');
@@ -307,15 +307,15 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR: UNO Button */}
+      {/* RIGHT SIDEBAR: ONE Button */}
       <div className="right-sidebar">
         {shouldCallUno && (
           <div className="uno-button-container">
-            <div className="uno-warning">⚠️ Call UNO!</div>
+            <div className="uno-warning">⚠️ Call ONE!</div>
             <button onClick={handleCallOne} className="uno-button pulsing">
               <div className="uno-logo">
-                <div className="uno-text">UNO</div>
-                <div className="uno-subtitle">¡ONE!</div>
+                <div className="uno-text">ONE</div>
+                <div className="uno-subtitle">ONE!</div>
               </div>
             </button>
             <div className="uno-hint">You have 1 card left!</div>

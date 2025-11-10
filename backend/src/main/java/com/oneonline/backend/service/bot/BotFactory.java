@@ -117,7 +117,7 @@ public final class BotFactory {
         tempBot.setPlayerId(originalPlayer.getPlayerId()); // Keep same player ID
         tempBot.setRoomLeader(originalPlayer.isRoomLeader());
         tempBot.setStatus(originalPlayer.getStatus());
-        tempBot.setCalledUno(originalPlayer.isCalledUno());
+        tempBot.setCalledUno(originalPlayer.isCalledUno()); // ONE call status
         tempBot.setConnected(true); // Bot is always connected
 
         log.info("Temporary bot created: {} replacing {}", tempNickname, originalPlayer.getNickname());
@@ -136,7 +136,7 @@ public final class BotFactory {
      * STATE RESTORATION:
      * - Hand is copied (may have changed during bot play)
      * - Score is copied (may have increased)
-     * - UNO call status is copied
+     * - ONE call status is copied
      * - Player is marked as connected
      *
      * Used for:
@@ -168,7 +168,7 @@ public final class BotFactory {
         // Restore updated state from bot to original player
         originalPlayer.setHand(tempBot.getHand()); // Restore hand (may have changed)
         originalPlayer.setScore(tempBot.getScore()); // Restore score (may have increased)
-        originalPlayer.setCalledUno(tempBot.isCalledUno()); // Restore UNO status
+        originalPlayer.setCalledUno(tempBot.isCalledUno()); // Restore ONE status
         originalPlayer.setConnected(true); // Mark player as reconnected
 
         log.info("Original player restored: {} (hand: {} cards, score: {})",

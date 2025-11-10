@@ -88,7 +88,7 @@ public class Player {
         if (hand.contains(card)) {
             hand.remove(card);
 
-            // Reset UNO call if player no longer has 1 card
+            // Reset ONE call if player no longer has 1 card
             if (hand.size() != 1) {
                 calledOne = false;
             }
@@ -107,7 +107,7 @@ public class Player {
         if (card != null) {
             hand.add(card);
 
-            // Reset UNO call when drawing cards
+            // Reset ONE call when drawing cards
             if (hand.size() > 1) {
                 calledOne = false;
             }
@@ -115,7 +115,7 @@ public class Player {
     }
 
     /**
-     * Check if player has UNO (exactly 1 card left)
+     * Check if player has ONE (exactly 1 card left)
      *
      * @return true if player has exactly 1 card
      */
@@ -175,9 +175,9 @@ public class Player {
     }
 
     /**
-     * Check if player should be penalized for not calling UNO
+     * Check if player should be penalized for not calling ONE
      *
-     * @return true if player has 1 card but didn't call UNO
+     * @return true if player has 1 card but didn't call ONE
      */
     public boolean shouldBePenalized() {
         return hasOne() && !calledOne;
@@ -236,18 +236,18 @@ public class Player {
     }
 
     /**
-     * Check if player has called UNO (alias for hasCalledOne)
+     * Check if player has called ONE (alias for hasCalledOne)
      *
-     * @return true if player called UNO
+     * @return true if player called ONE
      */
     public boolean isCalledUno() {
         return hasCalledOne();
     }
 
     /**
-     * Set the UNO call status
+     * Set the ONE call status
      *
-     * @param called Whether player has called UNO
+     * @param called Whether player has called ONE
      */
     public void setCalledUno(boolean called) {
         this.calledOne = called;
