@@ -112,6 +112,11 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }, [gameState, onStartGame, user])
 
+  // Verificar si el usuario actual es el líder
+  const isLeader = room && user && room.players.some(p =>
+    p.userEmail === user.email && p.id === room.leaderId
+  )
+
   // CRITICAL FIX: Poll room status for non-leaders
   // This is a workaround because backend doesn't send GAME_STARTED to room topic
   useEffect(() => {
@@ -178,11 +183,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
       clearInterval(pollInterval)
     }
   }, [room, user, isLeader, token, connectToGame])
-
-  // Verificar si el usuario actual es el líder
-  const isLeader = room && user && room.players.some(p =>
-    p.userEmail === user.email && p.id === room.leaderId
-  )
 
   // Debug: Log isLeader calculation
   useEffect(() => {
