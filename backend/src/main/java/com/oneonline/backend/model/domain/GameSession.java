@@ -346,6 +346,19 @@ public class GameSession {
     }
 
     /**
+     * Get current player (delegates to TurnManager)
+     *
+     * @return Current player whose turn it is
+     */
+    public Player getCurrentPlayer() {
+        if (turnManager != null) {
+            return turnManager.getCurrentPlayer();
+        }
+        // Fallback to field if TurnManager not initialized yet
+        return currentPlayer;
+    }
+
+    /**
      * Get configuration (alias method for compatibility)
      *
      * @return Game configuration
