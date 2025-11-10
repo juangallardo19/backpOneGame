@@ -36,7 +36,7 @@ interface GameRoomMenuProps {
 
 export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps) {
   const { user, token } = useAuth()
-  const { room: wsRoom, connectToGame } = useGame()
+  const { room: wsRoom, connectToGame, gameState } = useGame()
   const { success, error: showError } = useNotification()
 
   // Estado de la sala
@@ -84,6 +84,20 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
       setRoom(wsRoom)
     }
   }, [wsRoom])
+
+  // CRITICAL: Redirect ALL players when game starts
+  useEffect(() => {
+    if (gameState && gameState.status === 'PLAYING') {
+      console.log('🎮 Juego iniciado detectado, redirigiendo a todos los jugadores...')
+
+      // Wait a bit to ensure state is synced
+      setTimeout(() => {
+        if (onStartGame) {
+          onStartGame()
+        }
+      }, 500)
+    }
+  }, [gameState, onStartGame])
 
   // Verificar si el usuario actual es el líder
   const isLeader = room && user && room.players.some(p =>
