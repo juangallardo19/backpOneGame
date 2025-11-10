@@ -76,6 +76,7 @@ export interface Player {
 
 /**
  * Current player (you) - with visible cards
+ * Extends Player interface, inheriting all properties including calledOne
  */
 export interface CurrentPlayer extends Player {
   hand: Card[]; // Only the current player sees their cards
