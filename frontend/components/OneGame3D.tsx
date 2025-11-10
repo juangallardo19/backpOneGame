@@ -200,7 +200,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Helper to check if card can be played
   const canPlayCard = (card: Card) => {
-    if (!gameState.topCard) return true; // First card can be anything
+    if (!gameState?.topCard) return true; // First card can be anything
 
     const topCard = gameState.topCard;
 
