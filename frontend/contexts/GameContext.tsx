@@ -307,13 +307,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     console.log('🔍 Tipo de payload:', typeof payload);
     console.log('🔍 Keys del payload:', Object.keys(payload || {}));
 
-    // CRITICAL: Extract sessionId from payload
+    // CRITICAL: Extract sessionId AND roomCode from payload
     const newSessionId = payload.sessionId || payload.gameId;
+    const roomCode = payload.roomCode;
+
     console.log('🆔 SessionId extraído del payload:', newSessionId);
+    console.log('🏠 RoomCode extraído del payload:', roomCode);
     console.log('🆔 SessionId actual:', sessionId);
 
-    if (!newSessionId) {
-      console.error('❌ No se encontró sessionId en el payload de GAME_STARTED');
+    if (!newSessionId || !roomCode) {
+      console.error('❌ No se encontró sessionId o roomCode en el payload de GAME_STARTED');
       return;
     }
 
@@ -330,9 +333,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return;
     }
 
-    // CRITICAL: Reconnect to game WebSocket with sessionId
+    // CRITICAL: Reconnect to game WebSocket with ROOMCODE (not sessionId)
     // This is essential for non-leader players who are still connected to room WebSocket
-    console.log('🔄 Reconectando al WebSocket del juego con sessionId:', newSessionId);
+    console.log('🔄 Reconectando al WebSocket del juego...');
+    console.log('   🆔 SessionId:', newSessionId);
+    console.log('   🏠 RoomCode (para WebSocket):', roomCode);
 
     try {
       // Get current token
@@ -347,9 +352,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       // Wait a bit before reconnecting
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Reconnect to game WebSocket
-      console.log('🔌 Reconectando al WebSocket del juego...');
-      const wsService = getWebSocketService(newSessionId, currentToken || undefined);
+      // CRITICAL FIX: Use roomCode instead of sessionId for WebSocket subscription
+      console.log('🔌 Reconectando al WebSocket del juego usando roomCode:', roomCode);
+      const wsService = getWebSocketService(roomCode, currentToken || undefined);
       wsServiceRef.current = wsService;
       setSessionId(newSessionId);
 
@@ -397,8 +402,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const transformedState = transformBackendGameState(payload);
       setGameState(transformedState);
 
-      // CRITICAL FIX: Fetch room data using roomCode from payload
-      const roomCode = payload.roomCode || newSessionId;
+      // Fetch room data using roomCode from payload
       console.log('🔑 Room code para obtener info de sala:', roomCode);
 
       if (roomCode) {
