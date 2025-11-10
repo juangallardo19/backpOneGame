@@ -244,13 +244,88 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, []);
 
-  const handleGameStarted = useCallback((payload: any) => {
+  const handleGameStarted = useCallback(async (payload: any) => {
     console.log('🎯 GAME_STARTED evento recibido!');
     console.log('📦 Payload completo:', payload);
     console.log('🔍 Tipo de payload:', typeof payload);
     console.log('🔍 Keys del payload:', Object.keys(payload || {}));
 
-    // CRITICAL: Update game status to PLAYING immediately
+    // CRITICAL: Extract sessionId from payload
+    const newSessionId = payload.sessionId || payload.gameId;
+    console.log('🆔 SessionId extraído del payload:', newSessionId);
+    console.log('🆔 SessionId actual:', sessionId);
+
+    if (!newSessionId) {
+      console.error('❌ No se encontró sessionId en el payload de GAME_STARTED');
+      return;
+    }
+
+    // Check if we're already connected to this game (leader already reconnected manually)
+    if (sessionId === newSessionId) {
+      console.log('✅ Ya estamos conectados a este juego, solo actualizando estado');
+      // Just update game state to PLAYING
+      setGameState(prev => {
+        console.log('🔄 Actualizando gameState a PLAYING');
+        const newState = prev ? { ...prev, status: GameStatus.PLAYING } : null;
+        console.log('✨ Nuevo gameState:', newState);
+        return newState;
+      });
+      return;
+    }
+
+    // CRITICAL: Reconnect to game WebSocket with sessionId
+    // This is essential for non-leader players who are still connected to room WebSocket
+    console.log('🔄 Reconectando al WebSocket del juego con sessionId:', newSessionId);
+
+    try {
+      // Get current token
+      const currentToken = localStorage.getItem('uno_auth_token');
+
+      // Disconnect from room WebSocket and reconnect to game WebSocket
+      if (wsServiceRef.current) {
+        console.log('🔌 Desconectando del WebSocket anterior...');
+        wsServiceRef.current.disconnect();
+      }
+
+      // Wait a bit before reconnecting
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Reconnect to game WebSocket
+      console.log('🔌 Reconectando al WebSocket del juego...');
+      const wsService = getWebSocketService(newSessionId, currentToken || undefined);
+      wsServiceRef.current = wsService;
+      setSessionId(newSessionId);
+
+      // Suscribirse a eventos
+      wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
+      wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
+      wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
+      wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
+      wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));
+      wsService.on(GameEventType.CARD_DRAWN, (event) => handleCardDrawn(event.payload));
+      wsService.on(GameEventType.TURN_CHANGED, (event) => handleTurnChanged(event.payload));
+      wsService.on(GameEventType.ONE_CALLED, (event) => handleUnoCall(event.payload));
+      wsService.on(GameEventType.ONE_PENALTY, (event) => handleUnoPenalty(event.payload));
+      wsService.on(GameEventType.DIRECTION_REVERSED, (event) => handleDirectionReversed(event.payload));
+      wsService.on(GameEventType.COLOR_CHANGED, (event) => handleColorChanged(event.payload));
+      wsService.on(GameEventType.MESSAGE_RECEIVED, (event) => handleMessageReceived(event.payload));
+      wsService.on(GameEventType.EMOTE_RECEIVED, (event) => handleEmoteReceived(event.payload));
+      wsService.on(GameEventType.ERROR, (event) => handleError(event.payload));
+
+      // Connect
+      await wsService.connect();
+      setIsConnected(true);
+
+      // Notificar al servidor que nos unimos
+      wsService.notifyJoin();
+
+      console.log('✅ Reconectado al WebSocket del juego exitosamente');
+    } catch (error) {
+      console.error('❌ Error al reconectar al WebSocket del juego:', error);
+    }
+
+    // Update game status to PLAYING immediately
     // This triggers the redirect in GameRoomMenu for ALL players
     setGameState(prev => {
       console.log('🔄 Actualizando gameState anterior:', prev);
@@ -261,20 +336,37 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     // If payload contains full game state, use it
     if (payload && payload.sessionId) {
-      console.log('📡 Payload contiene sessionId, transformando estado completo...');
+      console.log('📡 Payload contiene estado completo, transformando...');
       const transformedState = transformBackendGameState(payload);
       setGameState(transformedState);
     } else {
-      console.log('⚠️ Payload NO contiene sessionId, solicitando estado completo...');
-      // Request full game state after game starts
-      if (wsServiceRef.current?.isConnected()) {
-        setTimeout(() => {
+      console.log('⚠️ Payload NO contiene estado completo, solicitando...');
+      // Request full game state after reconnecting
+      setTimeout(() => {
+        if (wsServiceRef.current?.isConnected()) {
           console.log('📡 Solicitando estado completo del juego...');
-          wsServiceRef.current?.requestGameState();
-        }, 200);
-      }
+          wsServiceRef.current.requestGameState();
+        }
+      }, 500);
     }
-  }, [transformBackendGameState]);
+  }, [
+    sessionId,
+    transformBackendGameState,
+    handleGameStateUpdate,
+    handlePlayerJoined,
+    handlePlayerLeft,
+    handleGameEnded,
+    handleCardPlayed,
+    handleCardDrawn,
+    handleTurnChanged,
+    handleUnoCall,
+    handleUnoPenalty,
+    handleDirectionReversed,
+    handleColorChanged,
+    handleMessageReceived,
+    handleEmoteReceived,
+    handleError,
+  ]);
 
   const handleGameEnded = useCallback((payload: any) => {
     console.log('🏆 Juego terminado:', payload);
