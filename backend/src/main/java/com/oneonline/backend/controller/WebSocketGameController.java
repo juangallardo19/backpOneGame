@@ -343,7 +343,13 @@ public class WebSocketGameController {
     /**
      * Handle player joining room
      *
-     * @param sessionId Game session ID
+     * CRITICAL FIX: When a player joins/reconnects to an active game session,
+     * send them their current game state including their hand.
+     *
+     * This fixes the issue where guests reconnect after the game starts
+     * and miss the initial card distribution.
+     *
+     * @param sessionId Game session ID (could be roomCode or actual sessionId)
      * @param principal Authenticated user (may be null if not authenticated)
      */
     @MessageMapping("/game/{sessionId}/join")
@@ -357,9 +363,65 @@ public class WebSocketGameController {
             return; // Silently ignore unauthenticated join attempts
         }
 
-        log.info("WebSocket: Player {} joining session {}", principal.getName(), sessionId);
+        log.info("🎮 [WebSocket] Player {} joining session {}", principal.getName(), sessionId);
 
-        // Notify all players
+        try {
+            // Try to find game session (could be sessionId or roomCode)
+            GameSession session = null;
+            try {
+                session = gameManager.getSession(sessionId);
+            } catch (Exception e) {
+                log.debug("Session not found with ID {}, ignoring", sessionId);
+            }
+
+            // If session exists and game is in progress, send player their current state
+            if (session != null && session.getStatus() == GameSession.GameStatus.PLAYING) {
+                log.info("🎯 [WebSocket] Game in progress, sending state to {}", principal.getName());
+
+                // Find player in session
+                Player player = session.getPlayers().stream()
+                        .filter(p -> p.getNickname().equals(principal.getName()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (player != null && !(player instanceof BotPlayer)) {
+                    log.info("👤 [WebSocket] Player found in session, sending personal state");
+
+                    // Send general game state to the player
+                    GameStateResponse generalState = buildGameStateResponse(session);
+                    messagingTemplate.convertAndSend(
+                            "/topic/game/" + session.getSessionId(),
+                            Map.of(
+                                    "eventType", "GAME_STATE_UPDATE",
+                                    "timestamp", System.currentTimeMillis(),
+                                    "data", generalState
+                            )
+                    );
+
+                    // Send personal state with hand to the reconnecting player
+                    GameStateResponse personalState = buildPersonalGameState(session, player);
+                    log.info("🃏 [WebSocket] Sending {} cards to {}",
+                            personalState.getHand() != null ? personalState.getHand().size() : 0,
+                            player.getNickname());
+
+                    messagingTemplate.convertAndSendToUser(
+                            player.getNickname(),
+                            "/queue/game-state",
+                            personalState
+                    );
+
+                    log.info("✅ [WebSocket] Personal state sent to {}", player.getNickname());
+                } else {
+                    log.debug("Player {} not found in session or is a bot", principal.getName());
+                }
+            } else {
+                log.debug("Session {} is not in PLAYING state or doesn't exist", sessionId);
+            }
+        } catch (Exception e) {
+            log.error("❌ [WebSocket] Error handling player join: {}", e.getMessage(), e);
+        }
+
+        // Notify all players about the join (regardless of session state)
         messagingTemplate.convertAndSend(
                 "/topic/game/" + sessionId,
                 Map.of(
