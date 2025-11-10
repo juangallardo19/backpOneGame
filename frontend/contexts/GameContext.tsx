@@ -320,77 +320,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return;
     }
 
-    // Check if we're already connected to this game (leader already reconnected manually)
-    if (sessionId === newSessionId) {
-      console.log('✅ Ya estamos conectados a este juego, solo actualizando estado');
-      // Just update game state to PLAYING
-      setGameState(prev => {
-        console.log('🔄 Actualizando gameState a PLAYING');
-        const newState = prev ? { ...prev, status: GameStatus.PLAYING } : null;
-        console.log('✨ Nuevo gameState:', newState);
-        return newState;
-      });
-      return;
-    }
-
-    // CRITICAL: Reconnect to game WebSocket with ROOMCODE (not sessionId)
-    // This is essential for non-leader players who are still connected to room WebSocket
-    console.log('🔄 Reconectando al WebSocket del juego...');
-    console.log('   🆔 SessionId:', newSessionId);
-    console.log('   🏠 RoomCode (para WebSocket):', roomCode);
-
-    try {
-      // Get current token
-      const currentToken = localStorage.getItem('uno_auth_token');
-
-      // Disconnect from room WebSocket and reconnect to game WebSocket
-      if (wsServiceRef.current) {
-        console.log('🔌 Desconectando del WebSocket anterior...');
-        wsServiceRef.current.disconnect();
-      }
-
-      // Wait a bit before reconnecting
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // CRITICAL FIX: Use roomCode instead of sessionId for WebSocket subscription
-      console.log('🔌 Reconectando al WebSocket del juego usando roomCode:', roomCode);
-      const wsService = getWebSocketService(roomCode, currentToken || undefined);
-      wsServiceRef.current = wsService;
-      setSessionId(newSessionId);
-
-      // Suscribirse a eventos
-      wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
-      wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
-      wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
-      wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
-      wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
-      wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));
-      wsService.on(GameEventType.CARD_DRAWN, (event) => handleCardDrawn(event.payload));
-      wsService.on(GameEventType.TURN_CHANGED, (event) => handleTurnChanged(event.payload));
-      wsService.on(GameEventType.ONE_CALLED, (event) => handleUnoCall(event.payload));
-      wsService.on(GameEventType.ONE_PENALTY, (event) => handleUnoPenalty(event.payload));
-      wsService.on(GameEventType.DIRECTION_REVERSED, (event) => handleDirectionReversed(event.payload));
-      wsService.on(GameEventType.COLOR_CHANGED, (event) => handleColorChanged(event.payload));
-      wsService.on(GameEventType.MESSAGE_RECEIVED, (event) => handleMessageReceived(event.payload));
-      wsService.on(GameEventType.EMOTE_RECEIVED, (event) => handleEmoteReceived(event.payload));
-      wsService.on(GameEventType.ERROR, (event) => handleError(event.payload));
-
-      // Connect
-      await wsService.connect();
-      setIsConnected(true);
-
-      // Notificar al servidor que nos unimos
-      wsService.notifyJoin();
-
-      console.log('✅ Reconectado al WebSocket del juego exitosamente');
-    } catch (error) {
-      console.error('❌ Error al reconectar al WebSocket del juego:', error);
-    }
+    // CRITICAL FIX: Don't reconnect if we're already on the correct WebSocket
+    // Players are already subscribed to /topic/game/{roomCode} from the start
+    // We just need to update the sessionId state
+    console.log('✅ Ya estamos conectados al WebSocket correcto (roomCode: {})', roomCode);
+    console.log('🔄 Actualizando sessionId en el estado...');
+    setSessionId(newSessionId);
 
     // Update game status to PLAYING immediately
-    // This triggers the redirect in GameRoomMenu for ALL players
     setGameState(prev => {
-      console.log('🔄 Actualizando gameState anterior:', prev);
+      console.log('🔄 Actualizando gameState a PLAYING');
       const newState = prev ? { ...prev, status: GameStatus.PLAYING } : null;
       console.log('✨ Nuevo gameState:', newState);
       return newState;
