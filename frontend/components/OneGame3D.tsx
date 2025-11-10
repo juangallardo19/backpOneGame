@@ -11,7 +11,9 @@
  * - 3D card visualization
  * - Real-time game state from WebSocket
  * - Connected to GameContext for all actions
- * - Chat integration
+ * - Chat integration (LEFT)
+ * - Player stats table (LEFT)
+ * - UNO button (RIGHT)
  * - Emotes support
  */
 
@@ -44,6 +46,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // FIXED: Use the isMyTurn function from context instead of comparing user.id
   // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
   const isMyTurn = isMyTurnFn();
+
+  // Check if player should call UNO
+  const shouldCallUno = currentPlayer && currentPlayer.hand.length === 1 && !currentPlayer.calledOne;
 
   // Log gameState changes
   useEffect(() => {
@@ -142,57 +147,38 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
-  // RF50: Send emote
-  const handleSendEmote = async (emoji: string) => {
-    try {
-      await sendEmote(emoji);
+  // Available emojis
+  const availableEmojis = ['😀', '😂', '😎', '🔥', '👍', '❤️', '😮', '😤', '🎉', '💪', '🤔', '👏'];
 
-      // Show emoji on player's profile for 3 seconds
-      if (user?.id) {
-        setPlayerEmojis(prev => ({ ...prev, [user.id]: emoji }));
-        setTimeout(() => {
-          setPlayerEmojis(prev => {
-            const newEmojis = { ...prev };
-            delete newEmojis[user.id];
-            return newEmojis;
-          });
-        }, 3000);
-      }
+  // Handle send emote
+  const handleSendEmote = (emoji: string) => {
+    sendEmote(emoji);
+    setShowEmojiPicker(false);
 
-      setShowEmojiPicker(false);
-    } catch (error: any) {
-      showError("Error", error.message || "Could not send emote");
+    // Show emoji on player for 3 seconds
+    if (currentPlayer?.id) {
+      setPlayerEmojis(prev => ({ ...prev, [currentPlayer.id]: emoji }));
+      setTimeout(() => {
+        setPlayerEmojis(prev => {
+          const newEmojis = { ...prev };
+          delete newEmojis[currentPlayer.id];
+          return newEmojis;
+        });
+      }, 3000);
     }
   };
 
-  // Available emojis for quick selection
-  const availableEmojis = [
-    '😀', '😂', '😍', '🤔', '😎', '🤯',
-    '👍', '👎', '👏', '🙌', '✌️', '👋',
-    '❤️', '🔥', '⭐', '🎉', '🎊', '💯',
-    '😡', '😢', '😱', '🤬', '😴', '🥳'
-  ];
-
-  // Listen for emotes from other players (via chatMessages)
+  // Listen to emotes from other players
   useEffect(() => {
-    if (!chatMessages || chatMessages.length === 0) return;
-
-    // Get the latest message
     const latestMessage = chatMessages[chatMessages.length - 1];
-
-    // Check if it's an emote message
-    if (latestMessage.message && latestMessage.playerId && latestMessage.playerId !== user?.id) {
-      // Check if message is an emoji (single character that's an emoji)
-      const isEmoji = /^\p{Emoji}$/u.test(latestMessage.message);
-
-      if (isEmoji) {
-        // Display emoji on the player's profile for 3 seconds
-        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
-
+    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.userId !== user?.id) {
+      // Show emoji on that player
+      if (latestMessage.userId) {
+        setPlayerEmojis(prev => ({ ...prev, [latestMessage.userId!]: latestMessage.message }));
         setTimeout(() => {
           setPlayerEmojis(prev => {
             const newEmojis = { ...prev };
-            delete newEmojis[latestMessage.playerId];
+            delete newEmojis[latestMessage.userId!];
             return newEmojis;
           });
         }, 3000);
@@ -210,6 +196,35 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       case 'WILD': return 'card-wild';
       default: return '';
     }
+  };
+
+  // Helper to check if card can be played
+  const canPlayCard = (card: Card) => {
+    if (!gameState.topCard) return true; // First card can be anything
+
+    const topCard = gameState.topCard;
+
+    // Wild cards can always be played
+    if (card.color === 'WILD' || card.type === 'WILD') {
+      return true;
+    }
+
+    // Match color
+    if (card.color === topCard.color) {
+      return true;
+    }
+
+    // Match value
+    if (card.value === topCard.value) {
+      return true;
+    }
+
+    // Match type (for action cards)
+    if (card.type === topCard.type && card.type !== 'NUMBER') {
+      return true;
+    }
+
+    return false;
   };
 
   // Loading state
@@ -243,15 +258,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
 
         <div className="game-actions">
-          {currentPlayer && currentPlayer.hand.length === 1 && (
-            <Button
-              onClick={handleCallOne}
-              className="one-btn pulsing"
-            >
-              🎯 CALL ONE!
-            </Button>
-          )}
-
           {/* RF50: Emoji button */}
           <Button
             onClick={() => setShowEmojiPicker(true)}
@@ -264,12 +270,65 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
       </div>
 
+      {/* LEFT SIDEBAR: Chat + Player Stats */}
+      <div className="left-sidebar">
+        {/* Player Stats Table */}
+        <div className="player-stats-panel">
+          <h3 className="panel-title">👥 Players</h3>
+          <div className="player-stats-list">
+            {gameState.players?.map((player) => (
+              <div
+                key={player.id}
+                className={`player-stat-item ${
+                  gameState.currentTurnPlayerId === player.id ? 'active-turn' : ''
+                } ${player.id === currentPlayer?.id ? 'is-you' : ''}`}
+              >
+                <div className="player-stat-info">
+                  <span className="player-stat-name">
+                    {player.nickname}
+                    {player.id === currentPlayer?.id && ' (You)'}
+                  </span>
+                  <span className="player-stat-cards">
+                    🃏 {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
+                    {player.calledOne && ' 🎯'}
+                  </span>
+                </div>
+                {gameState.currentTurnPlayerId === player.id && (
+                  <div className="turn-indicator-mini">▶</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chat */}
+        <div className="chat-container-wrapper">
+          <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
+        </div>
+      </div>
+
+      {/* RIGHT SIDEBAR: UNO Button */}
+      <div className="right-sidebar">
+        {shouldCallUno && (
+          <div className="uno-button-container">
+            <div className="uno-warning">⚠️ Call UNO!</div>
+            <button onClick={handleCallOne} className="uno-button pulsing">
+              <div className="uno-logo">
+                <div className="uno-text">UNO</div>
+                <div className="uno-subtitle">¡ONE!</div>
+              </div>
+            </button>
+            <div className="uno-hint">You have 1 card left!</div>
+          </div>
+        )}
+      </div>
+
       {/* Game Board */}
       <div className="game-board">
         {/* Other Players */}
         <div className="other-players">
           {gameState.players
-            ?.filter(p => p.id !== user?.id)
+            ?.filter(p => p.id !== currentPlayer?.id)
             .map((player, idx) => (
               <div key={player.id} className="player-card">
                 <div className="player-info">
@@ -312,7 +371,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <div className="hand-title">Your Hand ({currentPlayer?.hand.length || 0} cards)</div>
           <div className="hand-cards">
             {currentPlayer?.hand.map((card) => {
-              const canPlay = gameState.playableCardIds?.includes(card.id);
+              // FIXED: Use local canPlayCard function instead of playableCardIds
+              const canPlay = canPlayCard(card);
 
               return (
                 <div
@@ -400,9 +460,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
       )}
 
-      {/* Chat Component (RF45, RF49) */}
-      <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
-
       <style jsx>{`
         .one-game-3d {
           position: fixed;
@@ -434,81 +491,291 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           margin: 0;
         }
 
-        .one-btn {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          color: white;
-          font-weight: 700;
-          border: none;
-          padding: 0.75rem 1.5rem;
+        /* LEFT SIDEBAR: Chat + Player Stats */
+        .left-sidebar {
+          position: fixed;
+          left: 0;
+          top: 80px;
+          bottom: 0;
+          width: 300px;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          padding: 1rem;
+          z-index: 50;
+        }
+
+        .player-stats-panel {
+          background: rgba(0, 0, 0, 0.7);
           border-radius: 12px;
+          padding: 1rem;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-title {
+          font-size: 1rem;
+          font-weight: 700;
+          margin: 0 0 0.75rem 0;
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .player-stats-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .player-stat-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.2s;
+        }
+
+        .player-stat-item.active-turn {
+          background: rgba(76, 175, 80, 0.2);
+          border-color: #4CAF50;
+          box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .player-stat-item.is-you {
+          border-color: rgba(33, 150, 243, 0.5);
+          background: rgba(33, 150, 243, 0.1);
+        }
+
+        .player-stat-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .player-stat-name {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .player-stat-cards {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .turn-indicator-mini {
+          color: #4CAF50;
+          font-size: 1.2rem;
+          animation: pulse-mini 1s infinite;
+        }
+
+        @keyframes pulse-mini {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .chat-container-wrapper {
+          flex: 1;
+          overflow: hidden;
+        }
+
+        /* RIGHT SIDEBAR: UNO Button */
+        .right-sidebar {
+          position: fixed;
+          right: 20px;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 50;
+        }
+
+        .uno-button-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .uno-warning {
+          background: rgba(244, 67, 54, 0.9);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          animation: flash 1s infinite;
+          box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+        }
+
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+
+        .uno-button {
+          width: 150px;
+          height: 150px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          border: 5px solid white;
+          box-shadow: 0 8px 24px rgba(245, 87, 108, 0.6);
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .one-btn.pulsing {
-          animation: pulse 1s infinite;
+        .uno-button:hover {
+          transform: scale(1.1);
+          box-shadow: 0 12px 32px rgba(245, 87, 108, 0.8);
         }
 
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+        .uno-button.pulsing {
+          animation: pulse-uno 1s infinite;
+        }
+
+        @keyframes pulse-uno {
+          0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 8px 24px rgba(245, 87, 108, 0.6);
+          }
+          50% {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(245, 87, 108, 0.9);
+          }
+        }
+
+        .uno-logo {
+          text-align: center;
+        }
+
+        .uno-text {
+          font-size: 3rem;
+          font-weight: 900;
+          color: white;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+          line-height: 1;
+        }
+
+        .uno-subtitle {
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.9);
+          margin-top: 0.25rem;
+        }
+
+        .uno-hint {
+          background: rgba(0, 0, 0, 0.7);
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.9);
+          text-align: center;
         }
 
         .game-board {
+          position: absolute;
+          left: 320px;
+          right: 200px;
+          top: 80px;
+          bottom: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
           padding: 2rem;
-          display: grid;
-          grid-template-rows: auto 1fr auto auto;
-          height: calc(100vh - 80px);
-          gap: 1.5rem;
         }
 
         .other-players {
           display: flex;
           gap: 1rem;
           justify-content: center;
-          flex-wrap: wrap;
         }
 
         .player-card {
-          background: rgba(255, 255, 255, 0.1);
-          padding: 0.75rem 1.5rem;
-          border-radius: 12px;
-          border: 2px solid rgba(255, 255, 255, 0.2);
           position: relative;
+          background: rgba(255, 255, 255, 0.1);
+          padding: 1rem;
+          border-radius: 12px;
+          min-width: 150px;
+          backdrop-filter: blur(10px);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .player-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
         }
 
         .player-name {
           font-weight: 600;
-          margin-right: 0.5rem;
+          font-size: 0.9rem;
         }
 
         .player-cards {
           color: rgba(255, 255, 255, 0.7);
-          font-size: 0.9rem;
+          font-size: 0.8rem;
         }
 
         .turn-indicator {
           position: absolute;
           top: -10px;
           right: -10px;
-          font-size: 1.5rem;
-          animation: bounce 0.5s infinite;
+          background: #4CAF50;
+          color: white;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          animation: pulse 1s infinite;
         }
 
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
+
+        .player-emoji {
+          position: absolute;
+          bottom: -10px;
+          right: -10px;
+          font-size: 2rem;
+          animation: emoji-bounce 0.5s;
+        }
+
+        @keyframes emoji-bounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.3); }
         }
 
         .center-area {
           display: flex;
           gap: 3rem;
-          justify-content: center;
           align-items: center;
+          justify-content: center;
         }
 
         .draw-pile, .discard-pile {
           position: relative;
+        }
+
+        .draw-pile {
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+
+        .draw-pile:hover {
+          transform: translateY(-5px);
         }
 
         .pile-card {
@@ -519,20 +786,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          font-size: 2rem;
-          font-weight: 800;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-          transition: transform 0.2s;
-          cursor: pointer;
-        }
-
-        .pile-card:hover {
-          transform: translateY(-5px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+          position: relative;
+          overflow: hidden;
         }
 
         .card-back {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: 3px solid white;
+        }
+
+        .card-pattern {
+          font-size: 2rem;
+          font-weight: 900;
           color: white;
+          opacity: 0.3;
         }
 
         .pile-count {
@@ -540,45 +808,59 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           bottom: 10px;
           right: 10px;
           background: rgba(0, 0, 0, 0.7);
+          color: white;
           padding: 0.25rem 0.5rem;
           border-radius: 6px;
-          font-size: 0.9rem;
+          font-weight: 700;
         }
 
         .draw-hint {
-          text-align: center;
-          margin-top: 0.5rem;
-          color: rgba(255, 255, 255, 0.7);
+          position: absolute;
+          bottom: -30px;
+          left: 50%;
+          transform: translateX(-50%);
           font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.8);
+          white-space: nowrap;
         }
 
-        .card-red { background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%); color: white; }
-        .card-yellow { background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%); color: #333; }
-        .card-green { background: linear-gradient(135deg, #51cf66 0%, #2b8a3e 100%); color: white; }
-        .card-blue { background: linear-gradient(135deg, #4dabf7 0%, #1971c2 100%); color: white; }
-        .card-wild { background: linear-gradient(135deg, #ff6b6b 0%, #ffd43b 25%, #51cf66 50%, #4dabf7 75%, #ff6b6b 100%); color: white; }
+        .card-value, .card-color {
+          font-weight: 800;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-value {
+          font-size: 3rem;
+        }
+
+        .card-color {
+          font-size: 0.9rem;
+          opacity: 0.8;
+        }
+
+        .card-red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+        .card-yellow { background: linear-gradient(135deg, #feca57 0%, #ee5a6f 100%); }
+        .card-green { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+        .card-blue { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
+        .card-wild { background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); }
 
         .player-hand {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
+          width: 100%;
+          max-width: 800px;
         }
 
         .hand-title {
           text-align: center;
+          margin-bottom: 1rem;
           font-weight: 600;
           font-size: 1.1rem;
         }
 
         .hand-cards {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.75rem;
           justify-content: center;
           flex-wrap: wrap;
-          padding: 1rem;
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 16px;
-          min-height: 150px;
         }
 
         .hand-card {
@@ -589,39 +871,46 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          font-size: 1.5rem;
-          font-weight: 700;
-          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-          transition: all 0.2s;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+          transition: all 0.3s;
+          border: 2px solid white;
           cursor: pointer;
           position: relative;
         }
 
         .hand-card.playable {
-          border: 3px solid #51cf66;
-          cursor: pointer;
+          transform: translateY(-10px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(76, 175, 80, 0.6);
+          border-color: #4CAF50;
         }
 
         .hand-card.playable:hover {
-          transform: translateY(-10px) scale(1.05);
-          box-shadow: 0 10px 25px rgba(81, 207, 102, 0.5);
+          transform: translateY(-15px) scale(1.05);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(76, 175, 80, 0.8);
         }
 
         .hand-card.disabled {
-          opacity: 0.5;
+          opacity: 0.6;
           cursor: not-allowed;
         }
 
         .hand-card.selected {
-          transform: translateY(-10px);
-          border: 3px solid white;
+          transform: translateY(-20px) scale(1.1);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(33, 150, 243, 0.8);
+          border-color: #2196F3;
         }
 
         .card-value-small {
+          font-size: 0.8rem;
+          font-weight: 700;
           position: absolute;
           top: 5px;
           left: 5px;
-          font-size: 0.9rem;
+        }
+
+        .card-symbol {
+          font-size: 2rem;
+          font-weight: 800;
         }
 
         .game-stats {
@@ -629,7 +918,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           gap: 2rem;
           justify-content: center;
           padding: 1rem;
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(0, 0, 0, 0.5);
           border-radius: 12px;
         }
 
@@ -641,14 +930,16 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         .stat-label {
           color: rgba(255, 255, 255, 0.7);
+          font-size: 0.9rem;
         }
 
         .stat-value {
+          color: white;
           font-weight: 700;
-          font-size: 1.2rem;
+          font-size: 1.1rem;
         }
 
-        .color-picker-modal {
+        .color-picker-modal, .emoji-picker-modal {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.8);
@@ -659,17 +950,18 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         .modal-content {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
           padding: 2rem;
-          border-radius: 20px;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
           border: 2px solid rgba(255, 255, 255, 0.2);
-          text-align: center;
+          min-width: 300px;
         }
 
         .modal-content h3 {
-          margin-bottom: 1.5rem;
+          margin: 0 0 1.5rem 0;
           font-size: 1.5rem;
+          text-align: center;
         }
 
         .color-options {
@@ -680,126 +972,52 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         .color-btn {
-          padding: 1.5rem 2rem;
-          border: none;
-          border-radius: 12px;
-          font-size: 1.1rem;
+          padding: 1rem;
+          border: 2px solid white;
+          border-radius: 8px;
           font-weight: 700;
           cursor: pointer;
           transition: transform 0.2s;
+          color: white;
         }
 
         .color-btn:hover {
           transform: scale(1.05);
         }
 
-        .color-btn-red { background: linear-gradient(135deg, #ff6b6b, #c92a2a); color: white; }
-        .color-btn-yellow { background: linear-gradient(135deg, #ffd43b, #fab005); color: #333; }
-        .color-btn-green { background: linear-gradient(135deg, #51cf66, #2b8a3e); color: white; }
-        .color-btn-blue { background: linear-gradient(135deg, #4dabf7, #1971c2); color: white; }
-
-        .emoji-picker-modal {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-        }
-
-        .emoji-modal {
-          min-width: 400px;
-          max-width: 500px;
-        }
+        .color-btn-red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+        .color-btn-yellow { background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%); }
+        .color-btn-green { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+        .color-btn-blue { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
 
         .emoji-grid {
           display: grid;
           grid-template-columns: repeat(6, 1fr);
           gap: 0.75rem;
           margin-bottom: 1.5rem;
-          padding: 1rem;
-          background: rgba(0, 0, 0, 0.2);
-          border-radius: 12px;
         }
 
         .emoji-option {
           background: rgba(255, 255, 255, 0.1);
           border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          padding: 1rem;
-          font-size: 2rem;
+          border-radius: 8px;
+          padding: 0.75rem;
+          font-size: 1.5rem;
           cursor: pointer;
           transition: all 0.2s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
         }
 
         .emoji-option:hover {
-          background: rgba(255, 255, 255, 0.2);
-          border-color: rgba(81, 207, 102, 0.6);
           transform: scale(1.1);
-        }
-
-        .emoji-btn {
-          background: rgba(255, 193, 7, 0.2);
-          border: 2px solid rgba(255, 193, 7, 0.5);
-          color: #ffc107;
-          padding: 0.75rem 1.5rem;
-          border-radius: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .emoji-btn:hover {
-          background: rgba(255, 193, 7, 0.3);
-          border-color: rgba(255, 193, 7, 0.8);
-          transform: scale(1.05);
-        }
-
-        .player-emoji {
-          position: absolute;
-          top: -10px;
-          right: -10px;
-          font-size: 2.5rem;
-          background: rgba(0, 0, 0, 0.7);
-          border-radius: 50%;
-          width: 60px;
-          height: 60px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 3px solid rgba(255, 193, 7, 0.8);
-          animation: emojiPop 0.3s ease-out;
-          z-index: 10;
-        }
-
-        @keyframes emojiPop {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.2);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
+          background: rgba(255, 255, 255, 0.2);
         }
 
         .game-loading {
-          position: fixed;
-          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
+          height: 100vh;
           background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
           color: white;
         }
@@ -807,10 +1025,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .spinner {
           width: 50px;
           height: 50px;
-          border: 4px solid rgba(255, 255, 255, 0.1);
-          border-top-color: #51cf66;
+          border: 4px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
           border-radius: 50%;
           animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
         }
 
         @keyframes spin {
