@@ -43,11 +43,13 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
     if (!message.trim()) return;
 
     try {
+      console.log('💬 Enviando mensaje:', message.trim());
       // Send message via WebSocket (RF45, RF49)
-      await sendMessage(message.trim());
+      sendMessage(message.trim());
+      console.log('✅ Mensaje enviado correctamente');
       setMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
     }
   };
 
@@ -95,7 +97,8 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
               </div>
             ) : (
               chatMessages.map((msg, index) => {
-                const isOwnMessage = msg.playerId === user?.id;
+                // Compare with user email instead of id since playerId might be different
+                const isOwnMessage = msg.playerNickname === user?.nickname || msg.playerId === user?.id;
 
                 return (
                   <div

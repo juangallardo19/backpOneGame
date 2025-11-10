@@ -648,8 +648,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   const sendMessage = useCallback((message: string) => {
+    console.log('📤 GameContext.sendMessage llamado con:', message);
     if (wsServiceRef.current?.isConnected()) {
+      console.log('✅ WebSocket conectado, enviando mensaje...');
       wsServiceRef.current.sendMessage(message);
+    } else {
+      console.warn('⚠️ WebSocket no conectado, no se puede enviar mensaje');
     }
   }, []);
 
