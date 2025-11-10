@@ -120,7 +120,7 @@ public class WebSocketGameController {
                 generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
                 generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
             log.info("   📚 Cartas en mazo: {}", generalState.getDeckSize());
-            log.info("   🔄 Dirección: {}", generalState.isClockwise() ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
+            log.info("   🔄 Dirección: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
 
             messagingTemplate.convertAndSend(
                     "/topic/game/" + sessionId,
