@@ -1,6 +1,9 @@
 package com.oneonline.backend.config;
 
+import com.oneonline.backend.security.WebSocketAuthInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -36,7 +39,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  */
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
 
     /**
      * Configure message broker for routing messages
@@ -94,5 +100,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     "https://oneonline-frontend.vercel.app" // Production frontend
                 )
                 .withSockJS();  // Enable SockJS fallback for older browsers
+    }
+
+    /**
+     * Configure client inbound channel interceptors
+     *
+     * CRITICAL: Register JWT authentication interceptor here
+     *
+     * This interceptor runs BEFORE any message is processed, allowing us to:
+     * 1. Extract JWT token from connection headers/params
+     * 2. Validate the token
+     * 3. Set authenticated Principal in WebSocket session
+     * 4. All subsequent messages will have authenticated user
+     *
+     * Without this, guest players cannot receive their cards because
+     * Principal is null and they fail authentication checks.
+     *
+     * @param registration Channel registration
+     */
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(webSocketAuthInterceptor);
     }
 }
