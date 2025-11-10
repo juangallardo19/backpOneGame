@@ -250,11 +250,20 @@ export class WebSocketService {
     // Backend sends messages with an "eventType" field (not "type")
     const type = (payload.eventType || payload.type) as GameEventType;
 
-    return {
+    console.log('🔄 convertToGameEvent:');
+    console.log('  📥 Payload recibido:', payload);
+    console.log('  🏷️ eventType detectado:', type);
+    console.log('  📦 data extraída:', payload.data || payload);
+
+    const gameEvent = {
       type: type || GameEventType.GAME_STATE_UPDATE,
       payload: payload.data || payload,
       timestamp: payload.timestamp || Date.now(),
     };
+
+    console.log('  ✨ GameEvent creado:', gameEvent);
+
+    return gameEvent;
   }
 
   /**
@@ -293,15 +302,25 @@ export class WebSocketService {
    * Manejar eventos recibidos
    */
   private handleEvent(event: GameEvent): void {
+    // CRITICAL: Log all events for debugging
+    console.log('🎬 handleEvent llamado');
+    console.log('  📋 Event type:', event.type);
+    console.log('  📦 Event payload:', event.payload);
+    console.log('  ⏰ Event timestamp:', event.timestamp);
+
     // Llamar callbacks específicos del tipo de evento
     const typeCallbacks = this.eventCallbacks.get(event.type);
     if (typeCallbacks) {
+      console.log(`  ✅ Ejecutando ${typeCallbacks.size} callbacks para tipo: ${event.type}`);
       typeCallbacks.forEach((callback) => callback(event));
+    } else {
+      console.log(`  ⚠️ No hay callbacks registrados para tipo: ${event.type}`);
     }
 
     // Llamar callbacks generales (escuchan todos los eventos)
     const allCallbacks = this.eventCallbacks.get('ALL');
     if (allCallbacks) {
+      console.log(`  ✅ Ejecutando ${allCallbacks.size} callbacks generales`);
       allCallbacks.forEach((callback) => callback(event));
     }
   }

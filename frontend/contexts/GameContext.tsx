@@ -245,23 +245,36 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   const handleGameStarted = useCallback((payload: any) => {
-    console.log('🎯 Juego iniciado:', payload);
+    console.log('🎯 GAME_STARTED evento recibido!');
+    console.log('📦 Payload completo:', payload);
+    console.log('🔍 Tipo de payload:', typeof payload);
+    console.log('🔍 Keys del payload:', Object.keys(payload || {}));
+
+    // CRITICAL: Update game status to PLAYING immediately
+    // This triggers the redirect in GameRoomMenu for ALL players
+    setGameState(prev => {
+      console.log('🔄 Actualizando gameState anterior:', prev);
+      const newState = prev ? { ...prev, status: GameStatus.PLAYING } : null;
+      console.log('✨ Nuevo gameState:', newState);
+      return newState;
+    });
 
     // If payload contains full game state, use it
-    if (payload && payload.gameId) {
-      setGameState(payload);
+    if (payload && payload.sessionId) {
+      console.log('📡 Payload contiene sessionId, transformando estado completo...');
+      const transformedState = transformBackendGameState(payload);
+      setGameState(transformedState);
     } else {
-      // Otherwise, just update status and request full state
-      setGameState(prev => prev ? { ...prev, status: GameStatus.PLAYING } : null);
-
+      console.log('⚠️ Payload NO contiene sessionId, solicitando estado completo...');
       // Request full game state after game starts
       if (wsServiceRef.current?.isConnected()) {
         setTimeout(() => {
+          console.log('📡 Solicitando estado completo del juego...');
           wsServiceRef.current?.requestGameState();
         }, 200);
       }
     }
-  }, []);
+  }, [transformBackendGameState]);
 
   const handleGameEnded = useCallback((payload: any) => {
     console.log('🏆 Juego terminado:', payload);
