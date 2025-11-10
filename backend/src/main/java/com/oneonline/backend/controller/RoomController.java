@@ -621,7 +621,7 @@ public class RoomController {
                     .cardId(topCard.getCardId())
                     .type(topCard.getType().name())
                     .color(topCard.getColor().name())
-                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .value(topCard.getValue())  // Send actual value from card
                     .build();
         }
 
@@ -672,7 +672,7 @@ public class RoomController {
                     .cardId(topCard.getCardId())
                     .type(topCard.getType().name())
                     .color(topCard.getColor().name())
-                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .value(topCard.getValue())  // Send actual value from card
                     .build();
         }
 
@@ -682,7 +682,7 @@ public class RoomController {
                         .cardId(card.getCardId())
                         .type(card.getType().name())
                         .color(card.getColor().name())
-                        .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                        .value(card.getValue())  // Send actual value from card
                         .build())
                 .collect(Collectors.toList());
 
