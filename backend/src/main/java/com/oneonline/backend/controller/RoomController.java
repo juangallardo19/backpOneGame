@@ -508,21 +508,27 @@ public class RoomController {
      * Send initial game state to all players after game starts.
      *
      * This method sends two types of messages:
-     * 1. General game state (without hands) to /topic/game/{sessionId}
+     * 1. General game state (without hands) to /topic/game/{roomCode}
      * 2. Personal game state (with hand) to each player via /user/{nickname}/queue/game-state
+     *
+     * CRITICAL: Use roomCode instead of sessionId for WebSocket topic
+     * because clients are subscribed to /topic/game/{roomCode}
      *
      * @param session Game session that just started
      */
     private void sendInitialGameState(GameSession session) {
         String sessionId = session.getSessionId();
+        String roomCode = session.getRoom().getRoomCode();
 
         // Build and broadcast general game state (without hands)
         log.info("🔨 [RoomController] Building general game state...");
         GameStateResponse generalState = buildGameStateResponse(session);
 
         log.info("📤 [RoomController] ========== SENDING INITIAL GENERAL STATE ==========");
-        log.info("   🎯 Destination: /topic/game/{}", sessionId);
-        log.info("   📋 SessionId: {}", generalState.getSessionId());
+        log.info("   🆔 SessionId: {}", sessionId);
+        log.info("   🏠 RoomCode: {}", roomCode);
+        log.info("   🎯 Destination: /topic/game/{}", roomCode);
+        log.info("   📋 GameState SessionId: {}", generalState.getSessionId());
         log.info("   🎮 Status: {}", generalState.getStatus());
         log.info("   👥 Players: {}", generalState.getPlayers().size());
         for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
@@ -535,8 +541,9 @@ public class RoomController {
         log.info("   📚 Deck size: {}", generalState.getDeckSize());
         log.info("   🔄 Direction: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
 
+        // CRITICAL: Use roomCode instead of sessionId for the topic
         messagingTemplate.convertAndSend(
-                "/topic/game/" + sessionId,
+                "/topic/game/" + roomCode,
                 Map.of(
                         "eventType", "GAME_STATE_UPDATE",
                         "timestamp", System.currentTimeMillis(),
