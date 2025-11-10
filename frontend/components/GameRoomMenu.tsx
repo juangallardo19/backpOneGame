@@ -112,6 +112,73 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }, [gameState, onStartGame, user])
 
+  // CRITICAL FIX: Poll room status for non-leaders
+  // This is a workaround because backend doesn't send GAME_STARTED to room topic
+  useEffect(() => {
+    if (!room || !user || isLeader) {
+      return; // Only poll for non-leaders
+    }
+
+    console.log('🔄 [POLLING] Iniciando polling para detectar inicio de juego (jugador no líder)')
+
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log('🔍 [POLLING] Verificando si el juego ya inició...')
+
+        // Check room status
+        const updatedRoom = await roomService.getRoomByCode(room.code)
+
+        console.log('📊 [POLLING] Estado de sala:', updatedRoom.status)
+
+        if (updatedRoom.status === 'IN_GAME' || updatedRoom.status === 'PLAYING') {
+          console.log('🎮 [POLLING] ¡Juego iniciado detectado! Necesitamos reconectar...')
+
+          // The room is now in game, we need to get the sessionId
+          // Try to get game state to find sessionId
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'
+          const authToken = token || localStorage.getItem('uno_auth_token')
+
+          // Try to find the active game for this room
+          // We'll try with the roomCode first to see if backend redirects us
+          const gameUrl = `${apiUrl}/api/game/${room.code}/state`
+          console.log('🔍 [POLLING] Intentando obtener sessionId del juego:', gameUrl)
+
+          const gameResponse = await fetch(gameUrl, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          })
+
+          if (gameResponse.ok) {
+            const gameData = await gameResponse.json()
+            const sessionId = gameData.sessionId
+
+            console.log('✅ [POLLING] SessionId encontrado:', sessionId)
+            console.log('🔌 [POLLING] Reconectando al juego...')
+
+            // Stop polling
+            clearInterval(pollInterval)
+
+            // Reconnect to game
+            await connectToGame(sessionId, authToken || '')
+
+            console.log('✅ [POLLING] Reconectado exitosamente, gameState debería actualizarse pronto')
+          } else {
+            console.warn('⚠️ [POLLING] No se pudo obtener sessionId aún, reintentando...')
+          }
+        }
+      } catch (error) {
+        console.error('❌ [POLLING] Error:', error)
+      }
+    }, 2000) // Poll every 2 seconds
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🛑 [POLLING] Deteniendo polling')
+      clearInterval(pollInterval)
+    }
+  }, [room, user, isLeader, token, connectToGame])
+
   // Verificar si el usuario actual es el líder
   const isLeader = room && user && room.players.some(p =>
     p.userEmail === user.email && p.id === room.leaderId
