@@ -29,7 +29,7 @@ interface OneGame3DProps {
 }
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
-  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote } = useGame();
+  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote, isMyTurn: isMyTurnFn } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
@@ -41,7 +41,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Get current player from gameState
   const currentPlayer = gameState?.currentPlayer;
-  const isMyTurn = gameState?.currentTurnPlayerId === user?.id;
+  // FIXED: Use the isMyTurn function from context instead of comparing user.id
+  // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
+  const isMyTurn = isMyTurnFn();
 
   // Log gameState changes
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     console.log('   📏 hand size:', currentPlayer?.hand?.length);
     console.log('   🎯 isMyTurn:', isMyTurn);
     console.log('   🎲 currentTurnPlayerId:', gameState?.currentTurnPlayerId);
-    console.log('   🆔 user.id:', user?.id);
+    console.log('   🆔 currentPlayer.id:', currentPlayer?.id);
     if (currentPlayer?.hand) {
       console.log('   🎴 Cartas en mano:');
       for (const card of currentPlayer.hand) {
