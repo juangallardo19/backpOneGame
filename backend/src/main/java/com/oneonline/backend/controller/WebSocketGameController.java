@@ -2,6 +2,7 @@ package com.oneonline.backend.controller;
 
 import com.oneonline.backend.dto.response.GameStateResponse;
 import com.oneonline.backend.model.domain.*;
+import com.oneonline.backend.model.enums.GameStatus;
 import com.oneonline.backend.service.game.GameEngine;
 import com.oneonline.backend.service.game.GameManager;
 import lombok.RequiredArgsConstructor;
@@ -375,7 +376,7 @@ public class WebSocketGameController {
             }
 
             // If session exists and game is in progress, send player their current state
-            if (session != null && session.getStatus() == GameSession.GameStatus.PLAYING) {
+            if (session != null && session.getStatus() == GameStatus.PLAYING) {
                 log.info("🎯 [WebSocket] Game in progress, sending state to {}", principal.getName());
 
                 // Find player in session
