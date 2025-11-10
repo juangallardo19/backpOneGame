@@ -87,17 +87,30 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // CRITICAL: Redirect ALL players when game starts
   useEffect(() => {
+    console.log('🔍 [REDIRECT CHECK] gameState cambió:', {
+      hasGameState: !!gameState,
+      status: gameState?.status,
+      sessionId: gameState?.sessionId
+    })
+
     if (gameState && gameState.status === 'PLAYING') {
-      console.log('🎮 Juego iniciado detectado, redirigiendo a todos los jugadores...')
+      console.log('🎮 [REDIRECT] Juego iniciado detectado! Redirigiendo a todos los jugadores...')
+      console.log('📍 [REDIRECT] Usuario actual:', user?.email)
+      console.log('🎯 [REDIRECT] Estado del juego:', gameState)
 
       // Wait a bit to ensure state is synced
       setTimeout(() => {
+        console.log('🚀 [REDIRECT] Ejecutando redirección...')
         if (onStartGame) {
           onStartGame()
+        } else {
+          console.error('❌ [REDIRECT] onStartGame no está definido!')
         }
       }, 500)
+    } else {
+      console.log('⏸️ [REDIRECT] No se redirige - condiciones no cumplidas')
     }
-  }, [gameState, onStartGame])
+  }, [gameState, onStartGame, user])
 
   // Verificar si el usuario actual es el líder
   const isLeader = room && user && room.players.some(p =>
@@ -219,29 +232,34 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
 
     try {
-      console.log("🎮 Iniciando juego desde sala:", room.code)
+      console.log("🎮 [LÍDER] Iniciando juego desde sala:", room.code)
+      console.log("👥 [LÍDER] Jugadores en sala:", room.players.map(p => p.nickname))
 
       // Use the new endpoint that starts game from roomCode
       const result = await gameService.startGameFromRoom(room.code)
 
-      console.log("✅ Juego iniciado:", result)
-      console.log("📝 Session ID:", result.sessionId)
+      console.log("✅ [LÍDER] Juego iniciado exitosamente")
+      console.log("📝 [LÍDER] Session ID:", result.sessionId)
+      console.log("🔑 [LÍDER] Room Code anterior:", room.code)
 
       // CRITICAL: Connect to game WebSocket with the sessionId
-      console.log("🔌 Conectando al WebSocket del juego con sessionId:", result.sessionId)
+      console.log("🔌 [LÍDER] Conectando al WebSocket del juego con sessionId:", result.sessionId)
       await connectToGame(result.sessionId, token || '')
+
+      console.log("✅ [LÍDER] Conectado al WebSocket del juego")
 
       success("¡Juego iniciado!", "La partida ha comenzado")
 
       // Wait a bit for WebSocket to connect and sync state
       setTimeout(() => {
+        console.log("🚀 [LÍDER] Navegando a /game")
         // Navigate to game with the sessionId
         if (onStartGame) {
           onStartGame()
         }
       }, 500)
     } catch (error: any) {
-      console.error("❌ Error al iniciar juego:", error)
+      console.error("❌ [LÍDER] Error al iniciar juego:", error)
       const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"
       showError("Error", errorMessage)
     }
