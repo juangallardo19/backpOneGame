@@ -349,23 +349,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
       }, 500);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sessionId,
     transformBackendGameState,
-    handleGameStateUpdate,
-    handlePlayerJoined,
-    handlePlayerLeft,
-    handleGameEnded,
-    handleCardPlayed,
-    handleCardDrawn,
-    handleTurnChanged,
-    handleUnoCall,
-    handleUnoPenalty,
-    handleDirectionReversed,
-    handleColorChanged,
-    handleMessageReceived,
-    handleEmoteReceived,
-    handleError,
+    // Note: Other handlers are not in dependencies because they're captured as closures
+    // when creating the new WebSocket service. Adding them would cause circular dependencies.
   ]);
 
   const handleGameEnded = useCallback((payload: any) => {
