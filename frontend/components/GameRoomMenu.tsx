@@ -130,7 +130,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
         console.log('📊 [POLLING] Estado de sala:', updatedRoom.status)
 
-        if (updatedRoom.status === 'IN_GAME' || updatedRoom.status === 'PLAYING') {
+        if (updatedRoom.status === 'IN_GAME') {
           console.log('🎮 [POLLING] ¡Juego iniciado detectado! Necesitamos reconectar...')
 
           // The room is now in game, we need to get the sessionId
@@ -484,7 +484,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                       className={`preset-card ${selectedPreset === preset.id ? 'selected' : ''}`}
                       onClick={() => applyPreset(preset.id)}
                     >
-                      {preset.icon && <img src={preset.icon} alt={preset.name} className="preset-icon" />}
+                      {preset.icon && <Image src={preset.icon} alt={preset.name} width={48} height={48} className="preset-icon" />}
                       <div className="preset-info">
                         <span className="preset-name">{preset.name}</span>
                         <span className="preset-desc">{preset.description}</span>
