@@ -136,41 +136,17 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         console.log('📊 [POLLING] Estado de sala:', updatedRoom.status)
 
         if (updatedRoom.status === 'IN_GAME' || updatedRoom.status === 'IN_PROGRESS') {
-          console.log('🎮 [POLLING] ¡Juego iniciado detectado! Necesitamos reconectar...')
+          console.log('🎮 [POLLING] ¡Juego iniciado detectado!')
+          console.log('⚠️ [POLLING] Esperando evento GAME_STARTED por WebSocket...')
+          console.log('💡 [POLLING] El sessionId será recibido automáticamente vía WebSocket')
 
-          // The room is now in game, we need to get the sessionId
-          // Try to get game state to find sessionId
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'
-          const authToken = token || localStorage.getItem('uno_auth_token')
+          // CRITICAL FIX: Don't try to fetch game state with roomCode
+          // The endpoint /api/game/{sessionId}/state requires sessionId (UUID), not roomCode
+          // Instead, we rely on the GAME_STARTED WebSocket event which contains the sessionId
 
-          // Try to find the active game for this room
-          // We'll try with the roomCode first to see if backend redirects us
-          const gameUrl = `${apiUrl}/api/game/${room.code}/state`
-          console.log('🔍 [POLLING] Intentando obtener sessionId del juego:', gameUrl)
-
-          const gameResponse = await fetch(gameUrl, {
-            headers: {
-              'Authorization': `Bearer ${authToken}`
-            }
-          })
-
-          if (gameResponse.ok) {
-            const gameData = await gameResponse.json()
-            const sessionId = gameData.sessionId
-
-            console.log('✅ [POLLING] SessionId encontrado:', sessionId)
-            console.log('🔌 [POLLING] Reconectando al juego...')
-
-            // Stop polling
-            clearInterval(pollInterval)
-
-            // Reconnect to game
-            await connectToGame(sessionId, authToken || '')
-
-            console.log('✅ [POLLING] Reconectado exitosamente, gameState debería actualizarse pronto')
-          } else {
-            console.warn('⚠️ [POLLING] No se pudo obtener sessionId aún, reintentando...')
-          }
+          // Stop polling - WebSocket will handle the reconnection
+          clearInterval(pollInterval)
+          console.log('🛑 [POLLING] Polling detenido, confiando en WebSocket para reconexión')
         }
       } catch (error) {
         console.error('❌ [POLLING] Error:', error)
