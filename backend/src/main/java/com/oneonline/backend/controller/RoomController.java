@@ -542,14 +542,24 @@ public class RoomController {
         log.info("   🔄 Direction: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
 
         // CRITICAL: Use roomCode instead of sessionId for the topic
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + roomCode,
-                Map.of(
-                        "eventType", "GAME_STATE_UPDATE",
-                        "timestamp", System.currentTimeMillis(),
-                        "data", generalState
-                )
-        );
+        // IMPORTANT: Send as GAME_STARTED event with full game state so frontend can:
+        // 1. Recognize this as game initialization
+        // 2. Trigger WebSocket reconnection for non-leaders
+        // 3. Transform and apply the complete game state
+        Map<String, Object> gameStartedMessage = new java.util.HashMap<>();
+        gameStartedMessage.put("eventType", "GAME_STARTED");
+        gameStartedMessage.put("timestamp", System.currentTimeMillis());
+        gameStartedMessage.put("sessionId", generalState.getSessionId());
+        gameStartedMessage.put("roomCode", roomCode);
+        gameStartedMessage.put("status", generalState.getStatus());
+        gameStartedMessage.put("players", generalState.getPlayers());
+        gameStartedMessage.put("currentPlayerId", generalState.getCurrentPlayerId());
+        gameStartedMessage.put("topCard", generalState.getTopCard());
+        gameStartedMessage.put("deckSize", generalState.getDeckSize());
+        gameStartedMessage.put("clockwise", generalState.getClockwise());
+        gameStartedMessage.put("config", generalState.getConfig());
+
+        messagingTemplate.convertAndSend("/topic/game/" + roomCode, gameStartedMessage);
         log.info("✅ [RoomController] General state SENT successfully");
 
         // Send each player their personal hand
