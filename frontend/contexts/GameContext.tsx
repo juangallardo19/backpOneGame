@@ -346,7 +346,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       if (roomCode) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
-        const authToken = currentToken || localStorage.getItem('uno_auth_token');
+        const authToken = localStorage.getItem('uno_auth_token');
 
         fetch(`${apiUrl}/api/rooms/${roomCode}`, {
           headers: {
