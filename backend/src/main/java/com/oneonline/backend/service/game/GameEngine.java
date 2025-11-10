@@ -437,8 +437,7 @@ public class GameEngine {
 
                     // Check if bot should call ONE
                     if (bot.getHandSize() == 1 && botStrategy.shouldCallOne(bot)) {
-                        bot.callOne();
-                        oneManager.handleOneCall(bot, session);
+                        oneManager.callOne(bot, session);
                         log.info("🔔 Bot {} called ONE!", bot.getNickname());
                     }
 
