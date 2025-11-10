@@ -20,6 +20,7 @@ const mapBackendRoomToFrontend = (backendRoom: any): Room => {
     status: p.status || 'WAITING',
     cardCount: 0, // Will be updated during game
     hasCalledUno: false,
+    calledOne: false,
     profilePicture: undefined,
     position: undefined,
   }));
@@ -155,11 +156,16 @@ export const roomService = {
   },
 
   /**
-   * Agregar bot
+   * Agregar bot con dificultad general
+   * La dificultad es fija (NORMAL/2) para comportamiento realista consistente
+   * Backend expects: { roomCode: string, difficulty: Integer }
    */
-  addBot: async (code: string, difficulty: 'EASY' | 'NORMAL' | 'HARD' = 'NORMAL'): Promise<Room> => {
+  addBot: async (code: string): Promise<Room> => {
     try {
-      const response = await api.post<any>(API_ENDPOINTS.ADD_BOT(code), { difficulty });
+      const response = await api.post<any>(API_ENDPOINTS.ADD_BOT(code), {
+        roomCode: code,
+        difficulty: 2 // NORMAL - Dificultad general fija para comportamiento realista
+      });
       return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;

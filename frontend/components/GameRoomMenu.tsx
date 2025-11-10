@@ -216,13 +216,13 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }
 
-  // Agregar bot
+  // Agregar bot (dificultad general fija para comportamiento realista)
   const handleAddBot = async () => {
     if (!room) return
 
     try {
       console.log("🤖 Agregando bot a la sala...")
-      const updatedRoom = await roomService.addBot(room.code, "NORMAL")
+      const updatedRoom = await roomService.addBot(room.code)
       console.log("✅ Bot agregado:", updatedRoom)
       setRoom(updatedRoom)
       success("Bot agregado", "Un bot se ha unido a la sala")
@@ -359,16 +359,35 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           const isPlayerLeader = player.id === room.leaderId
 
           return (
-            <div key={player.id} className={`player-card ${isPlayerLeader ? 'leader-card' : ''}`}>
-              <div className="player-info">
-                {isPlayerLeader && (
-                  <div className="leader-badge">
-                    <Crown className="crown-icon" size={18} />
-                    <span className="leader-label">LÍDER</span>
+            <div key={player.id} className={`player-card ${isPlayerLeader ? 'leader-card' : ''} ${player.isBot ? 'bot-card' : ''}`}>
+              <div className="player-avatar">
+                {player.isBot ? (
+                  <div className="avatar-bot">
+                    <Bot size={24} />
+                  </div>
+                ) : (
+                  <div className="avatar-human">
+                    <Users size={24} />
                   </div>
                 )}
-                {player.isBot && <Bot className="bot-icon" size={16} />}
-                <span className="player-name">{player.nickname}</span>
+              </div>
+
+              <div className="player-info">
+                <div className="player-name-container">
+                  {isPlayerLeader && (
+                    <Crown className="crown-icon-inline" size={16} />
+                  )}
+                  <span className="player-name">{player.nickname}</span>
+                </div>
+                <div className="player-status">
+                  {isPlayerLeader ? (
+                    <span className="status-badge leader-status">LÍDER</span>
+                  ) : player.isBot ? (
+                    <span className="status-badge bot-status">BOT</span>
+                  ) : (
+                    <span className="status-badge player-status">JUGADOR</span>
+                  )}
+                </div>
               </div>
 
               {/* Acciones del líder */}
@@ -406,8 +425,18 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         {/* Slots vacíos */}
         {Array.from({ length: emptySlots }, (_, idx) => (
           <div key={`empty-${idx}`} className="player-card empty">
+            <div className="player-avatar">
+              <div className="avatar-empty">
+                <Users size={24} />
+              </div>
+            </div>
             <div className="player-info">
-              <span className="player-name">VACÍO</span>
+              <div className="player-name-container">
+                <span className="player-name empty-name">Esperando jugador...</span>
+              </div>
+              <div className="player-status">
+                <span className="status-badge empty-status">VACÍO</span>
+              </div>
             </div>
           </div>
         ))}
@@ -841,57 +870,176 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .players-grid {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 1rem;
         }
 
         .player-card {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 8px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          gap: 1rem;
+          padding: 1.25rem;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+          border-radius: 12px;
+          border: 2px solid rgba(255, 255, 255, 0.1);
           transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(10px);
+        }
+
+        .player-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          transition: left 0.5s ease;
+        }
+
+        .player-card:hover::before {
+          left: 100%;
         }
 
         .player-card.leader-card {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
-          border: 2px solid rgba(255, 215, 0, 0.4);
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.1));
+          border: 2px solid rgba(255, 215, 0, 0.5);
+          box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .player-card.bot-card {
+          background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.08));
+          border: 2px solid rgba(96, 165, 250, 0.3);
         }
 
         .player-card.empty {
-          opacity: 0.4;
+          opacity: 0.5;
+          border-style: dashed;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .player-avatar {
+          flex-shrink: 0;
+        }
+
+        .avatar-human,
+        .avatar-bot,
+        .avatar-empty {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        }
+
+        .avatar-human {
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          border: 3px solid rgba(59, 130, 246, 0.3);
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+          color: white;
+        }
+
+        .avatar-bot {
+          background: linear-gradient(135deg, #60a5fa, #3b82f6);
+          border: 3px solid rgba(96, 165, 250, 0.4);
+          box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+          color: white;
+          animation: pulse-bot 2s infinite;
+        }
+
+        @keyframes pulse-bot {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(96, 165, 250, 0.6);
+          }
+        }
+
+        .avatar-empty {
+          background: rgba(255, 255, 255, 0.05);
+          border: 3px dashed rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.3);
         }
 
         .player-info {
           display: flex;
-          align-items: center;
-          gap: 0.75rem;
+          flex-direction: column;
+          gap: 0.5rem;
           flex: 1;
         }
 
-        .leader-badge {
+        .player-name-container {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          background: rgba(255, 215, 0, 0.2);
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 215, 0, 0.4);
         }
 
-        .leader-label {
+        .crown-icon-inline {
           color: #FFD700;
-          font-weight: 700;
-          font-size: 0.75rem;
-          letter-spacing: 0.05em;
+          animation: crown-glow 2s infinite;
+        }
+
+        @keyframes crown-glow {
+          0%, 100% {
+            filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.5));
+          }
+          50% {
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+          }
         }
 
         .player-name {
           color: white;
-          font-weight: 600;
-          font-size: 0.95rem;
+          font-weight: 700;
+          font-size: 1rem;
+          letter-spacing: 0.02em;
+        }
+
+        .player-name.empty-name {
+          color: rgba(255, 255, 255, 0.4);
+          font-style: italic;
+        }
+
+        .player-status {
+          display: flex;
+          align-items: center;
+        }
+
+        .status-badge {
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+
+        .leader-status {
+          background: rgba(255, 215, 0, 0.2);
+          color: #FFD700;
+          border: 1px solid rgba(255, 215, 0, 0.4);
+        }
+
+        .bot-status {
+          background: rgba(96, 165, 250, 0.2);
+          color: #60A5FA;
+          border: 1px solid rgba(96, 165, 250, 0.4);
+        }
+
+        .player-status {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22C55E;
+          border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        .empty-status {
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .crown-icon {
