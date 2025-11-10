@@ -276,6 +276,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         status: PlayerStatus.ACTIVE,
         cardCount: 0,
         hasCalledUno: false,
+        calledOne: false,
       };
 
       console.log('✅ Adding player to room:', newPlayer);
@@ -429,6 +430,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
               status: p.status || PlayerStatus.ACTIVE,
               cardCount: 0,
               hasCalledUno: false,
+              calledOne: false,
             }));
 
             console.log('👥 [GAME_STARTED] Jugadores mapeados:', players);
@@ -521,7 +523,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       id: Date.now().toString(),
       playerId: payload.playerId,
       playerNickname: payload.playerNickname || 'Jugador',
-      type: 'UNO_CALL',
+      type: 'ONE_CALL',
       timestamp: Date.now(),
     };
     setGameMoves(prev => [...prev, move]);
@@ -534,7 +536,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       id: Date.now().toString(),
       playerId: payload.playerId,
       playerNickname: payload.playerNickname || 'Jugador',
-      type: 'UNO_PENALTY',
+      type: 'ONE_PENALTY',
       timestamp: Date.now(),
     };
     setGameMoves(prev => [...prev, move]);
@@ -638,6 +640,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             status: p.status || PlayerStatus.ACTIVE,
             cardCount: 0,
             hasCalledUno: false,
+            calledOne: false,
           }));
 
           console.log('👥 Jugadores mapeados:', players);
@@ -720,6 +723,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     status: p.status || PlayerStatus.ACTIVE,
                     cardCount: 0,
                     hasCalledUno: false,
+                    calledOne: false,
                   }));
 
                   console.log('👥 Jugadores mapeados:', players);
