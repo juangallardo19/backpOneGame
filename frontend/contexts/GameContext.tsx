@@ -381,45 +381,40 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🎮 Conectando al juego:', newSessionId);
+      console.log('🎮 Conectando al juego/sala:', newSessionId);
 
       // Desconectar sesión anterior si existe
       if (wsServiceRef.current) {
         wsServiceRef.current.disconnect();
       }
 
-      // Obtener estado del juego desde el backend ANTES de conectar WebSocket
+      // Obtener estado desde el backend ANTES de conectar WebSocket
+      // IMPORTANTE: Distinguir entre sala (pre-juego) y juego activo
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
-        const stateUrl = `${apiUrl}/api/game/${newSessionId}/state`;
+        const authToken = token || localStorage.getItem('uno_auth_token');
 
-        console.log('🌐 Solicitando estado del juego:', stateUrl);
-        console.log('🔑 Token:', token ? 'Presente' : 'No presente');
+        // Primero intentar obtener como SALA (pre-juego)
+        const roomUrl = `${apiUrl}/api/rooms/${newSessionId}`;
+        console.log('🏠 Intentando obtener sala:', roomUrl);
+        console.log('🔑 Token:', authToken ? 'Presente' : 'No presente');
 
-        const response = await fetch(stateUrl, {
+        const roomResponse = await fetch(roomUrl, {
           headers: {
-            'Authorization': `Bearer ${token || localStorage.getItem('uno_auth_token')}`
+            'Authorization': `Bearer ${authToken}`
           }
         });
 
-        console.log('📊 Respuesta del servidor:', {
-          status: response.status,
-          ok: response.ok,
-          statusText: response.statusText
+        console.log('📊 Respuesta de sala:', {
+          status: roomResponse.status,
+          ok: roomResponse.ok,
+          statusText: roomResponse.statusText
         });
 
-        if (response.ok) {
-          const gameStateData = await response.json();
-          console.log('📡 Estado del juego obtenido:', gameStateData);
-
-          // Transform and set the game state
-          const transformedState = transformBackendGameState(gameStateData);
-          console.log('✨ Estado transformado final:', transformedState);
-          setGameState(transformedState);
-
-          // Also try to get room data
-          const roomData = gameStateData.room || {};
-          console.log('📡 Información de sala:', roomData);
+        if (roomResponse.ok) {
+          // Es una SALA (pre-juego)
+          const roomData = await roomResponse.json();
+          console.log('📡 Información de sala obtenida:', roomData);
 
           // Map players from backend PlayerInfo to frontend Player format
           const players = (roomData.players || []).map((p: any) => ({
@@ -441,7 +436,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             leaderId: roomData.hostId,
             isPrivate: roomData.isPrivate || false,
             status: roomData.status || 'WAITING',
-            players: players, // NOW we map the players correctly!
+            players: players,
             maxPlayers: roomData.maxPlayers || 4,
             config: {
               maxPlayers: roomData.maxPlayers || 4,
@@ -452,17 +447,83 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             },
             createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
           });
+
+          console.log('✅ Sala configurada correctamente en contexto');
         } else {
-          // Response not OK - log error
-          const errorText = await response.text();
-          console.error('❌ Error al obtener estado del juego:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
+          // Si falla como sala, intentar como JUEGO ACTIVO
+          console.log('ℹ️ No es sala, intentando como juego activo...');
+
+          const gameUrl = `${apiUrl}/api/game/${newSessionId}/state`;
+          console.log('🎮 Intentando obtener estado del juego:', gameUrl);
+
+          const gameResponse = await fetch(gameUrl, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
           });
+
+          console.log('📊 Respuesta del juego:', {
+            status: gameResponse.status,
+            ok: gameResponse.ok,
+            statusText: gameResponse.statusText
+          });
+
+          if (gameResponse.ok) {
+            const gameStateData = await gameResponse.json();
+            console.log('📡 Estado del juego obtenido:', gameStateData);
+
+            // Transform and set the game state
+            const transformedState = transformBackendGameState(gameStateData);
+            console.log('✨ Estado transformado final:', transformedState);
+            setGameState(transformedState);
+
+            // Also get room data from game response
+            const roomData = gameStateData.room || {};
+            console.log('📡 Información de sala desde juego:', roomData);
+
+            // Map players from backend PlayerInfo to frontend Player format
+            const players = (roomData.players || []).map((p: any) => ({
+              id: p.playerId,
+              nickname: p.nickname,
+              userEmail: p.userEmail || '',
+              isBot: p.isBot || false,
+              status: p.status || PlayerStatus.ACTIVE,
+              cardCount: 0,
+              hasCalledUno: false,
+            }));
+
+            console.log('👥 Jugadores mapeados:', players);
+
+            // Convertir RoomResponse a Room format
+            setRoom({
+              code: roomData.roomCode,
+              name: roomData.roomName || `Sala ${roomData.roomCode}`,
+              leaderId: roomData.hostId,
+              isPrivate: roomData.isPrivate || false,
+              status: roomData.status || 'IN_GAME',
+              players: players,
+              maxPlayers: roomData.maxPlayers || 4,
+              config: {
+                maxPlayers: roomData.maxPlayers || 4,
+                pointsToWin: roomData.config?.pointsToWin || 500,
+                turnTimeLimit: roomData.config?.turnTimeLimit || 60,
+                allowStackingDrawCards: roomData.config?.allowStackingCards || true,
+                preset: 'CLASSIC'
+              },
+              createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
+            });
+          } else {
+            // Ambos fallaron - log error
+            const errorText = await gameResponse.text();
+            console.error('❌ Error al obtener estado (ni sala ni juego):', {
+              status: gameResponse.status,
+              statusText: gameResponse.statusText,
+              error: errorText
+            });
+          }
         }
       } catch (err) {
-        console.error('❌ Error en fetch de estado del juego:', err);
+        console.error('❌ Error en fetch de estado:', err);
       }
 
       // Crear nueva instancia de WebSocket
