@@ -86,6 +86,11 @@ public class GameSession {
     private Player winner;
 
     /**
+     * Turn manager instance (single instance per game session)
+     */
+    private TurnManager turnManager;
+
+    /**
      * Start the game session
      */
     public void start() {
@@ -116,6 +121,9 @@ public class GameSession {
         // Setup turn order with ALL players (humans + bots)
         turnOrder.clear();
         turnOrder.addAll(room.getAllPlayers());
+
+        // Reset turn manager to force creation of new instance
+        turnManager = null;
 
         // Place first card on discard pile
         Card firstCard = mainDeck.drawCard();
@@ -325,12 +333,16 @@ public class GameSession {
     }
 
     /**
-     * Get turn manager (alias method for compatibility)
+     * Get turn manager (creates singleton instance if not exists)
      *
-     * @return Turn manager
+     * @return Turn manager instance
      */
     public TurnManager getTurnManager() {
-        return new TurnManager(new ArrayList<>(turnOrder));
+        if (turnManager == null) {
+            turnManager = new TurnManager(new ArrayList<>(turnOrder));
+            log.debug("TurnManager instance created for session {}", sessionId);
+        }
+        return turnManager;
     }
 
     /**
