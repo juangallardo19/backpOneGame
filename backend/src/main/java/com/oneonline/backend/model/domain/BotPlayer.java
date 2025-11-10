@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
  * AI Strategy (single difficulty):
  * 1. Prefer Wild Draw Four > Draw Two > Skip/Reverse > Wild > Same Color > Random
  * 2. Color selection: Choose color with most cards in hand
- * 3. UNO calling: 90% success rate
+ * 3. ONE calling: 90% success rate
  */
 @Data
 @SuperBuilder(toBuilder = true)
@@ -39,7 +39,7 @@ public class BotPlayer extends Player {
     private static final Random RANDOM = new Random();
 
     /**
-     * UNO calling success rate (90%)
+     * ONE calling success rate (90%)
      */
     private static final double ONE_CALL_SUCCESS_RATE = 0.9;
 
@@ -155,7 +155,7 @@ public class BotPlayer extends Player {
             return false;
         }
 
-        // 90% chance of calling UNO
+        // 90% chance of calling ONE
         return RANDOM.nextDouble() < ONE_CALL_SUCCESS_RATE;
     }
 
@@ -172,7 +172,7 @@ public class BotPlayer extends Player {
         if (chosenCard != null) {
             playCard(chosenCard);
 
-            // Auto-call UNO if needed
+            // Auto-call ONE if needed
             if (shouldCallOne()) {
                 callOne();
             }

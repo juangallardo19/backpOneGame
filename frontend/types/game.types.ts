@@ -1,10 +1,10 @@
 /**
- * Tipos TypeScript para el juego ONE
- * Sincronizados con el backend de Spring Boot
+ * TypeScript types for the ONE game
+ * Synchronized with the Spring Boot backend
  */
 
 // ============================================
-// ENUMS (sincronizados con backend)
+// ENUMS (synchronized with backend)
 // ============================================
 
 export enum CardColor {
@@ -48,71 +48,72 @@ export enum Direction {
 // ============================================
 
 /**
- * Carta del juego
+ * Game card
  */
 export interface Card {
   id: string;
   color: CardColor;
   type: CardType;
-  value: number | null; // null para cartas especiales
+  value: number | null; // null for special cards
   imageUrl?: string;
 }
 
 /**
- * Jugador
+ * Player
  */
 export interface Player {
   id: string;
   nickname: string;
-  userEmail?: string; // Email del usuario autenticado (para identificar al usuario actual)
+  userEmail?: string; // Email of authenticated user (to identify current user)
   isBot: boolean;
   status: PlayerStatus;
-  cardCount: number; // Número de cartas (otros jugadores no ven las cartas)
-  hasCalledUno: boolean;
+  cardCount: number; // Number of cards (other players don't see the cards)
+  hasCalledUno: boolean; // Alias for frontend compatibility (deprecated, use calledOne)
+  calledOne: boolean; // Backend property name
   profilePicture?: string;
-  position?: number; // Posición en la mesa (0-3)
+  position?: number; // Position at the table (0-3)
 }
 
 /**
- * Jugador actual (tú) - con cartas visibles
+ * Current player (you) - with visible cards
  */
 export interface CurrentPlayer extends Player {
-  hand: Card[]; // Solo el jugador actual ve sus cartas
+  hand: Card[]; // Only the current player sees their cards
 }
 
 /**
- * Configuración del juego
+ * Game configuration
  */
 export interface GameConfig {
   maxPlayers: number;
   pointsToWin: number; // 100, 200, 500
-  turnTimeLimit: number; // segundos
-  allowStackingDrawCards: boolean; // Permitir apilar +2/+4
+  turnTimeLimit: number; // seconds
+  allowStackingDrawCards: boolean; // Allow stacking +2/+4
   preset: 'CLASSIC' | 'TOURNAMENT' | 'CUSTOM';
 }
 
 /**
- * Estado completo del juego
+ * Complete game state
  */
 export interface GameState {
   sessionId: string;
   status: GameStatus;
   config: GameConfig;
   players: Player[];
-  currentPlayer: CurrentPlayer | null; // El jugador actual con sus cartas
+  currentPlayer: CurrentPlayer | null; // The current player with their cards
   currentTurnPlayerId: string | null;
-  topCard: Card | null; // Carta superior del pile de descarte
+  topCard: Card | null; // Top card of discard pile
   drawPileCount: number;
   discardPileCount: number;
   direction: Direction;
   winner: Player | null;
-  canDraw: boolean; // ¿Puede robar carta?
-  canPlay: boolean; // ¿Puede jugar carta?
-  playableCardIds: string[]; // IDs de cartas que se pueden jugar
+  canDraw: boolean; // Can draw card?
+  canPlay: boolean; // Can play card?
+  playableCardIds: string[]; // IDs of cards that can be played
 }
 
 /**
- * Sala de juego
+ * Game room
  */
 export interface Room {
   code: string;
@@ -127,7 +128,7 @@ export interface Room {
 }
 
 /**
- * Estadísticas de jugador
+ * Player statistics
  */
 export interface PlayerStats {
   userId: string | number; // Can be number from backend or string for guests
@@ -143,7 +144,7 @@ export interface PlayerStats {
 }
 
 /**
- * Ranking global
+ * Global ranking
  */
 export interface RankingEntry {
   rank: number;
@@ -157,7 +158,7 @@ export interface RankingEntry {
 }
 
 /**
- * Usuario autenticado
+ * Authenticated user
  */
 export interface User {
   id: string | number; // Can be number from backend or string for guests
@@ -169,7 +170,7 @@ export interface User {
 }
 
 /**
- * Respuesta de autenticación
+ * Authentication response
  */
 export interface AuthResponse {
   token: string;
@@ -179,7 +180,7 @@ export interface AuthResponse {
 }
 
 /**
- * Mensaje de chat
+ * Chat message
  */
 export interface ChatMessage {
   id: string;
@@ -201,13 +202,13 @@ export interface Emote {
 }
 
 /**
- * Historial de movimiento
+ * Game move history
  */
 export interface GameMove {
   id: string;
   playerId: string;
   playerNickname: string;
-  type: 'PLAY_CARD' | 'DRAW_CARD' | 'SKIP' | 'UNO_CALL' | 'UNO_PENALTY';
+  type: 'PLAY_CARD' | 'DRAW_CARD' | 'SKIP' | 'ONE_CALL' | 'ONE_PENALTY';
   card?: Card;
   timestamp: number;
 }
@@ -217,7 +218,7 @@ export interface GameMove {
 // ============================================
 
 /**
- * Respuesta genérica de la API
+ * Generic API response
  */
 export interface ApiResponse<T> {
   success: boolean;
@@ -227,7 +228,7 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Errores de la API
+ * API errors
  */
 export interface ApiError {
   status: number;
@@ -236,14 +237,14 @@ export interface ApiError {
 }
 
 /**
- * Notificación
+ * Notification
  */
 export interface Notification {
   id: string;
   type: 'success' | 'error' | 'info' | 'warning';
   title: string;
   message: string;
-  duration?: number; // ms, undefined = no se cierra automáticamente
+  duration?: number; // ms, undefined = no auto-close
 }
 
 // ============================================
@@ -265,15 +266,15 @@ export function isWildCard(card: Card): boolean {
 export function canPlayCard(card: Card, topCard: Card | null): boolean {
   if (!topCard) return true;
 
-  // Wild cards se pueden jugar siempre
+  // Wild cards can always be played
   if (isWildCard(card)) return true;
 
-  // Mismo color o mismo valor
+  // Same color or same value
   return card.color === topCard.color || card.value === topCard.value;
 }
 
 /**
- * Mapeo de colores a hex para visualización
+ * Color to hex mapping for visualization
  */
 export const COLOR_HEX_MAP: Record<CardColor, string> = {
   [CardColor.RED]: '#dc251c',
@@ -284,12 +285,12 @@ export const COLOR_HEX_MAP: Record<CardColor, string> = {
 };
 
 /**
- * Mapeo de colores a nombres en español
+ * Color to name mapping
  */
 export const COLOR_NAME_MAP: Record<CardColor, string> = {
-  [CardColor.RED]: 'Rojo',
-  [CardColor.YELLOW]: 'Amarillo',
-  [CardColor.BLUE]: 'Azul',
-  [CardColor.GREEN]: 'Verde',
-  [CardColor.WILD]: 'Comodín',
+  [CardColor.RED]: 'Red',
+  [CardColor.YELLOW]: 'Yellow',
+  [CardColor.BLUE]: 'Blue',
+  [CardColor.GREEN]: 'Green',
+  [CardColor.WILD]: 'Wild',
 };

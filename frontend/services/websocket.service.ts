@@ -1,44 +1,44 @@
 /**
- * WebSocket Service usando STOMP over WebSocket
- * Se conecta al backend Spring Boot con protocolo STOMP
+ * WebSocket Service using STOMP over WebSocket
+ * Connects to Spring Boot backend with STOMP protocol
  */
 
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { API_BASE_URL } from './api-config';
 
-// Tipos de eventos que el backend puede enviar
+// Event types that the backend can send
 export enum GameEventType {
-  // Eventos de Sala
+  // Room Events
   PLAYER_JOINED = 'PLAYER_JOINED',
   PLAYER_LEFT = 'PLAYER_LEFT',
   PLAYER_DISCONNECTED = 'PLAYER_DISCONNECTED',
   PLAYER_RECONNECTED = 'PLAYER_RECONNECTED',
 
-  // Eventos de Juego
+  // Game Events
   GAME_STARTED = 'GAME_STARTED',
   GAME_ENDED = 'GAME_ENDED',
   TURN_CHANGED = 'TURN_CHANGED',
   CARD_PLAYED = 'CARD_PLAYED',
   CARD_DRAWN = 'CARD_DRAWN',
 
-  // Eventos de Acciones Especiales
+  // Special Action Events
   ONE_CALLED = 'ONE_CALLED',
   ONE_PENALTY = 'ONE_PENALTY',
   PLAYER_SKIPPED = 'PLAYER_SKIPPED',
   DIRECTION_REVERSED = 'DIRECTION_REVERSED',
   COLOR_CHANGED = 'COLOR_CHANGED',
 
-  // Eventos de Chat
+  // Chat Events
   MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
   EMOTE_RECEIVED = 'EMOTE_RECEIVED',
 
-  // Eventos de Estado
+  // State Events
   GAME_STATE_UPDATE = 'GAME_STATE_UPDATE',
   ERROR = 'ERROR',
 }
 
-// Interfaces para los eventos
+// Interfaces for events
 export interface GameEvent {
   type: GameEventType;
   payload: any;
@@ -414,14 +414,14 @@ export class WebSocketService {
   }
 
   /**
-   * Cantar UNO
+   * Call ONE
    */
   callUno(): void {
     this.send(`/app/game/${this.roomCode}/call-uno`, {});
   }
 
   /**
-   * Atrapar a jugador que no dijo UNO
+   * Catch player who didn't call ONE
    */
   catchUno(playerId: string): void {
     this.send(`/app/game/${this.roomCode}/catch-uno`, { playerId });

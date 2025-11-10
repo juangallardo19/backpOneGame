@@ -213,7 +213,7 @@ public class GameController {
             return ResponseEntity.badRequest().body("Invalid ONE call");
         }
 
-        log.info("UNO called successfully by {} in session {}", authentication.getName(), sessionId);
+        log.info("ONE called successfully by {} in session {}", authentication.getName(), sessionId);
 
         return ResponseEntity.ok("ONE!");
     }
@@ -291,7 +291,7 @@ public class GameController {
             @PathVariable String playerId,
             Authentication authentication) {
 
-        log.info("Player {} catching player {} for no UNO in session {}",
+        log.info("Player {} catching player {} for no ONE in session {}",
                 authentication.getName(), playerId, sessionId);
 
         GameSession session = gameManager.getSession(sessionId);

@@ -247,7 +247,7 @@ public class GameEngine {
      * Penalize player
      *
      * Used for:
-     * - Not calling UNO
+     * - Not calling ONE
      * - Illegal Wild Draw Four
      * - Breaking rules
      *

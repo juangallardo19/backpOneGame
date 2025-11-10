@@ -24,7 +24,7 @@ import java.util.List;
  * - Open/Closed Principle (extend without modifying)
  *
  * Problem Solved:
- * BotPlayer has AI-specific methods (chooseCard, chooseColor, shouldCallUNO)
+ * BotPlayer has AI-specific methods (chooseCard, chooseColor, shouldCallONE)
  * that differ from human Player's interactive methods. The adapter translates
  * between these interfaces so game logic can treat all players uniformly.
  *
@@ -96,7 +96,7 @@ public class BotPlayerAdapter {
     }
 
     /**
-     * Adapt bot's UNO calling logic to standard interface.
+     * Adapt bot's ONE calling logic to standard interface.
      *
      * Bots have probabilistic ONE calling (90% success rate).
      * This method abstracts that into a simple boolean response.
@@ -136,7 +136,7 @@ public class BotPlayerAdapter {
      * 1. Choosing card to play
      * 2. Playing the card
      * 3. Selecting color if wild
-     * 4. Calling UNO if needed
+     * 4. Calling ONE if needed
      *
      * This demonstrates the Adapter pattern's power - complex bot
      * behavior is simplified into one method call.
