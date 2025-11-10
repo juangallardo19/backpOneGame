@@ -342,7 +342,7 @@ public class GameController {
                                 .cardId(card.getCardId())
                                 .type(card.getType().name())
                                 .color(card.getColor().name())
-                                .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                                .value(card.getValue())  // Send actual value from card
                                 .build())
                         .collect(Collectors.toList());
             }
@@ -367,8 +367,7 @@ public class GameController {
                         .cardId(session.getTopCard().getCardId())
                         .type(session.getTopCard().getType().name())
                         .color(session.getTopCard().getColor().name())
-                        .value(session.getTopCard() instanceof NumberCard ?
-                                ((NumberCard) session.getTopCard()).getValue() : null)
+                        .value(session.getTopCard().getValue())  // Send actual value from card
                         .build() : null)
                 .hand(hand)
                 .deckSize(session.getDeck().getRemainingCards())
