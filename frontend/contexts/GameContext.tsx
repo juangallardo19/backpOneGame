@@ -145,10 +145,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       currentPlayer
     });
 
-    // Calculate playable cards (for now, allow all cards - backend should validate)
-    const playableCardIds = hand.map(card => card.id);
-
-    // Map top card
+    // Map top card first (needed for playable cards calculation)
     const topCard: Card | null = backendState.topCard ? {
       id: backendState.topCard.cardId,
       color: backendState.topCard.color,
@@ -156,13 +153,44 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       value: backendState.topCard.value,
     } : null;
 
+    // Calculate playable cards based on top card
+    const playableCardIds: string[] = [];
+    if (topCard && hand.length > 0) {
+      for (const card of hand) {
+        // Wild cards can always be played
+        if (card.type === 'WILD' || card.color === 'WILD') {
+          playableCardIds.push(card.id);
+        }
+        // Card matches color
+        else if (card.color === topCard.color) {
+          playableCardIds.push(card.id);
+        }
+        // Card matches value/type
+        else if (card.value === topCard.value || card.type === topCard.type) {
+          playableCardIds.push(card.id);
+        }
+      }
+    } else if (hand.length > 0) {
+      // No top card yet, allow all cards
+      playableCardIds.push(...hand.map(c => c.id));
+    }
+
+    // CRITICAL: Backend now uses 'clockwise' boolean instead of 'direction' string
+    let direction = Direction.CLOCKWISE;
+    if (backendState.clockwise === false) {
+      direction = Direction.COUNTER_CLOCKWISE;
+    } else if (backendState.direction) {
+      // Fallback for old format
+      direction = backendState.direction === 'CLOCKWISE' ? Direction.CLOCKWISE : Direction.COUNTER_CLOCKWISE;
+    }
+
     const transformed: GameState = {
       sessionId: backendState.sessionId,
       status: backendState.status || GameStatus.PLAYING,
       config: {
         maxPlayers: 4,
         pointsToWin: 500,
-        turnTimeLimit: backendState.turnTimeLimit || 60,
+        turnTimeLimit: backendState.turnTimeLimit || 20,  // Default 20 seconds per turn
         allowStackingDrawCards: true,
         preset: 'CLASSIC',
       },
@@ -171,8 +199,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       currentTurnPlayerId: backendState.currentPlayerId,
       topCard,
       drawPileCount: backendState.deckSize || 0,
-      discardPileCount: backendState.discardPileSize || 0,
-      direction: backendState.direction === 'CLOCKWISE' ? Direction.CLOCKWISE : Direction.COUNTER_CLOCKWISE,
+      discardPileCount: 0,  // Backend doesn't send this anymore
+      direction,
       winner: null,
       canDraw: true,
       canPlay: true,
@@ -180,6 +208,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     };
 
     console.log('✅ Estado transformado:', transformed);
+    console.log('   📊 Detalles importantes:');
+    console.log('   - Jugadores:', players.length);
+    console.log('   - Mano actual:', hand.length, 'cartas');
+    console.log('   - Carta superior:', topCard?.color, topCard?.value);
+    console.log('   - Turno de:', currentPlayerId);
+    console.log('   - Dirección:', direction);
     return transformed;
   }, []);
 

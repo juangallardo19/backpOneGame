@@ -208,7 +208,7 @@ export class WebSocketService {
       }
     );
 
-    // ⬇️ Also subscribe to GAME topic for game events (card played, turn changed, etc)
+    // ⬇️ CRITICAL: Subscribe to GAME topic using roomCode (this is the sessionId for active games)
     console.log(`📡 Subscribing to /topic/game/${this.roomCode}`);
     this.subscription = this.client.subscribe(
       `/topic/game/${this.roomCode}`,
@@ -226,6 +226,24 @@ export class WebSocketService {
       }
     );
 
+    // ⬇️ CRITICAL: Subscribe to personal game state queue (includes player's hand)
+    console.log(`📡 Subscribing to /user/queue/game-state for personal data`);
+    this.client.subscribe(`/user/queue/game-state`, (message: IMessage) => {
+      try {
+        const gameState = JSON.parse(message.body);
+        console.log('🎴 [PERSONAL STATE] Estado personal recibido:', gameState);
+
+        // Trigger GAME_STATE_UPDATE with personal data
+        this.handleEvent({
+          type: GameEventType.GAME_STATE_UPDATE,
+          payload: gameState,
+          timestamp: Date.now(),
+        });
+      } catch (err) {
+        console.error('Error parseando estado personal:', err);
+      }
+    });
+
     // Also subscribe to error queue
     this.client.subscribe(`/user/queue/errors`, (message: IMessage) => {
       try {
@@ -240,7 +258,7 @@ export class WebSocketService {
       }
     });
 
-    console.log('✅ Suscrito a los topics de sala y juego');
+    console.log('✅ Suscrito a los topics de sala, juego y cola personal');
   }
 
   /**
