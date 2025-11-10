@@ -3,12 +3,9 @@ package com.oneonline.backend.controller;
 import com.oneonline.backend.dto.request.AddBotRequest;
 import com.oneonline.backend.dto.request.CreateRoomRequest;
 import com.oneonline.backend.dto.request.JoinRoomRequest;
+import com.oneonline.backend.dto.response.GameStateResponse;
 import com.oneonline.backend.dto.response.RoomResponse;
-import com.oneonline.backend.model.domain.BotPlayer;
-import com.oneonline.backend.model.domain.GameConfiguration;
-import com.oneonline.backend.model.domain.GameSession;
-import com.oneonline.backend.model.domain.Player;
-import com.oneonline.backend.model.domain.Room;
+import com.oneonline.backend.model.domain.*;
 import com.oneonline.backend.pattern.creational.builder.GameConfigBuilder;
 import com.oneonline.backend.service.game.GameManager;
 import com.oneonline.backend.service.game.RoomManager;
@@ -18,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
@@ -59,6 +57,7 @@ public class RoomController {
 
     private final RoomManager roomManager;
     private final com.oneonline.backend.pattern.behavioral.observer.WebSocketObserver webSocketObserver;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * Create a new game room
@@ -436,6 +435,11 @@ public class RoomController {
             webSocketObserver.onGameStarted(session);
             log.info("✅ [RoomController] WebSocket notification sent");
 
+            // CRITICAL: Send initial game state with cards to all players
+            log.info("📤 [RoomController] Sending initial game state with cards...");
+            sendInitialGameState(session);
+            log.info("✅ [RoomController] Initial game state sent");
+
             // Return session info so frontend knows the sessionId
             Map<String, Object> response = new HashMap<>();
             response.put("sessionId", session.getSessionId());
@@ -497,6 +501,187 @@ public class RoomController {
                 .createdAt(room.getCreatedAt() != null ?
                     room.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() :
                     System.currentTimeMillis())
+                .build();
+    }
+
+    /**
+     * Send initial game state to all players after game starts.
+     *
+     * This method sends two types of messages:
+     * 1. General game state (without hands) to /topic/game/{sessionId}
+     * 2. Personal game state (with hand) to each player via /user/{nickname}/queue/game-state
+     *
+     * @param session Game session that just started
+     */
+    private void sendInitialGameState(GameSession session) {
+        String sessionId = session.getSessionId();
+
+        // Build and broadcast general game state (without hands)
+        log.info("🔨 [RoomController] Building general game state...");
+        GameStateResponse generalState = buildGameStateResponse(session);
+
+        log.info("📤 [RoomController] ========== SENDING INITIAL GENERAL STATE ==========");
+        log.info("   🎯 Destination: /topic/game/{}", sessionId);
+        log.info("   📋 SessionId: {}", generalState.getSessionId());
+        log.info("   🎮 Status: {}", generalState.getStatus());
+        log.info("   👥 Players: {}", generalState.getPlayers().size());
+        for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
+            log.info("      - {} ({} cards)", ps.getNickname(), ps.getCardCount());
+        }
+        log.info("   🎲 Current turn: {}", generalState.getCurrentPlayerId());
+        log.info("   🃏 Top card: {} {}",
+            generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
+            generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
+        log.info("   📚 Deck size: {}", generalState.getDeckSize());
+        log.info("   🔄 Direction: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
+
+        messagingTemplate.convertAndSend(
+                "/topic/game/" + sessionId,
+                Map.of(
+                        "eventType", "GAME_STATE_UPDATE",
+                        "timestamp", System.currentTimeMillis(),
+                        "data", generalState
+                )
+        );
+        log.info("✅ [RoomController] General state SENT successfully");
+
+        // Send each player their personal hand
+        log.info("📤 [RoomController] ========== SENDING PERSONAL HANDS ==========");
+        int playerCount = 0;
+        for (Player p : session.getPlayers()) {
+            if (!(p instanceof BotPlayer)) {
+                playerCount++;
+                log.info("   👤 Preparing hand for: {}", p.getNickname());
+                GameStateResponse personalState = buildPersonalGameState(session, p);
+                log.info("      🎯 Destination: /user/{}/queue/game-state", p.getNickname());
+                log.info("      🃏 Cards in hand: {}", personalState.getHand() != null ? personalState.getHand().size() : 0);
+                if (personalState.getHand() != null && !personalState.getHand().isEmpty()) {
+                    for (GameStateResponse.CardInfo cardInfo : personalState.getHand()) {
+                        log.info("         - {} {} (id: {})", cardInfo.getColor(), cardInfo.getValue(), cardInfo.getCardId());
+                    }
+                }
+
+                messagingTemplate.convertAndSendToUser(
+                        p.getNickname(),
+                        "/queue/game-state",
+                        personalState
+                );
+                log.info("   ✅ Hand SENT to {}", p.getNickname());
+            }
+        }
+        log.info("✅ [RoomController] {} personal hands sent", playerCount);
+        log.info("✅ [RoomController] =================================================");
+    }
+
+    /**
+     * Build GameStateResponse from GameSession (general state without hands)
+     *
+     * @param session Game session
+     * @return GameStateResponse DTO
+     */
+    private GameStateResponse buildGameStateResponse(GameSession session) {
+        // Build player states for all players
+        List<GameStateResponse.PlayerState> playerStates = session.getPlayers().stream()
+                .map(p -> GameStateResponse.PlayerState.builder()
+                        .playerId(p.getPlayerId())
+                        .nickname(p.getNickname())
+                        .cardCount(p.getHandSize())
+                        .score(p.getScore())
+                        .calledOne(p.hasCalledOne())
+                        .isBot(p instanceof BotPlayer)
+                        .status(p.getStatus() != null ? p.getStatus().name() : "ACTIVE")
+                        .build())
+                .collect(Collectors.toList());
+
+        // Build top card info if exists
+        GameStateResponse.CardInfo topCardInfo = null;
+        if (session.getTopCard() != null) {
+            Card topCard = session.getTopCard();
+            topCardInfo = GameStateResponse.CardInfo.builder()
+                    .cardId(topCard.getCardId())
+                    .type(topCard.getType().name())
+                    .color(topCard.getColor().name())
+                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .build();
+        }
+
+        return GameStateResponse.builder()
+                .sessionId(session.getSessionId())
+                .roomCode(session.getRoom().getRoomCode())
+                .status(session.getStatus().name())
+                .currentPlayerId(session.getCurrentPlayer().getPlayerId())
+                .topCard(topCardInfo)
+                .currentColor(session.getTopCard() != null ? session.getTopCard().getColor().name() : null)
+                .clockwise(session.isClockwise())
+                .deckSize(session.getDeck().getRemainingCards())
+                .pendingDrawCount(session.getPendingDrawCount())
+                .players(playerStates)
+                .turnOrder(session.getPlayers().stream()
+                        .map(Player::getPlayerId)
+                        .collect(Collectors.toList()))
+                .startedAt(System.currentTimeMillis())
+                .build();
+    }
+
+    /**
+     * Build personalized game state for a specific player (includes their hand).
+     *
+     * @param session Game session
+     * @param player Player to build state for
+     * @return GameStateResponse with player's hand included
+     */
+    private GameStateResponse buildPersonalGameState(GameSession session, Player player) {
+        // Build player states for all players
+        List<GameStateResponse.PlayerState> playerStates = session.getPlayers().stream()
+                .map(p -> GameStateResponse.PlayerState.builder()
+                        .playerId(p.getPlayerId())
+                        .nickname(p.getNickname())
+                        .cardCount(p.getHandSize())
+                        .score(p.getScore())
+                        .calledOne(p.hasCalledOne())
+                        .isBot(p instanceof BotPlayer)
+                        .status(p.getStatus() != null ? p.getStatus().name() : "ACTIVE")
+                        .build())
+                .collect(Collectors.toList());
+
+        // Build top card info if exists
+        GameStateResponse.CardInfo topCardInfo = null;
+        if (session.getTopCard() != null) {
+            Card topCard = session.getTopCard();
+            topCardInfo = GameStateResponse.CardInfo.builder()
+                    .cardId(topCard.getCardId())
+                    .type(topCard.getType().name())
+                    .color(topCard.getColor().name())
+                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .build();
+        }
+
+        // Build player's hand
+        List<GameStateResponse.CardInfo> hand = player.getHand().stream()
+                .map(card -> GameStateResponse.CardInfo.builder()
+                        .cardId(card.getCardId())
+                        .type(card.getType().name())
+                        .color(card.getColor().name())
+                        .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        return GameStateResponse.builder()
+                .sessionId(session.getSessionId())
+                .roomCode(session.getRoom().getRoomCode())
+                .status(session.getStatus().name())
+                .currentPlayerId(session.getCurrentPlayer().getPlayerId())
+                .topCard(topCardInfo)
+                .currentColor(session.getTopCard() != null ? session.getTopCard().getColor().name() : null)
+                .clockwise(session.isClockwise())
+                .deckSize(session.getDeck().getRemainingCards())
+                .pendingDrawCount(session.getPendingDrawCount())
+                .players(playerStates)
+                .hand(hand)  // CRITICAL: Include player's hand
+                .turnOrder(session.getPlayers().stream()
+                        .map(Player::getPlayerId)
+                        .collect(Collectors.toList()))
+                .startedAt(System.currentTimeMillis())
                 .build();
     }
 }
