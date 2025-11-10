@@ -331,14 +331,14 @@ public class WebSocketGameController {
         String message = payload.get("message");
 
         // Get player info
-        GameSession session = gameSessionManager.getSession(sessionId);
+        GameSession session = gameManager.getSession(sessionId);
         if (session == null) {
             log.error("Session not found: {}", sessionId);
             return;
         }
 
         // Find player by email
-        Player player = session.getAllPlayers().stream()
+        Player player = session.getPlayers().stream()
                 .filter(p -> p.getEmail().equals(principal.getName()))
                 .findFirst()
                 .orElse(null);
