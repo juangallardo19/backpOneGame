@@ -116,6 +116,11 @@ public class GameSession {
             for (int i = 0; i < cardCount; i++) {
                 player.drawCard(mainDeck.drawCard());
             }
+
+            // Debug: Log card types in player's hand
+            java.util.Map<String, Long> cardTypes = player.getHand().stream()
+                .collect(java.util.stream.Collectors.groupingBy(c -> c.getType().name(), java.util.stream.Collectors.counting()));
+            System.out.println("Player " + player.getNickname() + " hand composition: " + cardTypes);
         }
 
         // Setup turn order with ALL players (humans + bots)

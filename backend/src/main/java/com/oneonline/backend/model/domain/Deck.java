@@ -79,6 +79,24 @@ public class Deck {
         for (int i = 0; i < 4; i++) {
             cards.push(new WildDrawFourCard());
         }
+
+        // Log deck composition for debugging
+        long numberCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.NUMBER).count();
+        long skipCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.SKIP).count();
+        long reverseCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.REVERSE).count();
+        long drawTwoCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.DRAW_TWO).count();
+        long wildCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.WILD).count();
+        long wildDrawFourCards = cards.stream().filter(c -> c.getType() == com.oneonline.backend.model.enums.CardType.WILD_DRAW_FOUR).count();
+
+        System.out.println("=== DECK INITIALIZED ===");
+        System.out.println("Total cards: " + cards.size());
+        System.out.println("Number cards: " + numberCards);
+        System.out.println("Skip cards: " + skipCards);
+        System.out.println("Reverse cards: " + reverseCards);
+        System.out.println("Draw Two cards: " + drawTwoCards);
+        System.out.println("Wild cards: " + wildCards);
+        System.out.println("Wild Draw Four cards: " + wildDrawFourCards);
+        System.out.println("========================");
     }
 
     /**
