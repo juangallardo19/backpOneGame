@@ -518,7 +518,7 @@ public class WebSocketGameController {
                     .cardId(topCard.getCardId())
                     .type(topCard.getType().name())
                     .color(topCard.getColor().name())
-                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .value(topCard.getValue())  // Send actual value from card
                     .build();
         }
 
@@ -569,7 +569,7 @@ public class WebSocketGameController {
                     .cardId(topCard.getCardId())
                     .type(topCard.getType().name())
                     .color(topCard.getColor().name())
-                    .value(topCard instanceof NumberCard ? ((NumberCard) topCard).getValue() : null)
+                    .value(topCard.getValue())  // Send actual value from card
                     .build();
         }
 
@@ -579,7 +579,7 @@ public class WebSocketGameController {
                         .cardId(card.getCardId())
                         .type(card.getType().name())
                         .color(card.getColor().name())
-                        .value(card instanceof NumberCard ? ((NumberCard) card).getValue() : null)
+                        .value(card.getValue())  // Send actual value from card
                         .build())
                 .collect(java.util.stream.Collectors.toList());
 
