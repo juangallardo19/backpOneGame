@@ -1,12 +1,15 @@
 package com.oneonline.backend.service.game;
 
 import com.oneonline.backend.model.domain.*;
+import com.oneonline.backend.model.enums.CardColor;
 import com.oneonline.backend.model.enums.CardType;
 import com.oneonline.backend.model.enums.GameStatus;
 import com.oneonline.backend.pattern.behavioral.command.GameCommand;
 import com.oneonline.backend.pattern.behavioral.command.PlayCardCommand;
+import com.oneonline.backend.service.bot.BotStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -25,6 +28,7 @@ import java.util.Stack;
  * - Check win conditions
  * - Handle penalties
  * - Manage game commands (for undo/redo)
+ * - Execute bot turns automatically
  *
  * DESIGN PATTERNS:
  * - Command Pattern: Encapsulates moves for undo/redo
@@ -40,6 +44,8 @@ public class GameEngine {
     private final CardValidator cardValidator;
     private final EffectProcessor effectProcessor;
     private final OneManager oneManager;
+    private final BotStrategy botStrategy;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * Command history for undo functionality
@@ -57,6 +63,7 @@ public class GameEngine {
      * 5. Check ONE call
      * 6. Check win condition
      * 7. Advance turn
+     * 8. Process bot turns (if triggered by human)
      *
      * @param player Player making move
      * @param card Card to play
@@ -65,6 +72,20 @@ public class GameEngine {
      * @throws IllegalArgumentException if move invalid
      */
     public boolean processMove(Player player, Card card, GameSession session) {
+        return processMove(player, card, session, true);
+    }
+
+    /**
+     * Process a player move with option to trigger bot turns
+     *
+     * @param player Player making move
+     * @param card Card to play
+     * @param session Game session
+     * @param triggerBots Whether to process bot turns after this move
+     * @return true if move successful
+     * @throws IllegalArgumentException if move invalid
+     */
+    private boolean processMove(Player player, Card card, GameSession session, boolean triggerBots) {
         TurnManager turnManager = session.getTurnManager();
 
         // Validate it's player's turn
@@ -100,6 +121,12 @@ public class GameEngine {
         turnManager.nextTurn();
 
         log.info("Move processed: {} played {}", player.getNickname(), card);
+
+        // IMPORTANT: Process bot turns automatically (only if triggered by human to avoid recursion)
+        if (triggerBots && !(player instanceof BotPlayer)) {
+            processBotTurns(session);
+        }
+
         return true;
     }
 
@@ -362,5 +389,109 @@ public class GameEngine {
 
         session.start();
         log.info("Game started with {} players", session.getPlayers().size());
+
+        // IMPORTANT: If first player is a bot, start processing bot turns
+        Player firstPlayer = session.getTurnManager().getCurrentPlayer();
+        if (firstPlayer instanceof BotPlayer) {
+            log.info("🤖 First player is a bot, processing bot turns...");
+            processBotTurns(session);
+        }
+    }
+
+    /**
+     * Process bot turns automatically
+     *
+     * After a human player plays, this method checks if the next player(s)
+     * are bots and executes their turns automatically until a human's turn.
+     *
+     * This creates a seamless experience where bots play instantly without
+     * waiting for user input.
+     *
+     * @param session Game session
+     */
+    public void processBotTurns(GameSession session) {
+        TurnManager turnManager = session.getTurnManager();
+        Player currentPlayer = turnManager.getCurrentPlayer();
+
+        // Process bot turns until we reach a human player
+        while (currentPlayer instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
+            BotPlayer bot = (BotPlayer) currentPlayer;
+            log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
+
+            try {
+                // Let bot choose a card using strategy
+                Card chosenCard = botStrategy.chooseCard(bot, session.getTopCard(), session);
+
+                if (chosenCard != null) {
+                    log.info("🃏 Bot {} chose to play: {} {}", bot.getNickname(), chosenCard.getColor(), chosenCard.getValue());
+
+                    // If it's a wild card, let bot choose color
+                    if (chosenCard instanceof WildCard wildCard) {
+                        CardColor chosenColor = botStrategy.chooseColor(bot);
+                        wildCard.setChosenColor(chosenColor);
+                        log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
+                    }
+
+                    // Process the bot's move (don't trigger more bots to avoid recursion)
+                    processMove(bot, chosenCard, session, false);
+
+                    // Check if bot should call ONE
+                    if (bot.getHandSize() == 1 && botStrategy.shouldCallOne(bot)) {
+                        bot.callOne();
+                        oneManager.handleOneCall(bot, session);
+                        log.info("🔔 Bot {} called ONE!", bot.getNickname());
+                    }
+
+                } else {
+                    // Bot has no valid cards, must draw
+                    log.info("📥 Bot {} has no valid cards, drawing...", bot.getNickname());
+                    Card drawnCard = drawCard(bot, session);
+
+                    if (drawnCard != null) {
+                        log.info("🎴 Bot {} drew a card", bot.getNickname());
+
+                        // Check if drawn card can be played immediately
+                        if (cardValidator.isValidMove(drawnCard, session.getTopCard())) {
+                            log.info("✨ Bot {} can play the drawn card!", bot.getNickname());
+
+                            // If it's a wild card, choose color
+                            if (drawnCard instanceof WildCard wildCard) {
+                                CardColor chosenColor = botStrategy.chooseColor(bot);
+                                wildCard.setChosenColor(chosenColor);
+                                log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
+                            }
+
+                            // Play the drawn card (don't trigger more bots)
+                            processMove(bot, drawnCard, session, false);
+                        } else {
+                            // Can't play drawn card, turn ends
+                            log.info("⏭️ Bot {} can't play drawn card, turn ends", bot.getNickname());
+                            turnManager.nextTurn();
+
+                            // Note: We don't call processBotTurns() recursively here
+                            // because we'll continue in the while loop
+                        }
+                    }
+                }
+
+                // Brief delay for realism (bots shouldn't play instantly)
+                try {
+                    Thread.sleep(500); // 0.5 second delay
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // Update current player for next iteration
+                currentPlayer = turnManager.getCurrentPlayer();
+
+            } catch (Exception e) {
+                log.error("❌ Error processing bot turn for {}: {}", bot.getNickname(), e.getMessage(), e);
+                // Advance turn to avoid infinite loop
+                turnManager.nextTurn();
+                currentPlayer = turnManager.getCurrentPlayer();
+            }
+        }
+
+        log.info("✅ Bot turn processing complete. Current player: {}", currentPlayer.getNickname());
     }
 }
