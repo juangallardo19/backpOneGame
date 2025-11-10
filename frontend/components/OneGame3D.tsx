@@ -24,7 +24,7 @@ import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
-import { Card, Player } from '@/types/game.types';
+import { Card, Player, CurrentPlayer } from '@/types/game.types';
 
 interface OneGame3DProps {
   onBack?: () => void;
@@ -42,7 +42,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const [playerEmojis, setPlayerEmojis] = useState<Record<string, string>>({});
 
   // Get current player from gameState
-  const currentPlayer = gameState?.currentPlayer;
+  const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
   // FIXED: Use the isMyTurn function from context instead of comparing user.id
   // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
   const isMyTurn = isMyTurnFn();
