@@ -68,7 +68,8 @@ export interface Player {
   isBot: boolean;
   status: PlayerStatus;
   cardCount: number; // Número de cartas (otros jugadores no ven las cartas)
-  hasCalledUno: boolean;
+  hasCalledUno: boolean; // Alias for frontend compatibility
+  calledOne: boolean; // Backend property name
   profilePicture?: string;
   position?: number; // Posición en la mesa (0-3)
 }
