@@ -171,20 +171,20 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // Listen to emotes from other players
   useEffect(() => {
     const latestMessage = chatMessages[chatMessages.length - 1];
-    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.userId !== user?.id) {
+    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.playerId !== currentPlayer?.id) {
       // Show emoji on that player
-      if (latestMessage.userId) {
-        setPlayerEmojis(prev => ({ ...prev, [latestMessage.userId!]: latestMessage.message }));
+      if (latestMessage.playerId) {
+        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
         setTimeout(() => {
           setPlayerEmojis(prev => {
             const newEmojis = { ...prev };
-            delete newEmojis[latestMessage.userId!];
+            delete newEmojis[latestMessage.playerId];
             return newEmojis;
           });
         }, 3000);
       }
     }
-  }, [chatMessages, user?.id]);
+  }, [chatMessages, currentPlayer?.id]);
 
   // Get card color class
   const getCardColorClass = (color: string) => {
