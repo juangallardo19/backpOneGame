@@ -339,6 +339,65 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log('📡 Payload contiene estado completo, transformando...');
       const transformedState = transformBackendGameState(payload);
       setGameState(transformedState);
+
+      // CRITICAL FIX: Fetch room data using roomCode from payload
+      const roomCode = payload.roomCode || newSessionId;
+      console.log('🔑 Room code para obtener info de sala:', roomCode);
+
+      if (roomCode) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
+        const authToken = currentToken || localStorage.getItem('uno_auth_token');
+
+        fetch(`${apiUrl}/api/rooms/${roomCode}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        })
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            }
+            throw new Error('Failed to fetch room data');
+          })
+          .then(roomData => {
+            console.log('✅ [GAME_STARTED] Información de sala obtenida:', roomData);
+
+            // Map players from backend PlayerInfo to frontend Player format
+            const players = (roomData.players || []).map((p: any) => ({
+              id: p.playerId,
+              nickname: p.nickname,
+              userEmail: p.userEmail || '',
+              isBot: p.isBot || false,
+              status: p.status || PlayerStatus.ACTIVE,
+              cardCount: 0,
+              hasCalledUno: false,
+            }));
+
+            console.log('👥 [GAME_STARTED] Jugadores mapeados:', players);
+
+            // Convertir RoomResponse a Room format
+            setRoom({
+              code: roomData.roomCode,
+              name: roomData.roomName || `Sala ${roomData.roomCode}`,
+              leaderId: roomData.hostId,
+              isPrivate: roomData.isPrivate || false,
+              status: roomData.status || 'IN_GAME',
+              players: players,
+              maxPlayers: roomData.maxPlayers || 4,
+              config: {
+                maxPlayers: roomData.maxPlayers || 4,
+                pointsToWin: roomData.config?.pointsToWin || 500,
+                turnTimeLimit: roomData.config?.turnTimeLimit || 60,
+                allowStackingDrawCards: roomData.config?.allowStackingCards || true,
+                preset: 'CLASSIC'
+              },
+              createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
+            });
+          })
+          .catch(err => {
+            console.error('❌ [GAME_STARTED] Error al obtener información de sala:', err);
+          });
+      }
     } else {
       console.log('⚠️ Payload NO contiene estado completo, solicitando...');
       // Request full game state after reconnecting
@@ -571,41 +630,65 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.log('✨ Estado transformado final:', transformedState);
             setGameState(transformedState);
 
-            // Also get room data from game response
-            const roomData = gameStateData.room || {};
-            console.log('📡 Información de sala desde juego:', roomData);
+            // CRITICAL FIX: GameStateResponse only includes roomCode, not full room data
+            // We need to fetch room data separately using the roomCode
+            const roomCode = gameStateData.roomCode;
+            console.log('🔑 Room code extraído del GameState:', roomCode);
 
-            // Map players from backend PlayerInfo to frontend Player format
-            const players = (roomData.players || []).map((p: any) => ({
-              id: p.playerId,
-              nickname: p.nickname,
-              userEmail: p.userEmail || '',
-              isBot: p.isBot || false,
-              status: p.status || PlayerStatus.ACTIVE,
-              cardCount: 0,
-              hasCalledUno: false,
-            }));
+            if (roomCode) {
+              try {
+                // Fetch full room data using roomCode
+                const roomUrl = `${apiUrl}/api/rooms/${roomCode}`;
+                console.log('🏠 Obteniendo información completa de la sala:', roomUrl);
 
-            console.log('👥 Jugadores mapeados:', players);
+                const roomResponse = await fetch(roomUrl, {
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`
+                  }
+                });
 
-            // Convertir RoomResponse a Room format
-            setRoom({
-              code: roomData.roomCode,
-              name: roomData.roomName || `Sala ${roomData.roomCode}`,
-              leaderId: roomData.hostId,
-              isPrivate: roomData.isPrivate || false,
-              status: roomData.status || 'IN_GAME',
-              players: players,
-              maxPlayers: roomData.maxPlayers || 4,
-              config: {
-                maxPlayers: roomData.maxPlayers || 4,
-                pointsToWin: roomData.config?.pointsToWin || 500,
-                turnTimeLimit: roomData.config?.turnTimeLimit || 60,
-                allowStackingDrawCards: roomData.config?.allowStackingCards || true,
-                preset: 'CLASSIC'
-              },
-              createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
-            });
+                if (roomResponse.ok) {
+                  const roomData = await roomResponse.json();
+                  console.log('✅ Información de sala obtenida:', roomData);
+
+                  // Map players from backend PlayerInfo to frontend Player format
+                  const players = (roomData.players || []).map((p: any) => ({
+                    id: p.playerId,
+                    nickname: p.nickname,
+                    userEmail: p.userEmail || '',
+                    isBot: p.isBot || false,
+                    status: p.status || PlayerStatus.ACTIVE,
+                    cardCount: 0,
+                    hasCalledUno: false,
+                  }));
+
+                  console.log('👥 Jugadores mapeados:', players);
+
+                  // Convertir RoomResponse a Room format
+                  setRoom({
+                    code: roomData.roomCode,
+                    name: roomData.roomName || `Sala ${roomData.roomCode}`,
+                    leaderId: roomData.hostId,
+                    isPrivate: roomData.isPrivate || false,
+                    status: roomData.status || 'IN_GAME',
+                    players: players,
+                    maxPlayers: roomData.maxPlayers || 4,
+                    config: {
+                      maxPlayers: roomData.maxPlayers || 4,
+                      pointsToWin: roomData.config?.pointsToWin || 500,
+                      turnTimeLimit: roomData.config?.turnTimeLimit || 60,
+                      allowStackingDrawCards: roomData.config?.allowStackingCards || true,
+                      preset: 'CLASSIC'
+                    },
+                    createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
+                  });
+                } else {
+                  console.error('❌ Error al obtener información de sala:', roomResponse.statusText);
+                }
+              } catch (err) {
+                console.error('❌ Error al hacer fetch de sala:', err);
+              }
+            }
           } else {
             // Ambos fallaron - log error
             const errorText = await gameResponse.text();
