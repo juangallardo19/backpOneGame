@@ -143,14 +143,27 @@ public class WebSocketObserver implements GameObserver {
 
     /**
      * Game started - notify all players.
+     * CRITICAL: Send to BOTH room topic AND game topic
+     * - Room topic: For players still connected to room (before game started)
+     * - Game topic: For players already connected to game session
      */
     @Override
     public void onGameStarted(GameSession session) {
         Map<String, Object> event = createEvent("GAME_STARTED", Map.of(
                 "sessionId", session.getSessionId(),
+                "roomCode", session.getRoom().getRoomCode(), // CRITICAL: Include roomCode
                 "startingPlayer", session.getCurrentPlayer().getPlayerId(),
                 "direction", session.isClockwise() ? "CLOCKWISE" : "COUNTER_CLOCKWISE"
         ));
+
+        // CRITICAL: Send to ROOM topic first (players are still connected here)
+        String roomCode = session.getRoom().getRoomCode();
+        System.out.println("🎮 [WebSocketObserver] Sending GAME_STARTED to room: " + roomCode);
+        System.out.println("🆔 [WebSocketObserver] SessionId: " + session.getSessionId());
+        sendToRoom(roomCode, event);
+
+        // Also send to GAME topic for players who reconnect later
+        System.out.println("🎮 [WebSocketObserver] Also sending GAME_STARTED to game session: " + session.getSessionId());
         sendToGame(session.getSessionId(), event);
     }
 

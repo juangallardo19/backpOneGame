@@ -58,6 +58,7 @@ import java.util.stream.Collectors;
 public class RoomController {
 
     private final RoomManager roomManager;
+    private final com.oneonline.backend.pattern.behavioral.observer.WebSocketObserver webSocketObserver;
 
     /**
      * Create a new game room
@@ -428,7 +429,12 @@ public class RoomController {
             room.setStatus(com.oneonline.backend.model.enums.RoomStatus.IN_PROGRESS);
             room.setGameSession(session);
 
-            log.info("Game started for room {}, session ID: {}", code, session.getSessionId());
+            log.info("✅ [RoomController] Game started for room {}, session ID: {}", code, session.getSessionId());
+
+            // CRITICAL: Notify all players via WebSocket that game has started
+            log.info("📡 [RoomController] Notifying players via WebSocket...");
+            webSocketObserver.onGameStarted(session);
+            log.info("✅ [RoomController] WebSocket notification sent");
 
             // Return session info so frontend knows the sessionId
             Map<String, Object> response = new HashMap<>();
@@ -440,7 +446,8 @@ public class RoomController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Error starting game for room {}: {}", code, e.getMessage());
+            log.error("❌ [RoomController] Error starting game for room {}: {}", code, e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to start game: " + e.getMessage());
         }
