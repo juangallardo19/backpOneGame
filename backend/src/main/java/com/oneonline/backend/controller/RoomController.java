@@ -555,9 +555,12 @@ public class RoomController {
         gameStartedMessage.put("players", generalState.getPlayers());
         gameStartedMessage.put("currentPlayerId", generalState.getCurrentPlayerId());
         gameStartedMessage.put("topCard", generalState.getTopCard());
+        gameStartedMessage.put("currentColor", generalState.getCurrentColor());
         gameStartedMessage.put("deckSize", generalState.getDeckSize());
         gameStartedMessage.put("clockwise", generalState.getClockwise());
-        gameStartedMessage.put("config", generalState.getConfig());
+        gameStartedMessage.put("pendingDrawCount", generalState.getPendingDrawCount());
+        gameStartedMessage.put("turnOrder", generalState.getTurnOrder());
+        gameStartedMessage.put("turnTimeLimit", generalState.getTurnTimeLimit());
 
         messagingTemplate.convertAndSend("/topic/game/" + roomCode, gameStartedMessage);
         log.info("✅ [RoomController] General state SENT successfully");
