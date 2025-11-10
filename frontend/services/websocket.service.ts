@@ -209,40 +209,62 @@ export class WebSocketService {
     );
 
     // ⬇️ CRITICAL: Subscribe to GAME topic using roomCode (this is the sessionId for active games)
-    console.log(`📡 Subscribing to /topic/game/${this.roomCode}`);
+    console.log(`📡 ========== SUSCRIBIENDO A TOPIC DE JUEGO ==========`);
+    console.log(`   🎯 Topic: /topic/game/${this.roomCode}`);
     this.subscription = this.client.subscribe(
       `/topic/game/${this.roomCode}`,
       (message: IMessage) => {
         try {
+          console.log('📨 ========== MENSAJE RECIBIDO EN GAME TOPIC ==========');
+          console.log('   📦 Raw message body:', message.body);
           const payload = JSON.parse(message.body);
-          console.log('📨 [GAME EVENT] Mensaje recibido:', payload);
+          console.log('   📋 Payload parseado:', payload);
+          console.log('   🏷️ Event type:', payload.eventType || payload.type);
+          console.log('   📊 Data:', payload.data);
 
           // Convert STOMP message to GameEvent format
           const gameEvent: GameEvent = this.convertToGameEvent(payload);
+          console.log('   ✨ GameEvent final:', gameEvent);
+          console.log('   🎮 Llamando handleEvent...');
           this.handleEvent(gameEvent);
+          console.log('✅ [GAME EVENT] Evento procesado correctamente');
         } catch (error) {
-          console.error('Error parseando mensaje STOMP (game):', error);
+          console.error('❌ Error parseando mensaje STOMP (game):', error);
         }
       }
     );
+    console.log(`✅ Suscrito a /topic/game/${this.roomCode}`);
 
     // ⬇️ CRITICAL: Subscribe to personal game state queue (includes player's hand)
-    console.log(`📡 Subscribing to /user/queue/game-state for personal data`);
+    console.log(`📡 ========== SUSCRIBIENDO A COLA PERSONAL ==========`);
+    console.log(`   🎯 Queue: /user/queue/game-state`);
     this.client.subscribe(`/user/queue/game-state`, (message: IMessage) => {
       try {
+        console.log('🎴 ========== MENSAJE RECIBIDO EN COLA PERSONAL ==========');
+        console.log('   📦 Raw message body:', message.body);
         const gameState = JSON.parse(message.body);
-        console.log('🎴 [PERSONAL STATE] Estado personal recibido:', gameState);
+        console.log('   📋 Estado parseado:', gameState);
+        console.log('   🃏 Hand:', gameState.hand);
+        console.log('   📏 Hand size:', gameState.hand?.length);
+        if (gameState.hand) {
+          for (const card of gameState.hand) {
+            console.log(`      - ${card.color} ${card.value} (${card.cardId})`);
+          }
+        }
 
         // Trigger GAME_STATE_UPDATE with personal data
+        console.log('   🎮 Llamando handleEvent con GAME_STATE_UPDATE...');
         this.handleEvent({
           type: GameEventType.GAME_STATE_UPDATE,
           payload: gameState,
           timestamp: Date.now(),
         });
+        console.log('✅ [PERSONAL STATE] Estado personal procesado correctamente');
       } catch (err) {
-        console.error('Error parseando estado personal:', err);
+        console.error('❌ Error parseando estado personal:', err);
       }
     });
+    console.log('✅ Suscrito a /user/queue/game-state');
 
     // Also subscribe to error queue
     this.client.subscribe(`/user/queue/errors`, (message: IMessage) => {
