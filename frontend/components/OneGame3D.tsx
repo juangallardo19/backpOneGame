@@ -91,7 +91,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       // RF27: Validate card can be played (backend will validate)
       // RF31: Play special card
       await playCard(cardId);
-      success("Card played", `Played ${card.color} ${card.value}`);
+      const cardDisplay = getCardSymbol(card);
+      success("Card played", `Played ${card.color} ${cardDisplay}`);
       setSelectedCardId(null);
     } catch (error: any) {
       showError("Cannot play card", error.message || "Invalid move");
@@ -195,6 +196,27 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       case 'BLUE': return 'card-blue';
       case 'WILD': return 'card-wild';
       default: return '';
+    }
+  };
+
+  // Get card symbol based on type (fixed to use type instead of value)
+  const getCardSymbol = (card: Card) => {
+    // For special cards, use type to determine symbol
+    switch (card.type) {
+      case 'SKIP':
+        return '⊘';
+      case 'REVERSE':
+        return '⟲';
+      case 'DRAW_TWO':
+        return '+2';
+      case 'WILD':
+        return '🎨';
+      case 'WILD_DRAW_FOUR':
+        return '+4';
+      case 'NUMBER':
+        return card.value !== null && card.value !== undefined ? card.value.toString() : '?';
+      default:
+        return card.value !== null && card.value !== undefined ? card.value.toString() : '?';
     }
   };
 
@@ -359,7 +381,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <div className="discard-pile">
             {gameState.topCard && (
               <div className={`pile-card ${getCardColorClass(gameState.topCard.color)}`}>
-                <div className="card-value">{gameState.topCard.value}</div>
+                <div className="card-value">{getCardSymbol(gameState.topCard)}</div>
                 <div className="card-color">{gameState.topCard.color}</div>
               </div>
             )}
@@ -382,9 +404,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                   } ${selectedCardId === card.id ? 'selected' : ''}`}
                   onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
                 >
-                  <div className="card-value-small">{card.value}</div>
+                  <div className="card-value-small">{getCardSymbol(card)}</div>
                   <div className="card-symbol">
-                    {card.type === 'WILD' ? '🎨' : card.value}
+                    {getCardSymbol(card)}
                   </div>
                 </div>
               );
