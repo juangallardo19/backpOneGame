@@ -124,6 +124,7 @@ export interface Room {
   maxPlayers: number;
   config: GameConfig;
   createdAt: string;
+  sessionId?: string; // Session ID del juego (disponible cuando status es IN_PROGRESS o IN_GAME)
 }
 
 /**

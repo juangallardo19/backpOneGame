@@ -138,38 +138,41 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         if (updatedRoom.status === 'IN_GAME' || updatedRoom.status === 'IN_PROGRESS') {
           console.log('🎮 [POLLING] ¡Juego iniciado detectado! Necesitamos reconectar...')
 
-          // The room is now in game, we need to get the sessionId
-          // Try to get game state to find sessionId
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app'
+          // Stop polling immediately to avoid multiple reconnection attempts
+          clearInterval(pollInterval)
+
           const authToken = token || localStorage.getItem('uno_auth_token')
 
-          // Try to find the active game for this room
-          // We'll try with the roomCode first to see if backend redirects us
-          const gameUrl = `${apiUrl}/api/game/${room.code}/state`
-          console.log('🔍 [POLLING] Intentando obtener sessionId del juego:', gameUrl)
-
-          const gameResponse = await fetch(gameUrl, {
-            headers: {
-              'Authorization': `Bearer ${authToken}`
-            }
-          })
-
-          if (gameResponse.ok) {
-            const gameData = await gameResponse.json()
-            const sessionId = gameData.sessionId
-
-            console.log('✅ [POLLING] SessionId encontrado:', sessionId)
+          // BEST CASE: Backend includes sessionId in room response
+          if (updatedRoom.sessionId) {
+            console.log('✅ [POLLING] SessionId encontrado en respuesta de sala:', updatedRoom.sessionId)
             console.log('🔌 [POLLING] Reconectando al juego...')
 
-            // Stop polling
-            clearInterval(pollInterval)
-
-            // Reconnect to game
-            await connectToGame(sessionId, authToken || '')
-
-            console.log('✅ [POLLING] Reconectado exitosamente, gameState debería actualizarse pronto')
+            try {
+              // Reconnect to game with the sessionId from room
+              await connectToGame(updatedRoom.sessionId, authToken || '')
+              console.log('✅ [POLLING] Reconectado exitosamente, gameState debería actualizarse pronto')
+            } catch (error) {
+              console.error('❌ [POLLING] Error al reconectar:', error)
+              showError('Error', 'No se pudo conectar al juego. Recargando página...')
+              setTimeout(() => window.location.reload(), 2000)
+            }
           } else {
-            console.warn('⚠️ [POLLING] No se pudo obtener sessionId aún, reintentando...')
+            // FALLBACK: Backend doesn't provide sessionId in room response
+            console.warn('⚠️ [POLLING] Backend no proporcionó sessionId en respuesta de sala')
+            console.log('🔄 [POLLING] Aplicando workaround: recargar página para obtener estado actualizado')
+
+            // Show notification to user
+            showError(
+              'Juego iniciado',
+              'El líder inició el juego. Recargando para unirte...'
+            )
+
+            // Reload page after a short delay
+            setTimeout(() => {
+              console.log('🔄 [POLLING] Recargando página...')
+              window.location.reload()
+            }, 2000)
           }
         }
       } catch (error) {
