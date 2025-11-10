@@ -388,18 +388,8 @@ public class WebSocketGameController {
                 if (player != null && !(player instanceof BotPlayer)) {
                     log.info("👤 [WebSocket] Player found in session, sending personal state");
 
-                    // Send general game state to the player
-                    GameStateResponse generalState = buildGameStateResponse(session);
-                    messagingTemplate.convertAndSend(
-                            "/topic/game/" + session.getSessionId(),
-                            Map.of(
-                                    "eventType", "GAME_STATE_UPDATE",
-                                    "timestamp", System.currentTimeMillis(),
-                                    "data", generalState
-                            )
-                    );
-
-                    // Send personal state with hand to the reconnecting player
+                    // CRITICAL FIX: Only send personal state with hand to the reconnecting player
+                    // DO NOT broadcast general state to all players, as it would overwrite their hands
                     GameStateResponse personalState = buildPersonalGameState(session, player);
                     log.info("🃏 [WebSocket] Sending {} cards to {}",
                             personalState.getHand() != null ? personalState.getHand().size() : 0,
@@ -411,7 +401,9 @@ public class WebSocketGameController {
                             personalState
                     );
 
-                    log.info("✅ [WebSocket] Personal state sent to {}", player.getNickname());
+                    log.info("✅ [WebSocket] Personal state with {} cards sent to {}",
+                            personalState.getHand() != null ? personalState.getHand().size() : 0,
+                            player.getNickname());
                 } else {
                     log.debug("Player {} not found in session or is a bot", principal.getName());
                 }
