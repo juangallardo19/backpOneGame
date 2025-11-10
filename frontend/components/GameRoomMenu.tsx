@@ -216,13 +216,13 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }
 
-  // Agregar bot
+  // Agregar bot (dificultad general fija para comportamiento realista)
   const handleAddBot = async () => {
     if (!room) return
 
     try {
       console.log("🤖 Agregando bot a la sala...")
-      const updatedRoom = await roomService.addBot(room.code, "NORMAL")
+      const updatedRoom = await roomService.addBot(room.code)
       console.log("✅ Bot agregado:", updatedRoom)
       setRoom(updatedRoom)
       success("Bot agregado", "Un bot se ha unido a la sala")
