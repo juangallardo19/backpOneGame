@@ -320,14 +320,72 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return;
     }
 
-    // CRITICAL FIX: Don't reconnect if we're already on the correct WebSocket
-    // Players are already subscribed to /topic/game/{roomCode} from the start
-    // We just need to update the sessionId state
-    console.log('✅ Ya estamos conectados al WebSocket correcto (roomCode: {})', roomCode);
-    console.log('🔄 Actualizando sessionId en el estado...');
-    setSessionId(newSessionId);
+    // CRITICAL FIX: NON-LEADER players need to reconnect to the game WebSocket
+    // The leader already connects in GameRoomMenu.handleStartGame()
+    // But other players need to connect here when they receive GAME_STARTED
 
-    // Update game status to PLAYING immediately
+    // Only reconnect if we're not already connected to this session
+    if (sessionId !== newSessionId) {
+      console.log('🔄 [GAME_STARTED] Reconectando al WebSocket del juego...');
+      console.log('   🆔 Nuevo sessionId:', newSessionId);
+      console.log('   🆔 SessionId anterior:', sessionId);
+
+      // Disconnect from current WebSocket (room WebSocket)
+      if (wsServiceRef.current) {
+        console.log('🔌 Desconectando del WebSocket anterior...');
+        wsServiceRef.current.disconnect();
+        wsServiceRef.current = null;
+      }
+
+      // Get the auth token
+      const authToken = localStorage.getItem('uno_auth_token');
+
+      // Create new WebSocket connection with sessionId
+      console.log('🔌 Creando nueva conexión WebSocket con sessionId:', newSessionId);
+      const wsService = getWebSocketService(newSessionId, authToken || '');
+      wsServiceRef.current = wsService;
+      setSessionId(newSessionId);
+
+      // Subscribe to events
+      wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
+      wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
+      wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
+      wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
+      wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));
+      wsService.on(GameEventType.CARD_DRAWN, (event) => handleCardDrawn(event.payload));
+      wsService.on(GameEventType.TURN_CHANGED, (event) => handleTurnChanged(event.payload));
+      wsService.on(GameEventType.ONE_CALLED, (event) => handleUnoCall(event.payload));
+      wsService.on(GameEventType.ONE_PENALTY, (event) => handleUnoPenalty(event.payload));
+      wsService.on(GameEventType.DIRECTION_REVERSED, (event) => handleDirectionReversed(event.payload));
+      wsService.on(GameEventType.COLOR_CHANGED, (event) => handleColorChanged(event.payload));
+      wsService.on(GameEventType.MESSAGE_RECEIVED, (event) => handleMessageReceived(event.payload));
+      wsService.on(GameEventType.EMOTE_RECEIVED, (event) => handleEmoteReceived(event.payload));
+      wsService.on(GameEventType.ERROR, (event) => handleError(event.payload));
+
+      // Connect to WebSocket
+      try {
+        await wsService.connect();
+        setIsConnected(true);
+        console.log('✅ [GAME_STARTED] Conectado al WebSocket del juego');
+
+        // Notify server that we joined
+        wsService.notifyJoin();
+
+        // Request game state
+        setTimeout(() => {
+          wsService.requestGameState();
+        }, 500);
+      } catch (error) {
+        console.error('❌ [GAME_STARTED] Error conectando al WebSocket:', error);
+        setError('Error al conectar al juego');
+        setIsConnected(false);
+      }
+    } else {
+      console.log('✅ [GAME_STARTED] Ya estamos conectados al sessionId correcto');
+    }
+
+    // Update game status to PLAYING
     setGameState(prev => {
       console.log('🔄 Actualizando gameState a PLAYING');
       const newState = prev ? { ...prev, status: GameStatus.PLAYING } : null;
@@ -408,12 +466,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
       }, 500);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sessionId,
     transformBackendGameState,
-    // Note: Other handlers are not in dependencies because they're captured as closures
-    // when creating the new WebSocket service. Adding them would cause circular dependencies.
+    handleGameStateUpdate,
+    handlePlayerJoined,
+    handlePlayerLeft,
+    handleGameEnded,
+    handleCardPlayed,
+    handleCardDrawn,
+    handleTurnChanged,
+    handleUnoCall,
+    handleUnoPenalty,
+    handleDirectionReversed,
+    handleColorChanged,
+    handleMessageReceived,
+    handleEmoteReceived,
+    handleError,
   ]);
 
   const handleGameEnded = useCallback((payload: any) => {
