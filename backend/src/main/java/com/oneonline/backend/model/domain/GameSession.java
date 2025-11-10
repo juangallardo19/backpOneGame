@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
@@ -15,6 +16,7 @@ import java.util.*;
  * Manages game state, turn order, and card play.
  * Implements Observer pattern for WebSocket notifications.
  */
+@Slf4j
 @Data
 @Builder
 @NoArgsConstructor
@@ -89,6 +91,12 @@ public class GameSession {
     public void start() {
         if (room == null || room.getTotalPlayerCount() < 2) {
             throw new IllegalStateException("Need at least 2 players to start");
+        }
+
+        // CRITICAL: Prevent starting the game twice
+        if (currentState == GameStatus.PLAYING || currentState == GameStatus.DEALING_CARDS) {
+            log.warn("⚠️ Game already started or currently dealing cards, skipping start()");
+            return;
         }
 
         currentState = GameStatus.DEALING_CARDS;

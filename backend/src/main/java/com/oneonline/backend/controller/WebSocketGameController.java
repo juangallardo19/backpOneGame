@@ -344,12 +344,18 @@ public class WebSocketGameController {
      * Handle player joining room
      *
      * @param sessionId Game session ID
-     * @param principal Authenticated user
+     * @param principal Authenticated user (may be null if not authenticated)
      */
     @MessageMapping("/game/{sessionId}/join")
     public void handlePlayerJoin(
             @DestinationVariable String sessionId,
             Principal principal) {
+
+        // CRITICAL: Handle case when principal is null (unauthenticated connection)
+        if (principal == null) {
+            log.warn("⚠️ WebSocket: Unauthenticated player attempting to join session {}", sessionId);
+            return; // Silently ignore unauthenticated join attempts
+        }
 
         log.info("WebSocket: Player {} joining session {}", principal.getName(), sessionId);
 
