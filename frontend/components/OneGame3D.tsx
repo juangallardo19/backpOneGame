@@ -43,6 +43,26 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const currentPlayer = gameState?.currentPlayer;
   const isMyTurn = gameState?.currentTurnPlayerId === user?.id;
 
+  // Log gameState changes
+  useEffect(() => {
+    console.log('🎮 ========== ONE GAME 3D - GAMESTATE ACTUALIZADO ==========');
+    console.log('   📊 gameState:', gameState);
+    console.log('   👤 user:', user);
+    console.log('   🎴 currentPlayer:', currentPlayer);
+    console.log('   🃏 currentPlayer.hand:', currentPlayer?.hand);
+    console.log('   📏 hand size:', currentPlayer?.hand?.length);
+    console.log('   🎯 isMyTurn:', isMyTurn);
+    console.log('   🎲 currentTurnPlayerId:', gameState?.currentTurnPlayerId);
+    console.log('   🆔 user.id:', user?.id);
+    if (currentPlayer?.hand) {
+      console.log('   🎴 Cartas en mano:');
+      for (const card of currentPlayer.hand) {
+        console.log(`      - ${card.color} ${card.value} (${card.id})`);
+      }
+    }
+    console.log('✅ =================================================');
+  }, [gameState, currentPlayer, isMyTurn, user]);
+
   // RF24-RF39: Handle card play
   const handlePlayCard = async (cardId: string) => {
     if (!isMyTurn) {
@@ -87,17 +107,27 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // RF24-RF39: Handle draw card
   const handleDrawCard = async () => {
+    console.log('📥 ========== HANDLE DRAW CARD ==========');
+    console.log('   🎯 isMyTurn:', isMyTurn);
+    console.log('   👤 user:', user);
+    console.log('   🎮 gameState:', gameState);
+
     if (!isMyTurn) {
+      console.log('   ❌ No es tu turno');
       showError("Not your turn", "Wait for your turn to draw");
       return;
     }
 
     try {
+      console.log('   📤 Llamando drawCard()...');
       await drawCard();
+      console.log('   ✅ drawCard() completado');
       success("Card drawn", "You drew a card");
     } catch (error: any) {
+      console.error('   ❌ Error en drawCard():', error);
       showError("Error", error.message || "Could not draw card");
     }
+    console.log('✅ =================================================');
   };
 
   // RF32: Call ONE!

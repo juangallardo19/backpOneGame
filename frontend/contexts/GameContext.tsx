@@ -222,13 +222,36 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // ============================================
 
   const handleGameStateUpdate = useCallback((payload: any) => {
-    console.log('🎮 Estado del juego actualizado:', payload);
+    console.log('🎮 ========== HANDLE GAME STATE UPDATE ==========');
+    console.log('   📥 Payload recibido:', payload);
+    console.log('   📋 Campos en payload:');
+    console.log('      - sessionId:', payload.sessionId);
+    console.log('      - status:', payload.status);
+    console.log('      - hand:', payload.hand);
+    console.log('      - hand length:', payload.hand?.length);
+    console.log('      - players:', payload.players?.length);
+    console.log('      - currentPlayerId:', payload.currentPlayerId);
+    console.log('      - topCard:', payload.topCard);
 
     // Transform backend response to frontend GameState format
+    console.log('   🔄 Llamando transformBackendGameState...');
     const transformedState = transformBackendGameState(payload);
-    setGameState(transformedState);
+
+    if (transformedState) {
+      console.log('   ✅ Estado transformado correctamente:');
+      console.log('      - currentPlayer hand:', transformedState.currentPlayer?.hand?.length);
+      console.log('      - players count:', transformedState.players?.length);
+      console.log('      - topCard:', transformedState.topCard);
+      console.log('   📝 Actualizando gameState en contexto...');
+      setGameState(transformedState);
+      console.log('   ✅ gameState actualizado en contexto');
+    } else {
+      console.error('   ❌ transformBackendGameState retornó null');
+    }
+
     setError(null);
-  }, []);
+    console.log('✅ [GameContext] handleGameStateUpdate completado');
+  }, [transformBackendGameState]);
 
   const handlePlayerJoined = useCallback((payload: any) => {
     console.log('👤 Jugador se unió:', payload);
