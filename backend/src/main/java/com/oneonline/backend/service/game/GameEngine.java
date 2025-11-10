@@ -103,8 +103,8 @@ public class GameEngine {
         command.execute();
         commandHistory.push(command);
 
-        // Apply card effect
-        applyCardEffect(card, session, turnManager);
+        // Apply card effect (returns true if effect already handled turn advancement)
+        boolean effectHandledTurnAdvancement = applyCardEffect(card, session, turnManager);
 
         // Check ONE call
         oneManager.checkOneCall(player);
@@ -117,8 +117,10 @@ public class GameEngine {
             return true;
         }
 
-        // Advance turn
-        turnManager.nextTurn();
+        // Advance turn only if effect didn't already handle it
+        if (!effectHandledTurnAdvancement) {
+            turnManager.nextTurn();
+        }
 
         log.info("Move processed: {} played {}", player.getNickname(), card);
 
@@ -209,48 +211,75 @@ public class GameEngine {
      *
      * Different effects for different card types:
      * - NUMBER: No effect
-     * - SKIP: Skip next player
+     * - SKIP: Skip next player (handles turn advancement internally)
      * - REVERSE: Reverse turn order
-     * - DRAW_TWO: Next player draws 2
+     * - DRAW_TWO: Next player draws 2 and loses turn
      * - WILD: Player chooses color
-     * - WILD_DRAW_FOUR: Next player draws 4, player chooses color
+     * - WILD_DRAW_FOUR: Next player draws 4 and loses turn, player chooses color
      *
      * @param card Card played
      * @param session Game session
      * @param turnManager Turn manager
+     * @return true if effect already handled turn advancement, false otherwise
      */
-    public void applyCardEffect(Card card, GameSession session, TurnManager turnManager) {
+    public boolean applyCardEffect(Card card, GameSession session, TurnManager turnManager) {
         CardType type = card.getType();
 
         switch (type) {
             case NUMBER -> {
                 // No effect
                 log.debug("Number card played - no effect");
+                return false;
             }
 
             case SKIP -> {
                 effectProcessor.processSkipEffect(turnManager);
+                // Skip already advanced turn twice (skipped next player)
+                return true;
             }
 
             case REVERSE -> {
+                int playerCount = turnManager.getPlayerCount();
                 effectProcessor.processReverseEffect(turnManager);
+                // In 2-player game, Reverse acts as Skip (turn already advanced)
+                // In 3+ player game, only direction changed (need to advance turn)
+                return playerCount == 2;
             }
 
             case DRAW_TWO -> {
                 Player nextPlayer = turnManager.peekNextPlayer();
                 effectProcessor.processDrawTwoEffect(session, nextPlayer);
+                boolean stackingEnabled = session.getConfiguration().isAllowStackingCards();
+                // If stacking disabled, next player drew and lost turn (skip them completely)
+                if (!stackingEnabled) {
+                    // Next player draws and loses turn, so skip them
+                    turnManager.skipNextPlayer();
+                    return true; // Turn already advanced (skipped the player who drew)
+                }
+                return false; // Normal turn advancement (with stacking, next player can play)
             }
 
             case WILD_DRAW_FOUR -> {
                 Player nextPlayer = turnManager.peekNextPlayer();
                 effectProcessor.processDrawFourEffect(session, nextPlayer);
+                boolean stackingEnabled = session.getConfiguration().isAllowStackingCards();
+                // If stacking disabled, next player drew and lost turn (skip them completely)
+                if (!stackingEnabled) {
+                    // Next player draws and loses turn, so skip them
+                    turnManager.skipNextPlayer();
+                    return true; // Turn already advanced (skipped the player who drew)
+                }
+                return false; // Normal turn advancement (with stacking, next player can play)
             }
 
             case WILD -> {
                 // Color already chosen when card was played
                 log.debug("Wild card played - color chosen");
+                return false;
             }
         }
+
+        return false;
     }
 
     /**

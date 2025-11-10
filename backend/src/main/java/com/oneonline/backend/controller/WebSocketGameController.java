@@ -309,7 +309,7 @@ public class WebSocketGameController {
      * Handle chat message via WebSocket
      *
      * Client sends to: /app/game/{sessionId}/chat
-     * Server broadcasts to: /topic/game/{sessionId}/chat
+     * Server broadcasts to: /topic/game/{sessionId} with eventType MESSAGE_RECEIVED
      *
      * Message:
      * {
@@ -330,15 +330,39 @@ public class WebSocketGameController {
 
         String message = payload.get("message");
 
-        // Broadcast chat message to all players in room
+        // Get player info
+        GameSession session = gameSessionManager.getSession(sessionId);
+        if (session == null) {
+            log.error("Session not found: {}", sessionId);
+            return;
+        }
+
+        // Find player by email
+        Player player = session.getAllPlayers().stream()
+                .filter(p -> p.getEmail().equals(principal.getName()))
+                .findFirst()
+                .orElse(null);
+
+        if (player == null) {
+            log.error("Player not found with email: {}", principal.getName());
+            return;
+        }
+
+        // Broadcast chat message to all players in room as structured event
         messagingTemplate.convertAndSend(
-                "/topic/game/" + sessionId + "/chat",
+                "/topic/game/" + sessionId,
                 Map.of(
-                        "sender", principal.getName(),
-                        "message", message,
-                        "timestamp", System.currentTimeMillis()
+                        "eventType", "MESSAGE_RECEIVED",
+                        "data", Map.of(
+                                "playerId", player.getPlayerId(),
+                                "playerNickname", player.getNickname(),
+                                "message", message,
+                                "timestamp", System.currentTimeMillis()
+                        )
                 )
         );
+
+        log.info("Chat message sent from {} ({}): {}", player.getNickname(), player.getPlayerId(), message);
     }
 
     /**
