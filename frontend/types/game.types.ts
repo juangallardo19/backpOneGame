@@ -119,7 +119,7 @@ export interface Room {
   name: string;
   leaderId: string;
   isPrivate: boolean;
-  status: 'WAITING' | 'IN_GAME' | 'FINISHED';
+  status: 'WAITING' | 'IN_GAME' | 'IN_PROGRESS' | 'FINISHED';
   players: Player[];
   maxPlayers: number;
   config: GameConfig;
