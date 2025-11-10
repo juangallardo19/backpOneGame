@@ -411,11 +411,10 @@ public class GameEngine {
      */
     public void processBotTurns(GameSession session) {
         TurnManager turnManager = session.getTurnManager();
-        Player currentPlayer = turnManager.getCurrentPlayer();
 
         // Process bot turns until we reach a human player
-        while (currentPlayer instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
-            BotPlayer bot = (BotPlayer) currentPlayer;
+        while (turnManager.getCurrentPlayer() instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
+            BotPlayer bot = (BotPlayer) turnManager.getCurrentPlayer();
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
             try {
@@ -480,17 +479,13 @@ public class GameEngine {
                     Thread.currentThread().interrupt();
                 }
 
-                // Update current player for next iteration
-                currentPlayer = turnManager.getCurrentPlayer();
-
             } catch (Exception e) {
                 log.error("❌ Error processing bot turn for {}: {}", bot.getNickname(), e.getMessage(), e);
                 // Advance turn to avoid infinite loop
                 turnManager.nextTurn();
-                currentPlayer = turnManager.getCurrentPlayer();
             }
         }
 
-        log.info("✅ Bot turn processing complete. Current player: {}", currentPlayer.getNickname());
+        log.info("✅ Bot turn processing complete. Current player: {}", turnManager.getCurrentPlayer().getNickname());
     }
 }
