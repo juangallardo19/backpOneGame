@@ -135,7 +135,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
         console.log('📊 [POLLING] Estado de sala:', updatedRoom.status)
 
-        if (updatedRoom.status === 'IN_GAME') {
+        if (updatedRoom.status === 'IN_GAME' || updatedRoom.status === 'IN_PROGRESS') {
           console.log('🎮 [POLLING] ¡Juego iniciado detectado! Necesitamos reconectar...')
 
           // The room is now in game, we need to get the sessionId
