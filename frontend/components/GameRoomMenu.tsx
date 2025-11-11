@@ -349,7 +349,8 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   const renderPlayers = () => {
     if (!room) return null
 
-    const players = room.players || []
+    // Filtrar jugadores que tengan nickname válido
+    const players = (room.players || []).filter(p => p.nickname && p.nickname.trim() !== '')
     const emptySlots = room.maxPlayers - players.length
 
     return (
@@ -377,7 +378,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                   {isPlayerLeader && (
                     <Crown className="crown-icon-inline" size={16} />
                   )}
-                  <span className="player-name">{player.nickname || 'Jugador sin nombre'}</span>
+                  <span className="player-name">{player.nickname}</span>
                 </div>
                 <div className="player-status">
                   {isPlayerLeader ? (
@@ -854,14 +855,16 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .lobby-column {
           background: linear-gradient(
             135deg,
-            rgba(20, 20, 40, 0.6),
-            rgba(10, 10, 30, 0.4)
+            rgba(30, 30, 50, 0.85),
+            rgba(20, 20, 40, 0.75)
           );
           border-radius: 16px;
           padding: 2rem;
-          border: 2px solid rgba(255, 255, 255, 0.15);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-          backdrop-filter: blur(10px);
+          border: 2px solid rgba(255, 140, 0, 0.3);
+          box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.5),
+            0 0 20px rgba(255, 140, 0, 0.1);
+          backdrop-filter: blur(12px);
         }
 
         .column-title {
@@ -886,14 +889,17 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           align-items: center;
           gap: 1rem;
           padding: 1.25rem;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.15));
-          border-radius: 12px;
-          border: 2px solid rgba(59, 130, 246, 0.4);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.2));
+          border-radius: 14px;
+          border: 2px solid rgba(59, 130, 246, 0.6);
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
-          backdrop-filter: blur(10px);
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+          backdrop-filter: blur(12px);
+          box-shadow:
+            0 4px 20px rgba(59, 130, 246, 0.25),
+            0 0 30px rgba(59, 130, 246, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .player-card::before {
@@ -918,27 +924,30 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .player-card.leader-card {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.35), rgba(255, 185, 0, 0.25), rgba(255, 140, 0, 0.2));
-          border: 2px solid rgba(255, 215, 0, 0.8);
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 185, 0, 0.3), rgba(255, 140, 0, 0.25));
+          border: 2px solid rgba(255, 215, 0, 0.9);
           box-shadow:
-            0 4px 24px rgba(255, 215, 0, 0.4),
-            0 8px 40px rgba(255, 140, 0, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            0 4px 28px rgba(255, 215, 0, 0.5),
+            0 8px 50px rgba(255, 140, 0, 0.4),
+            0 0 40px rgba(255, 215, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
           animation: leader-glow 3s ease-in-out infinite;
         }
 
         @keyframes leader-glow {
           0%, 100% {
             box-shadow:
-              0 4px 24px rgba(255, 215, 0, 0.4),
-              0 8px 40px rgba(255, 140, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              0 4px 28px rgba(255, 215, 0, 0.5),
+              0 8px 50px rgba(255, 140, 0, 0.4),
+              0 0 40px rgba(255, 215, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
           }
           50% {
             box-shadow:
-              0 6px 32px rgba(255, 215, 0, 0.6),
-              0 12px 60px rgba(255, 140, 0, 0.5),
-              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+              0 6px 36px rgba(255, 215, 0, 0.7),
+              0 12px 70px rgba(255, 140, 0, 0.6),
+              0 0 60px rgba(255, 215, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4);
           }
         }
 
@@ -952,20 +961,27 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .player-card.bot-card {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(124, 58, 237, 0.15));
-          border: 2px solid rgba(139, 92, 246, 0.4);
-          box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.2));
+          border: 2px solid rgba(139, 92, 246, 0.6);
+          box-shadow:
+            0 4px 20px rgba(139, 92, 246, 0.25),
+            0 0 30px rgba(139, 92, 246, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .player-card.bot-card:hover {
-          box-shadow: 0 6px 20px rgba(139, 92, 246, 0.25);
-          border-color: rgba(139, 92, 246, 0.6);
+          box-shadow:
+            0 6px 24px rgba(139, 92, 246, 0.35),
+            0 0 40px rgba(139, 92, 246, 0.2);
+          border-color: rgba(139, 92, 246, 0.8);
         }
 
         .player-card.empty {
-          opacity: 0.5;
+          opacity: 0.6;
           border-style: dashed;
-          background: rgba(255, 255, 255, 0.02);
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: none;
         }
 
         .player-avatar {
