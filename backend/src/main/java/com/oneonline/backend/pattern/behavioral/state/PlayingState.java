@@ -84,8 +84,10 @@ public class PlayingState implements GameState {
             // Apply penalty (handled by game engine)
         }
 
-        // Move to next player
-        session.nextTurn();
+        // IMPORTANT: DO NOT advance turn here!
+        // Turn advancement is handled by GameEngine AFTER applying card effects
+        // This allows special cards (Skip, Reverse, Draw Two, etc.) to work correctly
+        // session.nextTurn(); // REMOVED - GameEngine handles turn advancement
     }
 
     @Override
