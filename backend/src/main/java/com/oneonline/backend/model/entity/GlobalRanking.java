@@ -97,10 +97,10 @@ public class GlobalRanking {
     /**
      * Total ranking points
      * Calculated based on:
-     * - Win: +10 points
-     * - Second place: +5 points
-     * - Third place: +2 points
-     * - Fourth place: +1 point
+     * - Win: +50 points
+     * - Second place: +10 points
+     * - Third place: 0 points
+     * - Fourth place: 0 points
      * - Bonus points for win streaks
      */
     @Column(name = "points", nullable = false)
@@ -154,18 +154,18 @@ public class GlobalRanking {
      * Add points for game performance
      *
      * Points system:
-     * - 1st place: +10 points
-     * - 2nd place: +5 points
-     * - 3rd place: +2 points
-     * - 4th place: +1 point
+     * - 1st place: +50 points
+     * - 2nd place: +10 points
+     * - 3rd place: 0 points
+     * - 4th place: 0 points
      * - Streak bonus: +1 per consecutive win (max +5)
      */
     public void addPointsForPosition(int position, int playerCount) {
         int basePoints = switch (position) {
-            case 1 -> 10;
-            case 2 -> 5;
-            case 3 -> 2;
-            case 4 -> 1;
+            case 1 -> 50;
+            case 2 -> 10;
+            case 3 -> 0;
+            case 4 -> 0;
             default -> 0;
         };
 
