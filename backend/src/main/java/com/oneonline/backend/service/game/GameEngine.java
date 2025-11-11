@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
@@ -124,9 +125,15 @@ public class GameEngine {
             // End the game session
             session.endGame(winner.get());
 
-            // Send results to all players via WebSocket
-            String destination = "/topic/game/" + session.getSessionId() + "/end";
-            messagingTemplate.convertAndSend(destination, results);
+            // Send results to all players via WebSocket using the correct event format
+            messagingTemplate.convertAndSend(
+                    "/topic/game/" + session.getSessionId(),
+                    Map.of(
+                            "eventType", "GAME_ENDED",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", results
+                    )
+            );
 
             log.info("🏆 Game over! Winner: {} | Results sent to all players", winner.get().getNickname());
             return true;
