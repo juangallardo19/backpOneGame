@@ -13,9 +13,29 @@ export const rankingService = {
    */
   getGlobalRanking: async (): Promise<RankingEntry[]> => {
     try {
-      const response = await api.get<RankingEntry[]>(API_ENDPOINTS.GLOBAL_RANKING);
-      return response.data;
+      const response = await api.get<any>(API_ENDPOINTS.GLOBAL_RANKING);
+      // Backend returns { rankingType, totalPlayers, rankings: [...], generatedAt }
+      // We need to extract the rankings array and map to RankingEntry
+      const backendResponse = response.data;
+
+      if (!backendResponse.rankings || !Array.isArray(backendResponse.rankings)) {
+        console.error('Invalid response format from backend:', backendResponse);
+        return [];
+      }
+
+      // Map backend format to frontend RankingEntry format
+      return backendResponse.rankings.map((entry: any) => ({
+        rank: entry.rank,
+        userId: entry.playerId,
+        nickname: entry.nickname,
+        totalWins: entry.wins || 0,
+        totalGames: entry.gamesPlayed || 0,
+        winRate: entry.winRate || 0,
+        points: entry.totalPoints || 0,
+        profilePicture: entry.profilePicture,
+      }));
     } catch (error: any) {
+      console.error('Error fetching global ranking:', error);
       throw error;
     }
   },
@@ -25,9 +45,27 @@ export const rankingService = {
    */
   getTopN: async (limit: number = 10): Promise<RankingEntry[]> => {
     try {
-      const response = await api.get<RankingEntry[]>(API_ENDPOINTS.TOP_N(limit));
-      return response.data;
+      const response = await api.get<any>(API_ENDPOINTS.TOP_N(limit));
+      const backendResponse = response.data;
+
+      if (!backendResponse.rankings || !Array.isArray(backendResponse.rankings)) {
+        console.error('Invalid response format from backend:', backendResponse);
+        return [];
+      }
+
+      // Map backend format to frontend RankingEntry format
+      return backendResponse.rankings.map((entry: any) => ({
+        rank: entry.rank,
+        userId: entry.playerId,
+        nickname: entry.nickname,
+        totalWins: entry.wins || 0,
+        totalGames: entry.gamesPlayed || 0,
+        winRate: entry.winRate || 0,
+        points: entry.totalPoints || 0,
+        profilePicture: entry.profilePicture,
+      }));
     } catch (error: any) {
+      console.error('Error fetching top N ranking:', error);
       throw error;
     }
   },

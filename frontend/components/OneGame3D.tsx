@@ -153,10 +153,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Handle close game results modal
   const handleCloseGameResults = () => {
-    console.log('🔙 Closing game results modal and returning to room');
+    console.log('🔙 Closing game results modal and returning to previous page');
     clearGameResults();
-    // Redirect to room page
-    router.push('/room');
+    // Use onBack callback if available, otherwise go home
+    if (onBack) {
+      onBack();
+    } else {
+      router.push('/');
+    }
   };
 
   // Available emojis
