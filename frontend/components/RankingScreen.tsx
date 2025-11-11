@@ -22,9 +22,7 @@ const RankingScreen: React.FC<RankingScreenProps> = ({ onBack }) => {
   const { error: showError } = useNotification();
 
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
-  const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'global' | 'stats'>('global');
 
   // ============================================
   // CARGAR DATOS
@@ -41,32 +39,6 @@ const RankingScreen: React.FC<RankingScreenProps> = ({ onBack }) => {
       // Cargar ranking global
       const rankingData = await rankingService.getGlobalRanking();
       setRankings(rankingData);
-
-      // Cargar estadísticas del usuario si está autenticado
-      if (user && !(typeof user.id === 'string' && user.id.startsWith('guest_'))) {
-        try {
-          const stats = await rankingService.getTopN(100); // Ajustar según tu API
-          // Buscar las stats del usuario actual
-          const userRanking = rankingData.find((r) => r.userId === user.id);
-          if (userRanking) {
-            const userStats: PlayerStats = {
-              userId: user.id,
-              nickname: user.nickname,
-              totalWins: userRanking.totalWins,
-              totalGames: userRanking.totalGames,
-              winRate: userRanking.winRate,
-              currentStreak: 0, // TODO: obtener del backend
-              bestStreak: 0, // TODO: obtener del backend
-              totalPoints: userRanking.points,
-              rank: userRanking.rank,
-              profilePicture: user.profilePicture,
-            };
-            setPlayerStats(userStats);
-          }
-        } catch (error) {
-          console.error('Error cargando estadísticas del jugador:', error);
-        }
-      }
     } catch (error: any) {
       console.error('Error cargando ranking:', error);
       showError('Error', 'No se pudo cargar el ranking');
@@ -108,41 +80,12 @@ const RankingScreen: React.FC<RankingScreenProps> = ({ onBack }) => {
           <div className="w-24" /> {/* Spacer para centrar título */}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            onClick={() => setActiveTab('global')}
-            className={`flex-1 ${
-              activeTab === 'global'
-                ? 'glass-button-primary'
-                : 'glass-button glass-button-secondary'
-            }`}
-          >
-            <Users className="mr-2 h-5 w-5" />
-            TOP 100
-          </Button>
-          <Button
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 ${
-              activeTab === 'stats'
-                ? 'glass-button-primary'
-                : 'glass-button glass-button-secondary'
-            }`}
-            disabled={!playerStats}
-          >
-            <TrendingUp className="mr-2 h-5 w-5" />
-            Mis Estadísticas
-          </Button>
-        </div>
-
         {/* Contenido principal */}
         <div className="flex-1 overflow-hidden">
           {isLoading ? (
             <LoadingState />
-          ) : activeTab === 'global' ? (
-            <GlobalRankingTab rankings={rankings} currentUserId={user?.id} />
           ) : (
-            <PlayerStatsTab stats={playerStats} />
+            <GlobalRankingTab rankings={rankings} currentUserId={user?.id} />
           )}
         </div>
       </div>
