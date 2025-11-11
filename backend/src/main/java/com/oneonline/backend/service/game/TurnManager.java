@@ -81,9 +81,9 @@ public class TurnManager {
      */
     public Player peekNextPlayer() {
         if (isClockwise) {
-            return playerQueue.getNext();
+            return playerQueue.peekNext();  // Use peekNext() instead of getNext() to avoid moving pointer
         } else {
-            return playerQueue.getPrevious();
+            return playerQueue.peekPrevious();  // Use peekPrevious() instead of getPrevious()
         }
     }
 
