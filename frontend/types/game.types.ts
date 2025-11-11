@@ -248,6 +248,36 @@ export interface Notification {
   duration?: number; // ms, undefined = no auto-close
 }
 
+/**
+ * Player result in final ranking table
+ */
+export interface PlayerResult {
+  position: number;
+  userId: number | null;
+  nickname: string;
+  remainingCards: number;
+  handPoints: number;
+  pointsEarned: number;
+  isWinner: boolean;
+  isBot: boolean;
+}
+
+/**
+ * Game end results (sent by backend when game finishes)
+ */
+export interface GameEndResult {
+  roomCode: string;
+  sessionId: string;
+  winnerNickname: string;
+  winnerId: number | null;
+  playerRankings: PlayerResult[];
+  durationMinutes: number;
+  startedAt: string;
+  endedAt: string;
+  totalPlayers: number;
+  totalCardsPlayed: number;
+}
+
 // ============================================
 // HELPER FUNCTIONS (Type Guards)
 // ============================================

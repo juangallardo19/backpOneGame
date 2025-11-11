@@ -18,12 +18,14 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Hand, MessageCircle, Smile } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
+import GameResultsModal from './GameResultsModal';
 import { Card, Player, CurrentPlayer } from '@/types/game.types';
 
 interface OneGame3DProps {
@@ -31,7 +33,8 @@ interface OneGame3DProps {
 }
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
-  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote, isMyTurn: isMyTurnFn } = useGame();
+  const router = useRouter();
+  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote, isMyTurn: isMyTurnFn, gameResults, clearGameResults, room } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
@@ -146,6 +149,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     } catch (error: any) {
       showError("Error", error.message || "Could not call ONE");
     }
+  };
+
+  // Handle close game results modal
+  const handleCloseGameResults = () => {
+    console.log('🔙 Closing game results modal and returning to room');
+    clearGameResults();
+    // Redirect to room page
+    router.push('/room');
   };
 
   // Available emojis
@@ -1058,6 +1069,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           to { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Game Results Modal */}
+      {gameResults && (
+        <GameResultsModal
+          results={gameResults}
+          onClose={handleCloseGameResults}
+        />
+      )}
     </div>
   );
 }
