@@ -292,10 +292,10 @@ public class StatsService {
      * Calculate points earned for placement
      *
      * Points system:
-     * - 1st place: 10 points
-     * - 2nd place: 5 points
-     * - 3rd place: 2 points
-     * - 4th place: 1 point
+     * - 1st place: 50 points
+     * - 2nd place: 10 points
+     * - 3rd place: 0 points
+     * - 4th place: 0 points
      * - 5+ place: 0 points
      *
      * @param placement Player's placement (1-based)
@@ -303,10 +303,10 @@ public class StatsService {
      */
     private int calculatePointsForPlacement(int placement) {
         return switch (placement) {
-            case 1 -> 10;
-            case 2 -> 5;
-            case 3 -> 2;
-            case 4 -> 1;
+            case 1 -> 50;
+            case 2 -> 10;
+            case 3 -> 0;
+            case 4 -> 0;
             default -> 0;
         };
     }

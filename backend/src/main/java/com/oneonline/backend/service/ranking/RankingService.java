@@ -37,10 +37,10 @@ import java.util.stream.Collectors;
  * Tiebreaker 2: Total wins
  *
  * POINTS SYSTEM:
- * - 1st place: +10 points
- * - 2nd place: +5 points
- * - 3rd place: +2 points
- * - 4th place: +1 point
+ * - 1st place: +50 points
+ * - 2nd place: +10 points
+ * - 3rd place: 0 points
+ * - 4th place: 0 points
  * - Streak bonus: +1 per consecutive win (max +5)
  *
  * @author Juan Gallardo

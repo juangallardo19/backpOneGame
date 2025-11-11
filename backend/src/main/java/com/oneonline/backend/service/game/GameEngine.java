@@ -1,6 +1,7 @@
 package com.oneonline.backend.service.game;
 
 import com.oneonline.backend.model.domain.*;
+import com.oneonline.backend.model.dto.GameEndResultDto;
 import com.oneonline.backend.model.enums.CardColor;
 import com.oneonline.backend.model.enums.CardType;
 import com.oneonline.backend.model.enums.GameStatus;
@@ -46,6 +47,7 @@ public class GameEngine {
     private final OneManager oneManager;
     private final BotStrategy botStrategy;
     private final SimpMessagingTemplate messagingTemplate;
+    private final GameEndService gameEndService;
 
     /**
      * Command history for undo functionality
@@ -112,8 +114,21 @@ public class GameEngine {
         // Check win condition
         Optional<Player> winner = checkWinCondition(session);
         if (winner.isPresent()) {
+            // Process game end: save history, update stats, update rankings
+            GameEndResultDto results = gameEndService.processGameEnd(
+                    session,
+                    winner.get(),
+                    session.getGameStartTime()
+            );
+
+            // End the game session
             session.endGame(winner.get());
-            log.info("Game over! Winner: {}", winner.get().getNickname());
+
+            // Send results to all players via WebSocket
+            String destination = "/topic/game/" + session.getSessionId() + "/end";
+            messagingTemplate.convertAndSend(destination, results);
+
+            log.info("🏆 Game over! Winner: {} | Results sent to all players", winner.get().getNickname());
             return true;
         }
 

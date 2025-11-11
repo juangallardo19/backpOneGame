@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -81,6 +82,11 @@ public class GameSession {
     private Long turnStartTime;
 
     /**
+     * Start time of the game (for duration calculation)
+     */
+    private LocalDateTime gameStartTime;
+
+    /**
      * Winner of the game
      */
     private Player winner;
@@ -140,6 +146,7 @@ public class GameSession {
 
         currentState = GameStatus.PLAYING;
         turnStartTime = System.currentTimeMillis();
+        gameStartTime = LocalDateTime.now();
     }
 
     /**
