@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
  * - Only human players (with userId) get stats/ranking updates
  * - Bots are included in results table but not in database updates
  *
+ * @version 1.0
  * @author Juan Gallardo
  */
 @Service
