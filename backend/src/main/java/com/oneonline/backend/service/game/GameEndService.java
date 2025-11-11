@@ -87,7 +87,7 @@ public class GameEndService {
 
         // 4. Create and return results DTO
         GameEndResultDto results = GameEndResultDto.builder()
-                .roomCode(session.getRoom().getCode())
+                .roomCode(session.getRoom().getRoomCode())
                 .sessionId(session.getSessionId())
                 .winnerNickname(winner.getNickname())
                 .winnerId(winner.getUserId())
@@ -244,7 +244,7 @@ public class GameEndService {
         int totalCardsPlayed = totalCardsDealt - remainingCards;
 
         GameHistory history = new GameHistory();
-        history.setRoomCode(session.getRoom().getCode());
+        history.setRoomCode(session.getRoom().getRoomCode());
         history.setWinner(winnerUser);
         history.setPlayerIds(playerIds);
         history.setFinalScores(finalScores);
