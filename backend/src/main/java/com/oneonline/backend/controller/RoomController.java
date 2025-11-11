@@ -6,7 +6,9 @@ import com.oneonline.backend.dto.request.JoinRoomRequest;
 import com.oneonline.backend.dto.response.GameStateResponse;
 import com.oneonline.backend.dto.response.RoomResponse;
 import com.oneonline.backend.model.domain.*;
+import com.oneonline.backend.model.entity.User;
 import com.oneonline.backend.pattern.creational.builder.GameConfigBuilder;
+import com.oneonline.backend.repository.UserRepository;
 import com.oneonline.backend.service.game.GameManager;
 import com.oneonline.backend.service.game.RoomManager;
 import com.oneonline.backend.util.CodeGenerator;
@@ -56,6 +58,7 @@ import java.util.stream.Collectors;
 public class RoomController {
 
     private final RoomManager roomManager;
+    private final UserRepository userRepository;
     private final com.oneonline.backend.pattern.behavioral.observer.WebSocketObserver webSocketObserver;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -94,12 +97,17 @@ public class RoomController {
 
         log.info("Creating room for user: {}", authentication.getName());
 
+        // Get user from database to obtain userId
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException("User not found: " + authentication.getName()));
+
         // Create player from authenticated user
         String playerId = CodeGenerator.generatePlayerId();
         Player creator = Player.builder()
                 .playerId(playerId)
-                .userEmail(authentication.getName()) // Store user email for identification
-                .nickname(authentication.getName())
+                .userId(user.getId()) // ✅ SET USER ID - Critical for stats/ranking updates
+                .userEmail(authentication.getName())
+                .nickname(user.getNickname())
                 .build();
 
         // Build game configuration
@@ -168,12 +176,17 @@ public class RoomController {
 
         log.info("User {} joining room {}", authentication.getName(), code);
 
+        // Get user from database to obtain userId
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException("User not found: " + authentication.getName()));
+
         // Create player
         String playerId = CodeGenerator.generatePlayerId();
-        String nickname = request.getNickname() != null ? request.getNickname() : authentication.getName();
+        String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
         Player player = Player.builder()
                 .playerId(playerId)
-                .userEmail(authentication.getName()) // Store user email for identification
+                .userId(user.getId()) // ✅ SET USER ID - Critical for stats/ranking updates
+                .userEmail(authentication.getName())
                 .nickname(nickname)
                 .build();
 
