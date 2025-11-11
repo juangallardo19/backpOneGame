@@ -637,6 +637,88 @@
   border-radius: 10px;
 }
 
+/* Login Screen Glass Container */
+.glass-login-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.glass-panel-login {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  border: 1px solid hsl(0, 12%, 20%);
+  padding: 3rem 2.5rem;
+  background: linear-gradient(
+    235deg,
+    hsl(45 50% 10% / 0.85),
+    hsl(45 50% 10% / 0) 33%
+  ),
+  linear-gradient(
+    45deg,
+    hsl(0 50% 10% / 0.85),
+    hsl(0 50% 10% / 0) 33%
+  ),
+  linear-gradient(hsl(220deg 25% 4.8% / 0.75));
+  backdrop-filter: blur(16px);
+  box-shadow:
+    hsl(0 50% 2%) 0px 12px 20px -10px,
+    hsl(0 50% 4%) 0px 24px 40px -16px,
+    0 0 80px rgba(255, 140, 0, 0.15);
+  animation: fade-in 0.6s ease-out;
+}
+
+/* Glass Input for Login */
+.glass-input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 1rem !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(10px);
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 140, 0, 0.6) !important;
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.3) !important;
+  outline: none !important;
+}
+
+.glass-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button Pulse Animation */
+@keyframes button-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.button-pulse {
+  animation: button-pulse 0.4s ease;
+}
+
 /* Tamaños de texto dinámicos */
 .text-size-pequeño {
   font-size: 14px;
