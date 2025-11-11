@@ -107,7 +107,7 @@ public class RoomController {
                 .playerId(playerId)
                 .userId(user.getId()) // ✅ SET USER ID - Critical for stats/ranking updates
                 .userEmail(authentication.getName())
-                .nickname(user.getNickname())
+                .nickname(authentication.getName()) // Use email for WebSocket compatibility (no spaces)
                 .build();
 
         // Build game configuration
@@ -182,12 +182,12 @@ public class RoomController {
 
         // Create player
         String playerId = CodeGenerator.generatePlayerId();
-        String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
+        String nickname = request.getNickname() != null ? request.getNickname() : authentication.getName();
         Player player = Player.builder()
                 .playerId(playerId)
                 .userId(user.getId()) // ✅ SET USER ID - Critical for stats/ranking updates
                 .userEmail(authentication.getName())
-                .nickname(nickname)
+                .nickname(nickname) // Use email for WebSocket compatibility (no spaces)
                 .build();
 
         // Join room
