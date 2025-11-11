@@ -75,14 +75,17 @@ public class SecurityConfig {
                     "/login/oauth2/**",       // OAuth2 login callback
                     "/ws/**",                 // WebSocket connections
                     "/error",                 // Spring error page
-                    "/actuator/health"        // Health check
+                    "/actuator/health",       // Health check
+                    "/api/ranking/global",    // Public global ranking
+                    "/api/ranking/initialize", // Public initialization endpoint
+                    "/api/ranking/stats"      // Public ranking stats
                 ).permitAll()
 
                 // Protected endpoints - JWT required
                 .requestMatchers(
                     "/api/rooms/**",          // Room management
                     "/api/game/**",           // Game actions
-                    "/api/ranking/**",        // Rankings and leaderboard
+                    "/api/ranking/**",        // Other ranking endpoints (require auth)
                     "/api/users/**"           // User profile management
                 ).authenticated()
 
