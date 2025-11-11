@@ -127,6 +127,27 @@ public class GameEngine {
         // IMPORTANT: Process bot turns automatically (only if triggered by human to avoid recursion)
         if (triggerBots && !(player instanceof BotPlayer)) {
             processBotTurns(session);
+
+            // CRITICAL: After bot turns, check if current player is human with pending draws
+            // If human cannot stack, force them to draw penalty cards automatically
+            Player currentPlayer = turnManager.getCurrentPlayer();
+            if (!(currentPlayer instanceof BotPlayer) && session.getPendingDrawCount() > 0) {
+                if (!canStackDrawCards(currentPlayer, session)) {
+                    // Player cannot stack, force them to draw all pending cards
+                    int pendingCards = session.getPendingDrawCount();
+                    log.info("⚠️ Player {} cannot stack, forcing draw of {} pending cards",
+                        currentPlayer.getNickname(), pendingCards);
+
+                    effectProcessor.processPendingEffects(session, currentPlayer);
+
+                    // Advance turn after penalty
+                    turnManager.nextTurn();
+                    log.info("⏭️ Player {} drew {} cards and lost turn", currentPlayer.getNickname(), pendingCards);
+
+                    // Process bot turns again if needed
+                    processBotTurns(session);
+                }
+            }
         }
 
         return true;
@@ -366,6 +387,31 @@ public class GameEngine {
      */
     public void clearHistory() {
         commandHistory.clear();
+    }
+
+    /**
+     * Check if player can stack draw cards (+2 or +4)
+     *
+     * Player can stack if they have Draw Two or Wild Draw Four cards in hand.
+     *
+     * @param player Player to check
+     * @param session Game session
+     * @return true if player has +2 or +4 cards to stack
+     */
+    public boolean canStackDrawCards(Player player, GameSession session) {
+        // Check if stacking is enabled in configuration
+        if (!session.getConfiguration().isAllowStackingCards()) {
+            return false;
+        }
+
+        // Check if player has any Draw Two or Wild Draw Four cards
+        for (Card card : player.getHand()) {
+            if (card.getType() == CardType.DRAW_TWO || card.getType() == CardType.WILD_DRAW_FOUR) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
