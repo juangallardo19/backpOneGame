@@ -128,7 +128,7 @@ export default function HomePage() {
               <span className="glow glow-bottom"></span>
 
               <div className="flex flex-col gap-4 min-w-[320px] relative z-10">
-                <Button size="lg" className="glass-button glass-button-large group bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700" onClick={handlePlayClick}>
+                <Button size="lg" className="glass-button glass-button-large group bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white" onClick={handlePlayClick}>
                   <Play className="mr-2 transition-transform group-hover:scale-110 h-10 w-10" />
                   <span className="text-xl font-bold tracking-wide">JUGAR</span>
                 </Button>
