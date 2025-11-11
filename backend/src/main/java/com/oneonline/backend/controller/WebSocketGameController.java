@@ -14,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * WebSocketGameController - WebSocket handler for real-time game events
