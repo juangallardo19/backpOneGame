@@ -339,7 +339,7 @@ public class WebSocketGameController {
 
         // Find player by email
         Player player = session.getPlayers().stream()
-                .filter(p -> p.getEmail().equals(principal.getName()))
+                .filter(p -> p.getUserEmail().equals(principal.getName()))
                 .findFirst()
                 .orElse(null);
 
