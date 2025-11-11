@@ -575,8 +575,12 @@ public class GameEngine {
                 log.info("⏭️ Player {} drew {} cards and lost turn. Next player: {}",
                     currentPlayer.getNickname(), pendingCards, turnManager.getCurrentPlayer().getNickname());
 
-                // DON'T call processBotTurns() recursively here - it causes infinite loops in 2-player games
-                // The next bot turns will be processed when the next human player plays
+                // IMPORTANT: Process bot turns again if next player is a bot
+                // This is safe because:
+                // 1. processPendingEffects() resets pending count to 0
+                // 2. The while loop in processBotTurns() will only execute if currentPlayer is BotPlayer
+                // 3. No infinite recursion can occur
+                processBotTurns(session);
             }
         }
     }
