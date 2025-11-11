@@ -470,33 +470,49 @@ public class GameEngine {
                     }
 
                 } else {
-                    // Bot has no valid cards, must draw
-                    log.info("📥 Bot {} has no valid cards, drawing...", bot.getNickname());
-                    Card drawnCard = drawCard(bot, session);
+                    // Bot has no valid cards
+                    // IMPORTANT: Check if there are pending draw effects (+2, +4 stacking)
+                    if (session.getPendingDrawCount() > 0) {
+                        // Bot cannot stack, must draw all pending cards and lose turn
+                        int pendingCards = session.getPendingDrawCount();
+                        log.info("⚠️ Bot {} cannot stack, drawing {} pending cards and losing turn",
+                            bot.getNickname(), pendingCards);
 
-                    if (drawnCard != null) {
-                        log.info("🎴 Bot {} drew a card", bot.getNickname());
+                        // Process pending effects (bot draws all cards and loses turn)
+                        effectProcessor.processPendingEffects(session, bot);
 
-                        // Check if drawn card can be played immediately
-                        if (cardValidator.isValidMove(drawnCard, session.getTopCard())) {
-                            log.info("✨ Bot {} can play the drawn card!", bot.getNickname());
+                        // Turn ends, advance to next player
+                        turnManager.nextTurn();
+                        log.info("⏭️ Bot {} drew {} cards and lost turn", bot.getNickname(), pendingCards);
+                    } else {
+                        // Normal draw (no pending effects)
+                        log.info("📥 Bot {} has no valid cards, drawing...", bot.getNickname());
+                        Card drawnCard = drawCard(bot, session);
 
-                            // If it's a wild card, choose color
-                            if (drawnCard instanceof WildCard wildCard) {
-                                CardColor chosenColor = botStrategy.chooseColor(bot);
-                                wildCard.setChosenColor(chosenColor);
-                                log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
+                        if (drawnCard != null) {
+                            log.info("🎴 Bot {} drew a card", bot.getNickname());
+
+                            // Check if drawn card can be played immediately
+                            if (cardValidator.isValidMove(drawnCard, session.getTopCard())) {
+                                log.info("✨ Bot {} can play the drawn card!", bot.getNickname());
+
+                                // If it's a wild card, choose color
+                                if (drawnCard instanceof WildCard wildCard) {
+                                    CardColor chosenColor = botStrategy.chooseColor(bot);
+                                    wildCard.setChosenColor(chosenColor);
+                                    log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
+                                }
+
+                                // Play the drawn card (don't trigger more bots)
+                                processMove(bot, drawnCard, session, false);
+                            } else {
+                                // Can't play drawn card, turn ends
+                                log.info("⏭️ Bot {} can't play drawn card, turn ends", bot.getNickname());
+                                turnManager.nextTurn();
+
+                                // Note: We don't call processBotTurns() recursively here
+                                // because we'll continue in the while loop
                             }
-
-                            // Play the drawn card (don't trigger more bots)
-                            processMove(bot, drawnCard, session, false);
-                        } else {
-                            // Can't play drawn card, turn ends
-                            log.info("⏭️ Bot {} can't play drawn card, turn ends", bot.getNickname());
-                            turnManager.nextTurn();
-
-                            // Note: We don't call processBotTurns() recursively here
-                            // because we'll continue in the while loop
                         }
                     }
                 }
