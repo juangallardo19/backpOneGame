@@ -220,18 +220,17 @@ public class WebSocketGameController {
 
                 // Advance turn (player lost turn after drawing penalty cards)
                 log.info("⏭️ [WebSocket] Avanzando turno después de penalización...");
-                session.nextTurn();
+                session.getTurnManager().nextTurn();
                 log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
             } else {
                 // Normal draw (no pending effects) - limit to 1 card per turn
-                // Check if player already drew this turn by checking if they have more cards than at turn start
                 log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
                 gameEngine.drawCard(player, session);
                 log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
 
                 // After drawing 1 card, player's turn ends
                 log.info("⏭️ [WebSocket] Avanzando turno después de robar carta...");
-                session.nextTurn();
+                session.getTurnManager().nextTurn();
                 log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
             }
 
