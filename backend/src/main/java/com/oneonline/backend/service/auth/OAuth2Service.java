@@ -1,7 +1,9 @@
 package com.oneonline.backend.service.auth;
 
+import com.oneonline.backend.model.entity.GlobalRanking;
 import com.oneonline.backend.model.entity.PlayerStats;
 import com.oneonline.backend.model.entity.User;
+import com.oneonline.backend.repository.GlobalRankingRepository;
 import com.oneonline.backend.repository.PlayerStatsRepository;
 import com.oneonline.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class OAuth2Service {
 
     private final UserRepository userRepository;
     private final PlayerStatsRepository playerStatsRepository;
+    private final GlobalRankingRepository globalRankingRepository;
 
     /**
      * Process OAuth2 post-login
@@ -178,6 +181,9 @@ public class OAuth2Service {
         // Create player stats
         createPlayerStatsForUser(user);
 
+        // Create global ranking entry
+        createGlobalRankingForUser(user);
+
         return user;
     }
 
@@ -245,6 +251,31 @@ public class OAuth2Service {
 
         playerStatsRepository.save(stats);
         log.debug("Player stats created for user: {}", user.getId());
+    }
+
+    /**
+     * Create GlobalRanking entity for new user
+     *
+     * Initializes ranking with zero points and unranked position.
+     *
+     * @param user User entity
+     */
+    private void createGlobalRankingForUser(User user) {
+        log.debug("Creating global ranking for user: {}", user.getId());
+
+        GlobalRanking ranking = new GlobalRanking();
+        ranking.setUser(user);
+        ranking.setRankPosition(0); // Will be calculated when rankings are recalculated
+        ranking.setPreviousRank(-1); // New entry
+        ranking.setTotalWins(0);
+        ranking.setWinRate(0.0);
+        ranking.setPoints(0);
+        ranking.setCurrentStreak(0);
+        ranking.setBestStreak(0);
+        ranking.setTotalGames(0);
+
+        globalRankingRepository.save(ranking);
+        log.debug("Global ranking created for user: {}", user.getId());
     }
 
     /**

@@ -5,6 +5,7 @@ import com.oneonline.backend.model.entity.GlobalRanking;
 import com.oneonline.backend.model.entity.PlayerStats;
 import com.oneonline.backend.repository.GlobalRankingRepository;
 import com.oneonline.backend.repository.PlayerStatsRepository;
+import com.oneonline.backend.service.ranking.RankingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,7 @@ public class RankingController {
 
     private final GlobalRankingRepository rankingRepository;
     private final PlayerStatsRepository statsRepository;
+    private final RankingService rankingService;
 
     /**
      * Get top 100 global players
@@ -345,6 +347,45 @@ public class RankingController {
         log.info("Rankings recalculated successfully");
 
         return ResponseEntity.ok("Rankings recalculated");
+    }
+
+    /**
+     * Initialize global rankings for all users
+     *
+     * POST /api/ranking/initialize
+     *
+     * Creates GlobalRanking entries for all users who don't have one yet.
+     * This endpoint is useful for:
+     * - Initial setup after database migration
+     * - Backfilling data for existing users
+     * - Fixing missing ranking entries
+     *
+     * WORKFLOW:
+     * 1. Finds all users without GlobalRanking entry
+     * 2. Creates ranking entry with data from PlayerStats (if exists)
+     * 3. Initializes with zeros if no stats exist
+     * 4. Recalculates rank positions
+     *
+     * Response:
+     * {
+     *   "message": "Initialized rankings for N users",
+     *   "usersProcessed": N
+     * }
+     *
+     * @return Response with number of users processed
+     */
+    @PostMapping("/initialize")
+    public ResponseEntity<?> initializeRankings() {
+        log.info("Initializing global rankings for all users");
+
+        int createdCount = rankingService.initializeGlobalRankingsForAllUsers();
+
+        log.info("Ranking initialization completed: {} new entries created", createdCount);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Initialized rankings for " + createdCount + " users",
+                "usersProcessed", createdCount
+        ));
     }
 
     /**
