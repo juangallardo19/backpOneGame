@@ -212,6 +212,9 @@ public class WebSocketGameController {
             session.nextTurn();
             log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
 
+            // Process bot turns automatically if next player is a bot
+            gameEngine.processBotTurns(session);
+
             // Build and broadcast general game state
             log.info("🔨 [WebSocket] Construyendo estado general del juego...");
             GameStateResponse generalState = buildGameStateResponse(session);
