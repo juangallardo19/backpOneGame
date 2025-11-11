@@ -127,27 +127,6 @@ public class GameEngine {
         // IMPORTANT: Process bot turns automatically (only if triggered by human to avoid recursion)
         if (triggerBots && !(player instanceof BotPlayer)) {
             processBotTurns(session);
-
-            // CRITICAL: After bot turns, check if current player is human with pending draws
-            // If human cannot stack, force them to draw penalty cards automatically
-            Player currentPlayer = turnManager.getCurrentPlayer();
-            if (!(currentPlayer instanceof BotPlayer) && session.getPendingDrawCount() > 0) {
-                if (!canStackDrawCards(currentPlayer, session)) {
-                    // Player cannot stack, force them to draw all pending cards
-                    int pendingCards = session.getPendingDrawCount();
-                    log.info("⚠️ Player {} cannot stack, forcing draw of {} pending cards",
-                        currentPlayer.getNickname(), pendingCards);
-
-                    effectProcessor.processPendingEffects(session, currentPlayer);
-
-                    // Advance turn after penalty
-                    turnManager.nextTurn();
-                    log.info("⏭️ Player {} drew {} cards and lost turn", currentPlayer.getNickname(), pendingCards);
-
-                    // Process bot turns again if needed
-                    processBotTurns(session);
-                }
-            }
         }
 
         return true;
@@ -578,5 +557,27 @@ public class GameEngine {
         }
 
         log.info("✅ Bot turn processing complete. Current player: {}", turnManager.getCurrentPlayer().getNickname());
+
+        // CRITICAL: After bot turns complete, check if current player is human with pending draws
+        // If human cannot stack, force them to draw penalty cards automatically
+        Player currentPlayer = turnManager.getCurrentPlayer();
+        if (!(currentPlayer instanceof BotPlayer) && session.getPendingDrawCount() > 0) {
+            if (!canStackDrawCards(currentPlayer, session)) {
+                // Player cannot stack, force them to draw all pending cards
+                int pendingCards = session.getPendingDrawCount();
+                log.info("⚠️ Player {} cannot stack, forcing draw of {} pending cards",
+                    currentPlayer.getNickname(), pendingCards);
+
+                effectProcessor.processPendingEffects(session, currentPlayer);
+
+                // Advance turn after penalty
+                turnManager.nextTurn();
+                log.info("⏭️ Player {} drew {} cards and lost turn. Next player: {}",
+                    currentPlayer.getNickname(), pendingCards, turnManager.getCurrentPlayer().getNickname());
+
+                // DON'T call processBotTurns() recursively here - it causes infinite loops in 2-player games
+                // The next bot turns will be processed when the next human player plays
+            }
+        }
     }
 }
