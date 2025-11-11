@@ -57,32 +57,46 @@ public class RankingController {
      * 3. Total wins (DESC)
      *
      * Response:
-     * [
-     *   {
-     *     "rank": 1,
-     *     "userId": 123,
-     *     "nickname": "ProPlayer",
-     *     "points": 5000,
-     *     "totalWins": 250,
-     *     "winRate": 75.5,
-     *     "currentStreak": 10,
-     *     "rankChange": 2  // +2 positions up
-     *   },
-     *   ...
-     * ]
+     * {
+     *   "rankingType": "GLOBAL",
+     *   "totalPlayers": 100,
+     *   "rankings": [
+     *     {
+     *       "rank": 1,
+     *       "playerId": "123",
+     *       "nickname": "ProPlayer",
+     *       "totalPoints": 5000,
+     *       "wins": 250,
+     *       "gamesPlayed": 300,
+     *       "winRate": 75.5,
+     *       "winStreak": 10,
+     *       "bestStreak": 15,
+     *       "rankChange": 2
+     *     },
+     *     ...
+     *   ],
+     *   "generatedAt": 1234567890
+     * }
      *
-     * @return List of top 100 players
+     * @return Ranking response with top 100 players
      */
     @GetMapping("/global")
-    public ResponseEntity<List<RankingResponse>> getGlobalRanking() {
+    public ResponseEntity<RankingResponse> getGlobalRanking() {
         log.debug("Fetching global top 100 ranking");
 
         Pageable pageable = PageRequest.of(0, 100);
         Page<GlobalRanking> rankings = rankingRepository.findTopRankings(pageable);
 
-        List<RankingResponse> response = rankings.stream()
-                .map(this::mapToRankingResponse)
+        List<RankingResponse.RankEntry> rankEntries = rankings.stream()
+                .map(this::mapToRankEntry)
                 .collect(Collectors.toList());
+
+        RankingResponse response = RankingResponse.builder()
+                .rankingType("GLOBAL")
+                .totalPlayers((int) rankings.getTotalElements())
+                .rankings(rankEntries)
+                .generatedAt(System.currentTimeMillis())
+                .build();
 
         return ResponseEntity.ok(response);
     }
@@ -95,10 +109,10 @@ public class RankingController {
      * Example: /api/ranking/global/top/10 for top 10
      *
      * @param limit Number of top players (max 500)
-     * @return List of top N players
+     * @return Ranking response with top N players
      */
     @GetMapping("/global/top/{limit}")
-    public ResponseEntity<List<RankingResponse>> getTopNPlayers(
+    public ResponseEntity<RankingResponse> getTopNPlayers(
             @PathVariable int limit) {
 
         log.debug("Fetching top {} players", limit);
@@ -109,9 +123,16 @@ public class RankingController {
         Pageable pageable = PageRequest.of(0, actualLimit);
         Page<GlobalRanking> rankings = rankingRepository.findTopRankings(pageable);
 
-        List<RankingResponse> response = rankings.stream()
-                .map(this::mapToRankingResponse)
+        List<RankingResponse.RankEntry> rankEntries = rankings.stream()
+                .map(this::mapToRankEntry)
                 .collect(Collectors.toList());
+
+        RankingResponse response = RankingResponse.builder()
+                .rankingType("GLOBAL")
+                .totalPlayers((int) rankings.getTotalElements())
+                .rankings(rankEntries)
+                .generatedAt(System.currentTimeMillis())
+                .build();
 
         return ResponseEntity.ok(response);
     }
@@ -181,19 +202,26 @@ public class RankingController {
      * Returns players with active streaks of 3+ consecutive wins.
      *
      * @param minStreak Minimum streak length (default: 3)
-     * @return List of players with streaks
+     * @return Ranking response with players with streaks
      */
     @GetMapping("/streak")
-    public ResponseEntity<List<RankingResponse>> getPlayersWithStreaks(
+    public ResponseEntity<RankingResponse> getPlayersWithStreaks(
             @RequestParam(defaultValue = "3") int minStreak) {
 
         log.debug("Fetching players with streak >= {}", minStreak);
 
         List<GlobalRanking> rankings = rankingRepository.findByActiveStreak(minStreak);
 
-        List<RankingResponse> response = rankings.stream()
-                .map(this::mapToRankingResponse)
+        List<RankingResponse.RankEntry> rankEntries = rankings.stream()
+                .map(this::mapToRankEntry)
                 .collect(Collectors.toList());
+
+        RankingResponse response = RankingResponse.builder()
+                .rankingType("STREAK")
+                .totalPlayers(rankEntries.size())
+                .rankings(rankEntries)
+                .generatedAt(System.currentTimeMillis())
+                .build();
 
         return ResponseEntity.ok(response);
     }
@@ -206,18 +234,25 @@ public class RankingController {
      * Returns players who moved up in ranking recently.
      * Sorted by rank improvement (DESC).
      *
-     * @return List of rising players
+     * @return Ranking response with rising players
      */
     @GetMapping("/rising")
-    public ResponseEntity<List<RankingResponse>> getRisingPlayers() {
+    public ResponseEntity<RankingResponse> getRisingPlayers() {
         log.debug("Fetching rising players");
 
         List<GlobalRanking> rankings = rankingRepository.findRisingPlayers();
 
-        List<RankingResponse> response = rankings.stream()
+        List<RankingResponse.RankEntry> rankEntries = rankings.stream()
                 .limit(50) // Top 50 rising players
-                .map(this::mapToRankingResponse)
+                .map(this::mapToRankEntry)
                 .collect(Collectors.toList());
+
+        RankingResponse response = RankingResponse.builder()
+                .rankingType("RISING")
+                .totalPlayers(rankEntries.size())
+                .rankings(rankEntries)
+                .generatedAt(System.currentTimeMillis())
+                .build();
 
         return ResponseEntity.ok(response);
     }
@@ -231,10 +266,10 @@ public class RankingController {
      *
      * @param start Start rank (inclusive)
      * @param end End rank (inclusive)
-     * @return List of players in range
+     * @return Ranking response with players in range
      */
     @GetMapping("/range")
-    public ResponseEntity<List<RankingResponse>> getRankingByRange(
+    public ResponseEntity<RankingResponse> getRankingByRange(
             @RequestParam int start,
             @RequestParam int end) {
 
@@ -247,9 +282,16 @@ public class RankingController {
 
         List<GlobalRanking> rankings = rankingRepository.findByRankRange(start, end);
 
-        List<RankingResponse> response = rankings.stream()
-                .map(this::mapToRankingResponse)
+        List<RankingResponse.RankEntry> rankEntries = rankings.stream()
+                .map(this::mapToRankEntry)
                 .collect(Collectors.toList());
+
+        RankingResponse response = RankingResponse.builder()
+                .rankingType("RANGE")
+                .totalPlayers(rankEntries.size())
+                .rankings(rankEntries)
+                .generatedAt(System.currentTimeMillis())
+                .build();
 
         return ResponseEntity.ok(response);
     }
@@ -306,13 +348,13 @@ public class RankingController {
     }
 
     /**
-     * Map GlobalRanking entity to RankingResponse DTO
+     * Map GlobalRanking entity to RankEntry DTO
      *
      * @param ranking GlobalRanking entity
-     * @return RankingResponse DTO
+     * @return RankEntry DTO
      */
-    private RankingResponse mapToRankingResponse(GlobalRanking ranking) {
-        RankingResponse.RankEntry rankEntry = RankingResponse.RankEntry.builder()
+    private RankingResponse.RankEntry mapToRankEntry(GlobalRanking ranking) {
+        return RankingResponse.RankEntry.builder()
                 .rank(ranking.getRankPosition())
                 .playerId(ranking.getUser().getId().toString())
                 .nickname(ranking.getUser().getNickname())
@@ -324,6 +366,16 @@ public class RankingController {
                 .bestStreak(ranking.getBestStreak())
                 .rankChange(ranking.getRankPosition() - ranking.getPreviousRank())
                 .build();
+    }
+
+    /**
+     * Map GlobalRanking entity to RankingResponse DTO (single player)
+     *
+     * @param ranking GlobalRanking entity
+     * @return RankingResponse DTO
+     */
+    private RankingResponse mapToRankingResponse(GlobalRanking ranking) {
+        RankingResponse.RankEntry rankEntry = mapToRankEntry(ranking);
 
         return RankingResponse.builder()
                 .rankingType("GLOBAL")
