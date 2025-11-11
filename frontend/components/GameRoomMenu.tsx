@@ -366,7 +366,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                     <Bot size={24} />
                   </div>
                 ) : (
-                  <div className="avatar-human">
+                  <div className={`avatar-human ${isPlayerLeader ? 'avatar-leader' : ''}`}>
                     <Users size={24} />
                   </div>
                 )}
@@ -599,7 +599,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                 {/* Botón agregar bot (solo líder) */}
                 {isLeader && room.players.length < room.maxPlayers && (
                   <Button
-                    className="glass-button-secondary w-full mt-4"
+                    className="w-full mt-4 bg-gradient-to-r from-purple-600 to-violet-700 hover:from-purple-700 hover:to-violet-800 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={handleAddBot}
                   >
                     <Bot className="mr-2" size={18} />
@@ -645,7 +645,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                 {/* Botón iniciar juego (solo líder) */}
                 {isLeader && (
                   <Button
-                    className="start-game-btn glass-button-primary w-full"
+                    className="start-game-btn w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={handleStartGame}
                     disabled={!canStartGame}
                     size="lg"
@@ -852,19 +852,27 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .lobby-column {
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 12px;
-          padding: 1.5rem;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: linear-gradient(
+            135deg,
+            rgba(20, 20, 40, 0.6),
+            rgba(10, 10, 30, 0.4)
+          );
+          border-radius: 16px;
+          padding: 2rem;
+          border: 2px solid rgba(255, 255, 255, 0.15);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
         }
 
         .column-title {
           color: white;
-          font-size: 1.1rem;
-          font-weight: 700;
+          font-size: 1.2rem;
+          font-weight: 800;
           margin-bottom: 1.5rem;
           text-align: center;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
 
         .players-grid {
@@ -978,25 +986,62 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
         .avatar-human {
           background: linear-gradient(135deg, #3b82f6, #2563eb);
-          border: 3px solid rgba(59, 130, 246, 0.3);
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+          border: 3px solid rgba(59, 130, 246, 0.5);
+          box-shadow:
+            0 0 20px rgba(59, 130, 246, 0.6),
+            0 0 40px rgba(59, 130, 246, 0.3),
+            inset 0 2px 6px rgba(255, 255, 255, 0.3);
           color: white;
         }
 
+        .avatar-human.avatar-leader {
+          background: linear-gradient(135deg, #FFD700, #FFA500);
+          border: 3px solid rgba(255, 215, 0, 0.8);
+          box-shadow:
+            0 0 24px rgba(255, 215, 0, 0.8),
+            0 0 48px rgba(255, 165, 0, 0.5),
+            inset 0 2px 8px rgba(255, 255, 255, 0.4);
+          animation: leader-avatar-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes leader-avatar-glow {
+          0%, 100% {
+            box-shadow:
+              0 0 24px rgba(255, 215, 0, 0.8),
+              0 0 48px rgba(255, 165, 0, 0.5),
+              inset 0 2px 8px rgba(255, 255, 255, 0.4);
+          }
+          50% {
+            box-shadow:
+              0 0 32px rgba(255, 215, 0, 1),
+              0 0 64px rgba(255, 165, 0, 0.7),
+              inset 0 2px 10px rgba(255, 255, 255, 0.5);
+          }
+        }
+
         .avatar-bot {
-          background: linear-gradient(135deg, #60a5fa, #3b82f6);
-          border: 3px solid rgba(96, 165, 250, 0.4);
-          box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+          border: 3px solid rgba(139, 92, 246, 0.5);
+          box-shadow:
+            0 0 20px rgba(139, 92, 246, 0.6),
+            0 0 40px rgba(139, 92, 246, 0.3),
+            inset 0 2px 6px rgba(255, 255, 255, 0.3);
           color: white;
           animation: pulse-bot 2s infinite;
         }
 
         @keyframes pulse-bot {
           0%, 100% {
-            box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+            box-shadow:
+              0 0 20px rgba(139, 92, 246, 0.6),
+              0 0 40px rgba(139, 92, 246, 0.3),
+              inset 0 2px 6px rgba(255, 255, 255, 0.3);
           }
           50% {
-            box-shadow: 0 0 30px rgba(96, 165, 250, 0.6);
+            box-shadow:
+              0 0 30px rgba(139, 92, 246, 0.8),
+              0 0 60px rgba(139, 92, 246, 0.5),
+              inset 0 2px 6px rgba(255, 255, 255, 0.4);
           }
         }
 
@@ -1036,13 +1081,16 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .player-name {
           color: white;
           font-weight: 700;
-          font-size: 1rem;
+          font-size: 1.05rem;
           letter-spacing: 0.02em;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+          line-height: 1.4;
         }
 
         .player-name.empty-name {
           color: rgba(255, 255, 255, 0.4);
           font-style: italic;
+          font-weight: 500;
         }
 
         .player-status {
@@ -1051,30 +1099,34 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .status-badge {
-          font-size: 0.7rem;
-          font-weight: 700;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          letter-spacing: 0.05em;
+          font-size: 0.75rem;
+          font-weight: 800;
+          padding: 0.35rem 0.85rem;
+          border-radius: 14px;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
 
         .leader-status {
-          background: rgba(255, 215, 0, 0.2);
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 185, 0, 0.2));
           color: #FFD700;
-          border: 1px solid rgba(255, 215, 0, 0.4);
+          border: 1.5px solid rgba(255, 215, 0, 0.6);
+          box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
         }
 
         .bot-status {
-          background: rgba(96, 165, 250, 0.2);
-          color: #60A5FA;
-          border: 1px solid rgba(96, 165, 250, 0.4);
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.2));
+          color: #A78BFA;
+          border: 1.5px solid rgba(139, 92, 246, 0.6);
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
         }
 
         .player-status {
-          background: rgba(34, 197, 94, 0.2);
-          color: #22C55E;
-          border: 1px solid rgba(34, 197, 94, 0.4);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.2));
+          color: #60A5FA;
+          border: 1.5px solid rgba(59, 130, 246, 0.6);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
 
         .empty-status {
