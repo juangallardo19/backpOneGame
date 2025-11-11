@@ -202,15 +202,31 @@ public class WebSocketGameController {
                 throw new IllegalStateException("Not your turn!");
             }
 
-            // Draw card through GameEngine (triggers Observer notifications)
-            log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
-            gameEngine.drawCard(player, session);
-            log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
+            // IMPORTANT: Check if there are pending draw effects (+2, +4 stacking)
+            if (session.getPendingDrawCount() > 0) {
+                // Player cannot stack, must draw all pending cards and lose turn
+                int pendingCards = session.getPendingDrawCount();
+                log.info("⚠️ [WebSocket] Player {} cannot stack, drawing {} pending cards and losing turn",
+                    player.getNickname(), pendingCards);
 
-            // Advance turn (after drawing, turn ends)
-            log.info("⏭️ [WebSocket] Avanzando turno...");
-            session.nextTurn();
-            log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
+                // Process pending effects (player draws all cards and loses turn)
+                gameEngine.processPlayerDrawPenalty(player, session);
+
+                // Advance turn (player lost turn after drawing penalty cards)
+                log.info("⏭️ [WebSocket] Avanzando turno después de penalización...");
+                session.nextTurn();
+                log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
+            } else {
+                // Normal draw (no pending effects)
+                log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
+                gameEngine.drawCard(player, session);
+                log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
+
+                // Advance turn (after drawing, turn ends)
+                log.info("⏭️ [WebSocket] Avanzando turno...");
+                session.nextTurn();
+                log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
+            }
 
             // Process bot turns automatically if next player is a bot
             gameEngine.processBotTurns(session);
