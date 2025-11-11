@@ -484,18 +484,27 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   ]);
 
   const handleGameEnded = useCallback((payload: any) => {
-    console.log('🏆 Juego terminado:', payload);
-    console.log('📊 Resultados completos recibidos:', {
-      winnerNickname: payload.winnerNickname,
-      playerRankings: payload.playerRankings,
-      durationMinutes: payload.durationMinutes,
-    });
+    console.log('🏆 ========== GAME ENDED EVENT ==========');
+    console.log('   📥 Full payload received:', payload);
+    console.log('   📊 Results breakdown:');
+    console.log('      - roomCode:', payload.roomCode);
+    console.log('      - sessionId:', payload.sessionId);
+    console.log('      - winnerNickname:', payload.winnerNickname);
+    console.log('      - winnerId:', payload.winnerId);
+    console.log('      - playerRankings:', payload.playerRankings);
+    console.log('      - durationMinutes:', payload.durationMinutes);
+    console.log('   🎮 Updating game state to GAME_OVER...');
 
     // Update game state to GAME_OVER
     setGameState(prev => prev ? { ...prev, status: GameStatus.GAME_OVER, winner: payload.winner } : null);
 
+    console.log('   💾 Saving game results...');
     // Save complete game results for modal display
     setGameResults(payload as GameEndResult);
+
+    console.log('✅ Game ended event processed successfully!');
+    console.log('   🎨 GameResultsModal should now display');
+    console.log('========================================');
   }, []);
 
   const handleCardPlayed = useCallback((payload: any) => {
