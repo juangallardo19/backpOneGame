@@ -51,6 +51,38 @@ public class WebSocketGameController {
     private final GameManager gameManager = GameManager.getInstance();
 
     /**
+     * Resolve session from sessionId or roomCode
+     *
+     * Tries to find the session by sessionId first, then by roomCode.
+     * This handles the case where the frontend sends roomCode instead of sessionId.
+     *
+     * @param sessionIdOrRoomCode Session ID (UUID) or room code (6-char)
+     * @return GameSession object
+     * @throws IllegalArgumentException if session not found
+     */
+    private GameSession resolveSession(String sessionIdOrRoomCode) {
+        // Try to find by sessionId first
+        Optional<GameSession> sessionOpt = gameManager.findSession(sessionIdOrRoomCode);
+
+        if (sessionOpt.isPresent()) {
+            log.debug("🔍 [WebSocket] Session found by sessionId: {}", sessionIdOrRoomCode);
+            return sessionOpt.get();
+        }
+
+        // If not found, try to find by roomCode
+        log.debug("🔍 [WebSocket] Session not found by sessionId, trying roomCode: {}", sessionIdOrRoomCode);
+        sessionOpt = gameManager.findSessionByRoomCode(sessionIdOrRoomCode);
+
+        if (sessionOpt.isPresent()) {
+            log.debug("✅ [WebSocket] Session found by roomCode: {}", sessionIdOrRoomCode);
+            return sessionOpt.get();
+        }
+
+        // Not found by either method
+        throw new IllegalArgumentException("Session not found: " + sessionIdOrRoomCode);
+    }
+
+    /**
      * Handle card play via WebSocket
      *
      * Client sends to: /app/game/{sessionId}/play-card
@@ -62,7 +94,7 @@ public class WebSocketGameController {
      *   "chosenColor": "RED"
      * }
      *
-     * @param sessionId Game session ID
+     * @param sessionId Game session ID or room code
      * @param payload Card play payload
      * @param principal Authenticated user
      */
@@ -72,10 +104,10 @@ public class WebSocketGameController {
             @Payload Map<String, Object> payload,
             Principal principal) {
 
-        log.info("🎴 [WebSocket] Player {} playing card in session {}", principal.getName(), sessionId);
+        log.info("🎴 [WebSocket] Player {} playing card in session/room {}", principal.getName(), sessionId);
 
         try {
-            GameSession session = gameManager.getSession(sessionId);
+            GameSession session = resolveSession(sessionId);
 
             // Find player
             Player player = session.getPlayers().stream()
@@ -178,7 +210,7 @@ public class WebSocketGameController {
      * Client sends to: /app/game/{sessionId}/draw-card
      * Server broadcasts to: /topic/game/{sessionId}
      *
-     * @param sessionId Game session ID
+     * @param sessionId Game session ID or room code
      * @param principal Authenticated user
      */
     @MessageMapping("/game/{sessionId}/draw-card")
@@ -186,10 +218,10 @@ public class WebSocketGameController {
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("📥 [WebSocket] Player {} drawing card in session {}", principal.getName(), sessionId);
+        log.info("📥 [WebSocket] Player {} drawing card in session/room {}", principal.getName(), sessionId);
 
         try {
-            GameSession session = gameManager.getSession(sessionId);
+            GameSession session = resolveSession(sessionId);
 
             // Find player
             Player player = session.getPlayers().stream()
@@ -304,7 +336,7 @@ public class WebSocketGameController {
      * Client sends to: /app/game/{sessionId}/call-uno
      * Server broadcasts to: /topic/game/{sessionId}
      *
-     * @param sessionId Game session ID
+     * @param sessionId Game session ID or room code
      * @param principal Authenticated user
      */
     @MessageMapping("/game/{sessionId}/call-uno")
@@ -312,7 +344,7 @@ public class WebSocketGameController {
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("WebSocket: Player {} calling ONE in session {}", principal.getName(), sessionId);
+        log.info("WebSocket: Player {} calling ONE in session/room {}", principal.getName(), sessionId);
 
         try {
             // Broadcast ONE call to all players
@@ -341,7 +373,7 @@ public class WebSocketGameController {
      *   "message": "Hello everyone!"
      * }
      *
-     * @param sessionId Game session ID
+     * @param sessionId Game session ID or room code
      * @param payload Chat message payload
      * @param principal Authenticated user
      */
@@ -351,12 +383,12 @@ public class WebSocketGameController {
             @Payload Map<String, String> payload,
             Principal principal) {
 
-        log.debug("WebSocket: Chat message in session {} from {}", sessionId, principal.getName());
+        log.debug("WebSocket: Chat message in session/room {} from {}", sessionId, principal.getName());
 
         String message = payload.get("message");
 
         // Get player info
-        GameSession session = gameManager.getSession(sessionId);
+        GameSession session = resolveSession(sessionId);
         if (session == null) {
             log.error("Session not found: {}", sessionId);
             return;
@@ -399,7 +431,7 @@ public class WebSocketGameController {
      * This fixes the issue where guests reconnect after the game starts
      * and miss the initial card distribution.
      *
-     * @param sessionId Game session ID (could be roomCode or actual sessionId)
+     * @param sessionId Game session ID or room code
      * @param principal Authenticated user (may be null if not authenticated)
      */
     @MessageMapping("/game/{sessionId}/join")
@@ -409,19 +441,19 @@ public class WebSocketGameController {
 
         // CRITICAL: Handle case when principal is null (unauthenticated connection)
         if (principal == null) {
-            log.warn("⚠️ WebSocket: Unauthenticated player attempting to join session {}", sessionId);
+            log.warn("⚠️ WebSocket: Unauthenticated player attempting to join session/room {}", sessionId);
             return; // Silently ignore unauthenticated join attempts
         }
 
-        log.info("🎮 [WebSocket] Player {} joining session {}", principal.getName(), sessionId);
+        log.info("🎮 [WebSocket] Player {} joining session/room {}", principal.getName(), sessionId);
 
         try {
             // Try to find game session (could be sessionId or roomCode)
             GameSession session = null;
             try {
-                session = gameManager.getSession(sessionId);
+                session = resolveSession(sessionId);
             } catch (Exception e) {
-                log.debug("Session not found with ID {}, ignoring", sessionId);
+                log.debug("Session not found with ID/roomCode {}, ignoring", sessionId);
             }
 
             // If session exists and game is in progress, send player their current state
@@ -477,7 +509,7 @@ public class WebSocketGameController {
     /**
      * Handle player leaving room
      *
-     * @param sessionId Game session ID
+     * @param sessionId Game session ID or room code
      * @param principal Authenticated user
      */
     @MessageMapping("/game/{sessionId}/leave")
@@ -485,7 +517,7 @@ public class WebSocketGameController {
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("WebSocket: Player {} leaving session {}", principal.getName(), sessionId);
+        log.info("WebSocket: Player {} leaving session/room {}", principal.getName(), sessionId);
 
         // Notify all players
         messagingTemplate.convertAndSend(

@@ -298,4 +298,32 @@ public class GameManager {
     public boolean sessionExists(String sessionId) {
         return activeSessions.containsKey(sessionId);
     }
+
+    /**
+     * Find game session by room code
+     *
+     * Searches for a game session associated with the given room code.
+     * Useful for WebSocket endpoints that receive roomCode instead of sessionId.
+     *
+     * @param roomCode 6-character room code
+     * @return Optional<GameSession> if found, empty otherwise
+     */
+    public Optional<GameSession> findSessionByRoomCode(String roomCode) {
+        return activeSessions.values().stream()
+            .filter(session -> session.getRoom() != null
+                    && roomCode.equals(session.getRoom().getRoomCode()))
+            .findFirst();
+    }
+
+    /**
+     * Get game session by room code (throws exception if not found)
+     *
+     * @param roomCode Room code
+     * @return GameSession object
+     * @throws IllegalArgumentException if session not found
+     */
+    public GameSession getSessionByRoomCode(String roomCode) {
+        return findSessionByRoomCode(roomCode)
+            .orElseThrow(() -> new IllegalArgumentException("Session not found for room: " + roomCode));
+    }
 }
