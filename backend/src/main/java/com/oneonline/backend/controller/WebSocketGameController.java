@@ -204,6 +204,12 @@ public class WebSocketGameController {
 
             // IMPORTANT: Check if there are pending draw effects (+2, +4 stacking)
             if (session.getPendingDrawCount() > 0) {
+                // Check if player can stack (has +2 or +4 in hand)
+                if (gameEngine.canStackDrawCards(player, session)) {
+                    throw new IllegalStateException(
+                        "You have +2/+4 cards in your hand! You must either play them to stack or forfeit by drawing.");
+                }
+
                 // Player cannot stack, must draw all pending cards and lose turn
                 int pendingCards = session.getPendingDrawCount();
                 log.info("⚠️ [WebSocket] Player {} cannot stack, drawing {} pending cards and losing turn",
@@ -217,13 +223,14 @@ public class WebSocketGameController {
                 session.nextTurn();
                 log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
             } else {
-                // Normal draw (no pending effects)
+                // Normal draw (no pending effects) - limit to 1 card per turn
+                // Check if player already drew this turn by checking if they have more cards than at turn start
                 log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
                 gameEngine.drawCard(player, session);
                 log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
 
-                // Advance turn (after drawing, turn ends)
-                log.info("⏭️ [WebSocket] Avanzando turno...");
+                // After drawing 1 card, player's turn ends
+                log.info("⏭️ [WebSocket] Avanzando turno después de robar carta...");
                 session.nextTurn();
                 log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
             }
