@@ -558,14 +558,30 @@ public class GameEngine {
 
         log.info("✅ Bot turn processing complete. Current player: {}", turnManager.getCurrentPlayer().getNickname());
 
-        // NOTE: Human players with pending draw counts are NOT handled here automatically.
-        // They must manually choose to either:
-        // 1. Play a +2 or +4 card to stack (via handlePlayCard)
-        // 2. Draw the pending cards (via handleDrawCard)
-        //
-        // This gives human players the opportunity to see the game state and make a decision,
-        // rather than forcing them to draw automatically.
-        //
-        // The pending draw logic for humans is properly handled in WebSocketGameController.handleDrawCard()
+        // CRITICAL: After bot turns complete, check if current player is human with pending draws
+        // If human cannot stack, force them to draw penalty cards automatically
+        Player currentPlayer = turnManager.getCurrentPlayer();
+        if (!(currentPlayer instanceof BotPlayer) && session.getPendingDrawCount() > 0) {
+            if (!canStackDrawCards(currentPlayer, session)) {
+                // Player cannot stack, force them to draw all pending cards
+                int pendingCards = session.getPendingDrawCount();
+                log.info("⚠️ Player {} cannot stack, forcing draw of {} pending cards",
+                    currentPlayer.getNickname(), pendingCards);
+
+                effectProcessor.processPendingEffects(session, currentPlayer);
+
+                // Advance turn after penalty
+                turnManager.nextTurn();
+                log.info("⏭️ Player {} drew {} cards and lost turn. Next player: {}",
+                    currentPlayer.getNickname(), pendingCards, turnManager.getCurrentPlayer().getNickname());
+
+                // IMPORTANT: Process bot turns again if next player is a bot
+                // This is safe because:
+                // 1. processPendingEffects() resets pending count to 0
+                // 2. The while loop in processBotTurns() will only execute if currentPlayer is BotPlayer
+                // 3. No infinite recursion can occur
+                processBotTurns(session);
+            }
+        }
     }
 }
