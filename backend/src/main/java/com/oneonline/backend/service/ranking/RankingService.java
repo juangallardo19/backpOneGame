@@ -327,4 +327,80 @@ public class RankingService {
     public List<GlobalRanking> getTopByBestStreak() {
         return globalRankingRepository.findTopByBestStreak();
     }
+
+    /**
+     * Initialize global rankings for all users without ranking entry
+     *
+     * This method creates GlobalRanking entries for users who don't have one yet.
+     * Useful for:
+     * - Initial setup after migration
+     * - Fixing missing ranking entries
+     * - Backfilling data for existing users
+     *
+     * WORKFLOW:
+     * 1. Get all users from database
+     * 2. For each user, check if GlobalRanking exists
+     * 3. If not exists, create new GlobalRanking with data from PlayerStats
+     * 4. Save all new rankings
+     * 5. Recalculate rank positions
+     *
+     * @return Number of ranking entries created
+     */
+    @Transactional
+    public int initializeGlobalRankingsForAllUsers() {
+        log.info("Initializing global rankings for all users...");
+
+        // Get all users
+        List<User> allUsers = userRepository.findAll();
+        log.debug("Found {} total users in database", allUsers.size());
+
+        int createdCount = 0;
+
+        // For each user, check if ranking exists
+        for (User user : allUsers) {
+            // Check if ranking already exists
+            if (globalRankingRepository.findByUserId(user.getId()).isEmpty()) {
+                log.debug("Creating ranking for user: {} ({})", user.getEmail(), user.getId());
+
+                // Find player stats (if exists)
+                PlayerStats stats = playerStatsRepository.findByUserId(user.getId()).orElse(null);
+
+                // Create new ranking
+                GlobalRanking ranking = new GlobalRanking();
+                ranking.setUser(user);
+                ranking.setRankPosition(0); // Will be calculated later
+                ranking.setPreviousRank(-1); // New entry
+
+                if (stats != null) {
+                    // Sync data from PlayerStats if exists
+                    ranking.syncFromPlayerStats(stats);
+                    log.debug("Synced stats for user {}: wins={}, points={}",
+                            user.getId(), stats.getTotalWins(), stats.getTotalPoints());
+                } else {
+                    // Initialize with zeros if no stats exist
+                    ranking.setTotalWins(0);
+                    ranking.setWinRate(0.0);
+                    ranking.setPoints(0);
+                    ranking.setCurrentStreak(0);
+                    ranking.setBestStreak(0);
+                    ranking.setTotalGames(0);
+                    log.debug("No stats found for user {}, initialized with zeros", user.getId());
+                }
+
+                // Save ranking
+                globalRankingRepository.save(ranking);
+                createdCount++;
+            }
+        }
+
+        log.info("Created {} new global ranking entries", createdCount);
+
+        // Recalculate rank positions for all users
+        if (createdCount > 0) {
+            log.info("Recalculating rank positions for all users...");
+            recalculateAllRanks();
+        }
+
+        return createdCount;
+    }
 }

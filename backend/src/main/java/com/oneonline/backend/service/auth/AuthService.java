@@ -7,8 +7,10 @@ import com.oneonline.backend.dto.response.UserProfileResponse;
 import com.oneonline.backend.exception.UnauthorizedException;
 import com.oneonline.backend.exception.UserAlreadyExistsException;
 import com.oneonline.backend.exception.UserNotFoundException;
+import com.oneonline.backend.model.entity.GlobalRanking;
 import com.oneonline.backend.model.entity.PlayerStats;
 import com.oneonline.backend.model.entity.User;
+import com.oneonline.backend.repository.GlobalRankingRepository;
 import com.oneonline.backend.repository.PlayerStatsRepository;
 import com.oneonline.backend.repository.UserRepository;
 import com.oneonline.backend.security.JwtTokenProvider;
@@ -51,6 +53,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PlayerStatsRepository playerStatsRepository;
+    private final GlobalRankingRepository globalRankingRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -111,6 +114,20 @@ public class AuthService {
         stats.setTotalPoints(0);
         playerStatsRepository.save(stats);
         log.debug("Player stats created for user: {}", user.getId());
+
+        // Create global ranking entry
+        GlobalRanking ranking = new GlobalRanking();
+        ranking.setUser(user);
+        ranking.setRankPosition(0); // Will be calculated when rankings are recalculated
+        ranking.setPreviousRank(-1); // New entry
+        ranking.setTotalWins(0);
+        ranking.setWinRate(0.0);
+        ranking.setPoints(0);
+        ranking.setCurrentStreak(0);
+        ranking.setBestStreak(0);
+        ranking.setTotalGames(0);
+        globalRankingRepository.save(ranking);
+        log.debug("Global ranking entry created for user: {}", user.getId());
 
         // Generate JWT tokens
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
