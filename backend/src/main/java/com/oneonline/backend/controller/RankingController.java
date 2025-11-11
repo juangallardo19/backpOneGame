@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -83,11 +84,15 @@ public class RankingController {
      * @return Ranking response with top 100 players
      */
     @GetMapping("/global")
+    @Transactional(readOnly = true)
     public ResponseEntity<RankingResponse> getGlobalRanking() {
         log.debug("Fetching global top 100 ranking");
 
         Pageable pageable = PageRequest.of(0, 100);
         Page<GlobalRanking> rankings = rankingRepository.findTopRankings(pageable);
+
+        // Force eager loading of User to avoid LazyInitializationException
+        rankings.forEach(r -> r.getUser().getNickname());
 
         List<RankingResponse.RankEntry> rankEntries = rankings.stream()
                 .map(this::mapToRankEntry)
