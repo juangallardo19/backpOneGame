@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { WebSocketService, GameEventType, getWebSocketService, cleanupWebSocketService } from '@/services/websocket.service';
-import { GameState, Player, CurrentPlayer, Card, Room, ChatMessage, GameMove, GameStatus, Direction, PlayerStatus } from '@/types/game.types';
+import { GameState, Player, CurrentPlayer, Card, Room, ChatMessage, GameMove, GameStatus, Direction, PlayerStatus, GameEndResult } from '@/types/game.types';
 
 // ============================================
 // INTERFACES
@@ -25,6 +25,10 @@ interface GameContextValue {
   // Chat y mensajes
   chatMessages: ChatMessage[];
   gameMoves: GameMove[];
+
+  // Game end results
+  gameResults: GameEndResult | null;
+  clearGameResults: () => void;
 
   // Acciones del juego
   playCard: (cardId: string, chosenColor?: string) => void;
@@ -79,6 +83,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [gameMoves, setGameMoves] = useState<GameMove[]>([]);
+  const [gameResults, setGameResults] = useState<GameEndResult | null>(null);
 
   // Referencia al servicio WebSocket
   const wsServiceRef = useRef<WebSocketService | null>(null);
@@ -480,7 +485,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   const handleGameEnded = useCallback((payload: any) => {
     console.log('🏆 Juego terminado:', payload);
+    console.log('📊 Resultados completos recibidos:', {
+      winnerNickname: payload.winnerNickname,
+      playerRankings: payload.playerRankings,
+      durationMinutes: payload.durationMinutes,
+    });
+
+    // Update game state to GAME_OVER
     setGameState(prev => prev ? { ...prev, status: GameStatus.GAME_OVER, winner: payload.winner } : null);
+
+    // Save complete game results for modal display
+    setGameResults(payload as GameEndResult);
   }, []);
 
   const handleCardPlayed = useCallback((payload: any) => {
@@ -924,6 +939,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, [gameState]);
 
   // ============================================
+  // GAME RESULTS
+  // ============================================
+
+  const clearGameResults = useCallback(() => {
+    console.log('🧹 Limpiando resultados del juego');
+    setGameResults(null);
+  }, []);
+
+  // ============================================
   // CLEANUP
   // ============================================
 
@@ -950,6 +974,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     error,
     chatMessages,
     gameMoves,
+    gameResults,
+    clearGameResults,
 
     // Acciones del juego
     playCard,
