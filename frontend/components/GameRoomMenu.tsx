@@ -377,7 +377,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                   {isPlayerLeader && (
                     <Crown className="crown-icon-inline" size={16} />
                   )}
-                  <span className="player-name">{player.nickname}</span>
+                  <span className="player-name">{player.nickname || 'Jugador sin nombre'}</span>
                 </div>
                 <div className="player-status">
                   {isPlayerLeader ? (
