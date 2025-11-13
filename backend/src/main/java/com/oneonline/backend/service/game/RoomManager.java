@@ -74,8 +74,8 @@ public class RoomManager {
         // NOTIFY: Room created via WebSocket
         webSocketObserver.onRoomCreated(room);
 
-        // NOTIFY: Creator joined room via WebSocket
-        webSocketObserver.onPlayerJoined(creator, room);
+        // NOTE: No need to send PLAYER_JOINED for creator - they're already in the room response
+        // This prevents duplicate players in the frontend
 
         return room;
     }
@@ -105,8 +105,8 @@ public class RoomManager {
         // NOTIFY: Private room created via WebSocket
         webSocketObserver.onRoomCreated(room);
 
-        // NOTIFY: Creator joined room via WebSocket
-        webSocketObserver.onPlayerJoined(creator, room);
+        // NOTE: No need to send PLAYER_JOINED for creator - they're already in the room response
+        // This prevents duplicate players in the frontend
 
         return room;
     }
