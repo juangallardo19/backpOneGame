@@ -1,4 +1,20 @@
-import { Card, CardColor, CardNumber, CardAction, GameState } from './gameTypes'
+import { Card, CardColor, CardType } from '../types/game.types'
+
+// Local simplified interfaces for the game engine
+interface SimplePlayer {
+  id: number;
+  name: string;
+  hand: Card[];
+}
+
+interface SimpleGameState {
+  players: SimplePlayer[];
+  drawPile: Card[];
+  discardPile: Card[];
+  currentPlayerIndex: number;
+  gameStatus: 'playing' | 'finished';
+  winner?: number;
+}
 
 const createDeck = (): Card[] => {
   // UNO deck original format
@@ -22,34 +38,41 @@ const createDeck = (): Card[] => {
 
   const deck: Card[] = DECK_STRINGS.map((cardStr, idx) => {
     const getColor = (str: string): CardColor => {
-      if (str.includes('r')) return 'red'
-      if (str.includes('y')) return 'yellow'
-      if (str.includes('b')) return 'blue'
-      if (str.includes('g')) return 'green'
-      return 'black'
+      if (str.includes('r')) return CardColor.RED
+      if (str.includes('y')) return CardColor.YELLOW
+      if (str.includes('b')) return CardColor.BLUE
+      if (str.includes('g')) return CardColor.GREEN
+      return CardColor.WILD
     }
 
-    const getType = (str: string): CardNumber | CardAction => {
-      if (str.includes('d2')) return 'draw2'
-      if (str.includes('s')) return 'skip'
-      if (str.includes('r') && str.length > 2) return 'reverse'
-      if (str.includes('w+4')) return 'wild_draw4'
-      if (str === 'w') return 'wild'
-      return str.replace(/[rgby]/g, '') as CardNumber
+    const getType = (str: string): CardType => {
+      if (str.includes('d2')) return CardType.DRAW_TWO
+      if (str.includes('s')) return CardType.SKIP
+      if (str.includes('r') && str.length > 2) return CardType.REVERSE
+      if (str.includes('w+4')) return CardType.WILD_DRAW_FOUR
+      if (str === 'w') return CardType.WILD
+      return CardType.NUMBER
+    }
+
+    const getValue = (str: string): number | null => {
+      if (str.includes('d2') || str.includes('s') || str.includes('r') || str.includes('w')) {
+        return null // Special cards have no numeric value
+      }
+      return parseInt(str.replace(/[rgby]/g, ''))
     }
 
     return {
       id: `card_${idx}`,
       color: getColor(cardStr),
       type: getType(cardStr),
-      display: cardStr
+      value: getValue(cardStr)
     }
   })
 
   return deck.sort(() => Math.random() - 0.5)
 }
 
-export const initializeGame = (numPlayers: number = 4): GameState => {
+export const initializeGame = (numPlayers: number = 4): SimpleGameState => {
   const deck = createDeck()
   const players = []
 
@@ -73,7 +96,7 @@ export const initializeGame = (numPlayers: number = 4): GameState => {
   }
 }
 
-export const getTopDiscard = (gameState: GameState): Card | null => {
+export const getTopDiscard = (gameState: SimpleGameState): Card | null => {
   return gameState.discardPile.length > 0
     ? gameState.discardPile[gameState.discardPile.length - 1]
     : null
@@ -81,18 +104,18 @@ export const getTopDiscard = (gameState: GameState): Card | null => {
 
 export const canPlayCard = (card: Card, topDiscard: Card | null): boolean => {
   if (!topDiscard) return true
-  if (card.color === 'black') return true
+  if (card.color === CardColor.WILD) return true
   if (card.color === topDiscard.color) return true
   if (card.type === topDiscard.type) return true
   return false
 }
 
 export const playCard = (
-  gameState: GameState,
+  gameState: SimpleGameState,
   playerIndex: number,
   cardIndex: number
-): GameState => {
-  const newState = JSON.parse(JSON.stringify(gameState)) as GameState
+): SimpleGameState => {
+  const newState = JSON.parse(JSON.stringify(gameState)) as SimpleGameState
   const player = newState.players[playerIndex]
 
   if (cardIndex < 0 || cardIndex >= player.hand.length) {
@@ -112,8 +135,8 @@ export const playCard = (
   return newState
 }
 
-export const drawCard = (gameState: GameState, playerIndex: number): GameState => {
-  const newState = JSON.parse(JSON.stringify(gameState)) as GameState
+export const drawCard = (gameState: SimpleGameState, playerIndex: number): SimpleGameState => {
+  const newState = JSON.parse(JSON.stringify(gameState)) as SimpleGameState
   const player = newState.players[playerIndex]
 
   if (newState.drawPile.length === 0 && newState.discardPile.length > 1) {

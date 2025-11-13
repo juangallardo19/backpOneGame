@@ -173,7 +173,7 @@ export default function HomePage() {
       {currentScreen === 'game' && (
         <div className="fixed inset-0 z-50 animate-fade-in">
           <HalftoneWaves />
-          <div className="absolute inset-0 z-[60] flex items-center justify-center w-full h-full p-4">
+          <div className="absolute inset-0 z-60 flex items-center justify-center w-full h-full p-4">
             <GameRoomMenu
               onBack={() => setCurrentScreen('room-selection')}
               onStartGame={() => setCurrentScreen('gameplay')}

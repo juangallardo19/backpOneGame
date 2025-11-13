@@ -42,7 +42,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
   const [isCreatingRoom, setIsCreatingRoom] = useState(false)
-  const [isStartingGame, setIsStartingGame] = useState(false)
 
   // Configuración del juego (para crear sala)
   const [roomType, setRoomType] = useState<"public" | "private">("public")
@@ -265,12 +264,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Iniciar juego
   const handleStartGame = async () => {
-    // Prevent multiple clicks
-    if (isStartingGame) {
-      console.log("⚠️ [LÍDER] Ya se está iniciando el juego, ignorando clic")
-      return
-    }
-
     if (!room) {
       showError("Error", "No hay sala activa")
       return
@@ -282,7 +275,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
 
     try {
-      setIsStartingGame(true)
       console.log("🎮 [LÍDER] Iniciando juego desde sala:", room.code)
       console.log("👥 [LÍDER] Jugadores en sala:", room.players.map(p => p.nickname))
 
@@ -313,7 +305,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
       console.error("❌ [LÍDER] Error al iniciar juego:", error)
       const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"
       showError("Error", errorMessage)
-      setIsStartingGame(false) // Reset on error
     }
   }
 
@@ -352,7 +343,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   }
 
   // Determinar si se puede iniciar el juego
-  const canStartGame = room && room.players.length >= 2 && room.players.length <= room.maxPlayers && !isStartingGame
+  const canStartGame = room && room.players.length >= 2 && room.players.length <= room.maxPlayers
 
   // Renderizar lista de jugadores
   const renderPlayers = () => {
@@ -369,84 +360,123 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           // Mostrar email si no hay nickname, o un texto por defecto
           const displayName = player.nickname?.trim() || player.userEmail || 'Jugador'
 
+          // Determinar el tipo de jugador para el estilo del card
+          const playerType = isPlayerLeader ? 'leader' : (player.isBot ? 'bot' : 'player')
+
           return (
-            <div key={player.id} className={`player-card ${isPlayerLeader ? 'leader-card' : ''} ${player.isBot ? 'bot-card' : ''}`}>
-              <div className="player-avatar">
-                {player.isBot ? (
-                  <div className="avatar-bot">
-                    <Bot size={24} />
+            <div key={player.id} style={{
+              background: isPlayerLeader 
+                ? 'linear-gradient(135deg, rgba(255, 229, 92, 0.3), rgba(255, 215, 0, 0.2))'
+                : player.isBot 
+                ? 'linear-gradient(135deg, rgba(196, 181, 253, 0.3), rgba(139, 92, 246, 0.2))'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1))',
+              border: isPlayerLeader 
+                ? '2px solid #FFE55C'
+                : player.isBot 
+                ? '2px solid #C4B5FD'
+                : '2px solid rgba(255, 255, 255, 0.5)',
+              borderRadius: '12px',
+              padding: '8px',
+              marginBottom: '8px',
+              boxShadow: isPlayerLeader 
+                ? '0 0 20px rgba(255, 229, 92, 0.3)'
+                : player.isBot 
+                ? '0 0 20px rgba(196, 181, 253, 0.3)'
+                : '0 0 10px rgba(255, 255, 255, 0.1)'
+            }}>
+              <div className={`player-card ${isPlayerLeader ? 'leader-card' : ''} ${player.isBot ? 'bot-card' : ''}`}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                  <div className="player-avatar">
+                    {player.isBot ? (
+                      <div className="avatar-bot">
+                        <Bot size={24} style={{color: '#FFFFFF'}} />
+                      </div>
+                    ) : (
+                      <div className={`avatar-human ${isPlayerLeader ? 'avatar-leader' : ''}`}>
+                        <Users size={24} style={{color: isPlayerLeader ? '#FFE55C' : '#FFFFFF'}} />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className={`avatar-human ${isPlayerLeader ? 'avatar-leader' : ''}`}>
-                    <Users size={24} />
+
+                  <div className="player-info" style={{ flex: 1 }}>
+                    <div className="player-name-container" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isPlayerLeader && (
+                        <Crown className="crown-icon-inline" size={16} style={{color: '#FFE55C'}} />
+                      )}
+                      <span className="player-name" style={{color: '#FFFFFF', fontSize: '14px', fontWeight: '600'}}>{displayName}</span>
+                    </div>
+                    <div className="player-status" style={{ marginTop: '2px' }}>
+                      {isPlayerLeader ? (
+                        <span className="status-badge leader-status" style={{color: '#FFE55C', fontSize: '11px'}}>LÍDER</span>
+                      ) : player.isBot ? (
+                        <span className="status-badge bot-status" style={{color: '#C4B5FD', fontSize: '11px'}}>BOT</span>
+                      ) : (
+                        <span className="status-badge player-status" style={{color: '#93C5FD', fontSize: '11px'}}>JUGADOR</span>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <div className="player-info">
-                <div className="player-name-container">
-                  {isPlayerLeader && (
-                    <Crown className="crown-icon-inline" size={16} />
-                  )}
-                  <span className="player-name">{displayName}</span>
                 </div>
-                <div className="player-status">
-                  {isPlayerLeader ? (
-                    <span className="status-badge leader-status">LÍDER</span>
-                  ) : player.isBot ? (
-                    <span className="status-badge bot-status">BOT</span>
-                  ) : (
-                    <span className="status-badge player-status">JUGADOR</span>
-                  )}
-                </div>
-              </div>
 
-              {/* Acciones del líder */}
-              {isLeader && player.id !== room.leaderId && (
-                <div className="player-actions">
-                  {/* Botón expulsar */}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="action-btn kick-btn"
-                    onClick={() => player.isBot ? handleRemoveBot(player.id) : handleKickPlayer(player.id)}
-                    title={player.isBot ? "Eliminar bot" : "Expulsar jugador"}
-                  >
-                    ✕
-                  </Button>
-
-                  {/* Botón transferir liderazgo (solo para jugadores humanos) */}
-                  {!player.isBot && (
+                {/* Acciones del líder */}
+                {isLeader && player.id !== room.leaderId && (
+                  <div className="player-actions">
+                    {/* Botón expulsar */}
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="action-btn transfer-btn"
-                      onClick={() => handleTransferLeader(player.id)}
-                      title="Transferir liderazgo"
+                      className="action-btn kick-btn"
+                      onClick={() => player.isBot ? handleRemoveBot(player.id) : handleKickPlayer(player.id)}
+                      title={player.isBot ? "Eliminar bot" : "Expulsar jugador"}
+                      style={{color: '#FFFFFF'}}
                     >
-                      <Crown size={14} />
+                      ✕
                     </Button>
-                  )}
-                </div>
-              )}
+
+                    {/* Botón transferir liderazgo (solo para jugadores humanos) */}
+                    {!player.isBot && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="action-btn transfer-btn"
+                        onClick={() => handleTransferLeader(player.id)}
+                        title="Transferir liderazgo"
+                        style={{color: '#FFFFFF'}}
+                      >
+                        <Crown size={14} style={{color: '#FFFFFF'}} />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
 
         {/* Slots vacíos */}
         {Array.from({ length: emptySlots }, (_, idx) => (
-          <div key={`empty-${idx}`} className="player-card empty">
-            <div className="player-avatar">
-              <div className="avatar-empty">
-                <Users size={24} />
-              </div>
-            </div>
-            <div className="player-info">
-              <div className="player-name-container">
-                <span className="player-name empty-name">Esperando jugador...</span>
-              </div>
-              <div className="player-status">
-                <span className="status-badge empty-status">VACÍO</span>
+          <div key={`empty-${idx}`} style={{
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
+            border: '2px dashed rgba(255, 255, 255, 0.3)',
+            borderRadius: '12px',
+            padding: '8px',
+            marginBottom: '8px',
+            boxShadow: 'none'
+          }}>
+            <div className="player-card empty">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                <div className="player-avatar">
+                  <div className="avatar-empty">
+                    <Users size={24} style={{color: 'rgba(255, 255, 255, 0.6)'}} />
+                  </div>
+                </div>
+                <div className="player-info" style={{ flex: 1 }}>
+                  <div className="player-name-container">
+                    <span className="player-name empty-name" style={{color: 'rgba(255, 255, 255, 0.7)', fontSize: '14px', fontWeight: '600'}}>Esperando jugador...</span>
+                  </div>
+                  <div className="player-status" style={{ marginTop: '2px' }}>
+                    <span className="status-badge empty-status" style={{color: 'rgba(255, 255, 255, 0.6)', fontSize: '11px'}}>VACÍO</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -662,11 +692,9 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                     size="lg"
                   >
                     <Play className="mr-2" size={20} />
-                    {isStartingGame
-                      ? "INICIANDO JUEGO..."
-                      : canStartGame
-                        ? "INICIAR JUEGO"
-                        : `ESPERANDO JUGADORES (${room.players.length}/2)`
+                    {canStartGame
+                      ? "INICIAR JUEGO"
+                      : `ESPERANDO JUGADORES (${room.players.length}/2)`
                     }
                   </Button>
                 )}
@@ -866,28 +894,38 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
         .lobby-column {
           background: linear-gradient(
-            135deg,
-            rgba(30, 30, 50, 0.85),
-            rgba(20, 20, 40, 0.75)
-          );
+            235deg,
+            hsl(45 50% 10% / 0.4),
+            hsl(45 50% 10% / 0.1) 33%
+          ),
+          linear-gradient(
+            45deg,
+            hsl(0 50% 10% / 0.4),
+            hsl(0 50% 10% / 0.1) 33%
+          ),
+          linear-gradient(hsl(220deg 25% 4.8% / 0.3));
           border-radius: 16px;
           padding: 2rem;
-          border: 2px solid rgba(255, 140, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.15);
           box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.5),
-            0 0 20px rgba(255, 140, 0, 0.1);
-          backdrop-filter: blur(12px);
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            0 4px 16px rgba(255, 140, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(16px);
         }
 
         .column-title {
-          color: white;
+          color: #FFFFFF;
           font-size: 1.2rem;
           font-weight: 800;
           margin-bottom: 1.5rem;
           text-align: center;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+          text-shadow: 
+            0 2px 8px rgba(0, 0, 0, 0.8),
+            0 0 16px rgba(255, 255, 255, 0.3),
+            0 0 24px rgba(255, 140, 0, 0.2);
         }
 
         .players-grid {
@@ -896,22 +934,133 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           gap: 1rem;
         }
 
+        /* NUEVOS WRAPPERS DE JUGADORES */
+        .player-card-wrapper {
+          position: relative;
+          border-radius: 16px;
+          padding: 8px !important;
+          background: linear-gradient(135deg, transparent, transparent);
+          transition: all 0.3s ease;
+          margin-bottom: 0.5rem;
+          z-index: 10;
+          display: block !important;
+          visibility: visible !important;
+          min-height: 60px;
+        }
+
+        .player-card-wrapper.leader-wrapper {
+          background: linear-gradient(
+            135deg, 
+            rgba(255, 215, 0, 0.9) !important, 
+            rgba(255, 185, 0, 0.8) !important, 
+            rgba(255, 140, 0, 0.9) !important
+          );
+          box-shadow: 
+            0 0 25px rgba(255, 215, 0, 0.5),
+            0 0 50px rgba(255, 140, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          border: 3px solid rgba(255, 215, 0, 1) !important;
+          animation: leader-wrapper-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes leader-wrapper-glow {
+          0%, 100% {
+            box-shadow: 
+              0 0 25px rgba(255, 215, 0, 0.5),
+              0 0 50px rgba(255, 140, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          }
+          50% {
+            box-shadow: 
+              0 0 35px rgba(255, 215, 0, 0.7),
+              0 0 70px rgba(255, 140, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          }
+        }
+
+        .player-card-wrapper.player-wrapper {
+          background: linear-gradient(
+            135deg, 
+            rgba(255, 255, 255, 0.8) !important, 
+            rgba(255, 255, 255, 0.6) !important, 
+            rgba(255, 255, 255, 0.8) !important
+          );
+          box-shadow: 
+            0 0 20px rgba(255, 255, 255, 0.4),
+            0 0 40px rgba(255, 255, 255, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          border: 3px solid rgba(255, 255, 255, 0.8) !important;
+        }
+
+        .player-card-wrapper.bot-wrapper {
+          background: linear-gradient(
+            135deg, 
+            rgba(139, 92, 246, 0.9) !important, 
+            rgba(124, 58, 237, 0.8) !important, 
+            rgba(168, 85, 247, 0.9) !important
+          );
+          box-shadow: 
+            0 0 25px rgba(139, 92, 246, 0.5),
+            0 0 50px rgba(168, 85, 247, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          border: 3px solid rgba(139, 92, 246, 1) !important;
+        }
+
+        .player-card-wrapper.empty-wrapper {
+          background: linear-gradient(
+            135deg, 
+            rgba(255, 255, 255, 0.1), 
+            rgba(255, 255, 255, 0.05), 
+            rgba(255, 255, 255, 0.1)
+          );
+          border: 2px dashed rgba(255, 255, 255, 0.3);
+          box-shadow: none;
+        }
+
+        /* Efectos hover para los wrappers */
+        .player-card-wrapper:hover {
+          transform: translateY(-2px);
+        }
+
+        .player-card-wrapper.leader-wrapper:hover {
+          box-shadow: 
+            0 0 30px rgba(255, 215, 0, 0.5),
+            0 0 60px rgba(255, 140, 0, 0.3);
+        }
+
+        .player-card-wrapper.player-wrapper:hover {
+          box-shadow: 
+            0 0 25px rgba(255, 255, 255, 0.3),
+            0 0 50px rgba(255, 255, 255, 0.15);
+        }
+
+        .player-card-wrapper.bot-wrapper:hover {
+          box-shadow: 
+            0 0 30px rgba(139, 92, 246, 0.5),
+            0 0 60px rgba(168, 85, 247, 0.3);
+        }
+
         .player-card {
           display: flex;
           align-items: center;
           gap: 1rem;
           padding: 1.25rem;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(37, 99, 235, 0.4));
-          border-radius: 14px;
-          border: 2px solid rgba(59, 130, 246, 0.8);
+          background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+          border-radius: 12px;
+          border: none;
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
           backdrop-filter: blur(12px);
-          box-shadow:
-            0 4px 20px rgba(59, 130, 246, 0.4),
-            0 0 30px rgba(59, 130, 246, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* FORZAR COLOR BLANCO AGRESIVO */
+        .player-card,
+        .player-card *,
+        .player-card span,
+        .player-card div {
+          color: #FFFFFF !important;
         }
 
         .player-card::before {
@@ -921,79 +1070,22 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           left: -100%;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
           transition: left 0.5s ease;
         }
 
         .player-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
-          border-color: rgba(59, 130, 246, 0.6);
+          transform: none; /* El hover se maneja en el wrapper */
         }
 
         .player-card:hover::before {
           left: 100%;
         }
 
-        .player-card.leader-card {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.6), rgba(255, 185, 0, 0.5), rgba(255, 140, 0, 0.4));
-          border: 2px solid rgba(255, 215, 0, 1);
-          box-shadow:
-            0 4px 28px rgba(255, 215, 0, 0.6),
-            0 8px 50px rgba(255, 140, 0, 0.5),
-            0 0 40px rgba(255, 215, 0, 0.4),
-            inset 0 1px 0 rgba(255, 255, 255, 0.4);
-          animation: leader-glow 3s ease-in-out infinite;
-        }
-
-        @keyframes leader-glow {
-          0%, 100% {
-            box-shadow:
-              0 4px 28px rgba(255, 215, 0, 0.6),
-              0 8px 50px rgba(255, 140, 0, 0.5),
-              0 0 40px rgba(255, 215, 0, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.4);
-          }
-          50% {
-            box-shadow:
-              0 6px 36px rgba(255, 215, 0, 0.8),
-              0 12px 70px rgba(255, 140, 0, 0.7),
-              0 0 60px rgba(255, 215, 0, 0.6),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
-          }
-        }
-
-        .player-card.leader-card::before {
-          background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
-        }
-
-        .player-card.leader-card:hover {
-          transform: translateY(-3px);
-          border-color: rgba(255, 215, 0, 1);
-        }
-
-        .player-card.bot-card {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(124, 58, 237, 0.4));
-          border: 2px solid rgba(139, 92, 246, 0.8);
-          box-shadow:
-            0 4px 20px rgba(139, 92, 246, 0.4),
-            0 0 30px rgba(139, 92, 246, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        .player-card.bot-card:hover {
-          box-shadow:
-            0 6px 24px rgba(139, 92, 246, 0.35),
-            0 0 40px rgba(139, 92, 246, 0.2);
-          border-color: rgba(139, 92, 246, 0.8);
-        }
-
         .player-card.empty {
           opacity: 0.7;
-          border-style: dashed;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
-          border-color: rgba(255, 255, 255, 0.3);
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+          border-style: none;
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
         }
 
         .player-avatar {
@@ -1019,7 +1111,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
             0 0 20px rgba(59, 130, 246, 0.6),
             0 0 40px rgba(59, 130, 246, 0.3),
             inset 0 2px 6px rgba(255, 255, 255, 0.3);
-          color: white;
+          color: #FFFFFF !important;
         }
 
         .avatar-human.avatar-leader {
@@ -1054,7 +1146,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
             0 0 20px rgba(139, 92, 246, 0.6),
             0 0 40px rgba(139, 92, 246, 0.3),
             inset 0 2px 6px rgba(255, 255, 255, 0.3);
-          color: white;
+          color: #FFFFFF !important;
           animation: pulse-bot 2s infinite;
         }
 
@@ -1074,9 +1166,98 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .avatar-empty {
-          background: rgba(255, 255, 255, 0.05);
-          border: 3px dashed rgba(255, 255, 255, 0.2);
-          color: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.08);
+          border: 3px dashed rgba(255, 255, 255, 0.3);
+          color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        /* Forzar color blanco en iconos de avatares */
+        .avatar-human svg,
+        .avatar-bot svg,
+        .avatar-empty svg {
+          color: #FFFFFF !important;
+          fill: #FFFFFF !important;
+        }
+
+        /* Forzar color dorado en iconos de líderes */
+        .avatar-leader svg {
+          color: #FFE55C !important;
+          fill: #FFE55C !important;
+        }
+
+        /* Forzar colores blancos en todos los elementos de player-card */
+        .player-card * {
+          color: inherit !important;
+        }
+
+        .player-card .player-name,
+        .player-card .player-name * {
+          color: #FFFFFF !important;
+        }
+
+        /* Forzar iconos blancos en player-actions */
+        .player-actions svg,
+        .action-btn svg {
+          color: inherit !important;
+        }
+
+        /* NUEVOS ESTILOS AGRESIVOS PARA ICONOS */
+        .player-card svg,
+        .player-card .lucide,
+        .player-card [data-lucide] {
+          color: #FFFFFF !important;
+          fill: #FFFFFF !important;
+          stroke: #FFFFFF !important;
+        }
+
+        /* Iconos específicos por tipo */
+        .player-card.leader-card svg,
+        .player-card.leader-card .lucide,
+        .player-card.leader-card [data-lucide] {
+          color: #FFE55C !important;
+          fill: #FFE55C !important;
+          stroke: #FFE55C !important;
+        }
+
+        .crown-icon-inline,
+        .crown-icon-inline svg {
+          color: #FFE55C !important;
+          fill: #FFE55C !important;
+          stroke: #FFE55C !important;
+        }
+
+        /* ÚLTIMO RECURSO - FORZAR TODO EL TEXTO A BLANCO */
+        .players-grid span,
+        .players-grid div,
+        .players-grid p,
+        .players-grid h1,
+        .players-grid h2,
+        .players-grid h3,
+        .players-grid h4,
+        .players-grid h5,
+        .players-grid h6 {
+          color: #FFFFFF !important;
+        }
+
+        /* Excepciones específicas para badges */
+        .players-grid .leader-status,
+        .players-grid .leader-status span {
+          color: #FFE55C !important;
+        }
+
+        .players-grid .bot-status,
+        .players-grid .bot-status span {
+          color: #C4B5FD !important;
+        }
+
+        .players-grid .player-status,
+        .players-grid .player-status span {
+          color: #93C5FD !important;
+        }
+
+        .players-grid .empty-status,
+        .players-grid .empty-status span {
+          color: rgba(255, 255, 255, 0.6) !important;
         }
 
         .player-info {
@@ -1093,32 +1274,38 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .crown-icon-inline {
-          color: #FFD700;
+          color: #FFE55C !important;
+          filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
           animation: crown-glow 2s infinite;
         }
 
         @keyframes crown-glow {
           0%, 100% {
-            filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.5));
+            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
           }
           50% {
-            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+            filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
           }
         }
 
         .player-name {
-          color: white;
+          color: #FFFFFF !important;
           font-weight: 700;
           font-size: 1.05rem;
           letter-spacing: 0.02em;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+          text-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.8),
+            0 0 8px rgba(255, 255, 255, 0.3);
           line-height: 1.4;
         }
 
         .player-name.empty-name {
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.7) !important;
           font-style: italic;
-          font-weight: 500;
+          font-weight: 600;
+          text-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.6),
+            0 0 6px rgba(255, 255, 255, 0.2);
         }
 
         .player-status {
@@ -1133,34 +1320,75 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           border-radius: 14px;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          text-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.8),
+            0 0 6px rgba(255, 255, 255, 0.2);
+        }
+
+        /* FORZAR COLORES DE BADGES ESPECÍFICOS */
+        .status-badge.leader-status,
+        .status-badge.leader-status * {
+          color: #FFE55C !important;
+        }
+
+        .status-badge.bot-status,
+        .status-badge.bot-status * {
+          color: #C4B5FD !important;
+        }
+
+        .status-badge.player-status,
+        .status-badge.player-status * {
+          color: #93C5FD !important;
+        }
+
+        .status-badge.empty-status,
+        .status-badge.empty-status * {
+          color: rgba(255, 255, 255, 0.6) !important;
         }
 
         .leader-status {
-          background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 185, 0, 0.2));
-          color: #FFD700;
-          border: 1.5px solid rgba(255, 215, 0, 0.6);
-          box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 185, 0, 0.3));
+          color: #FFE55C !important;
+          border: 1.5px solid rgba(255, 215, 0, 0.8);
+          box-shadow: 
+            0 2px 8px rgba(255, 215, 0, 0.4),
+            0 0 12px rgba(255, 215, 0, 0.3);
+          text-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.8),
+            0 0 8px rgba(255, 215, 0, 0.5);
         }
 
         .bot-status {
-          background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.2));
-          color: #A78BFA;
-          border: 1.5px solid rgba(139, 92, 246, 0.6);
-          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(124, 58, 237, 0.3));
+          color: #C4B5FD !important;
+          border: 1.5px solid rgba(139, 92, 246, 0.8);
+          box-shadow: 
+            0 2px 8px rgba(139, 92, 246, 0.4),
+            0 0 12px rgba(139, 92, 246, 0.3);
+          text-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.8),
+            0 0 8px rgba(139, 92, 246, 0.5);
         }
 
         .player-status {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.2));
-          color: #60A5FA;
-          border: 1.5px solid rgba(59, 130, 246, 0.6);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.3));
+          color: #93C5FD !important;
+          border: 1.5px solid rgba(59, 130, 246, 0.8);
+          box-shadow: 
+            0 2px 8px rgba(59, 130, 246, 0.4),
+            0 0 12px rgba(59, 130, 246, 0.3);
+          text-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.8),
+            0 0 8px rgba(59, 130, 246, 0.5);
         }
 
         .empty-status {
-          background: rgba(255, 255, 255, 0.05);
-          color: rgba(255, 255, 255, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.6) !important;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          text-shadow: 
+            0 1px 3px rgba(0, 0, 0, 0.6),
+            0 0 6px rgba(255, 255, 255, 0.2);
         }
 
         .crown-icon {
@@ -1189,7 +1417,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         }
 
         .kick-btn {
-          color: #EF4444;
+          color: #FFFFFF !important;
           font-weight: 700;
           background: rgba(239, 68, 68, 0.1);
         }
@@ -1197,16 +1425,23 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .kick-btn:hover {
           background: rgba(239, 68, 68, 0.2);
           transform: scale(1.1);
+          color: #FFFFFF !important;
         }
 
         .transfer-btn {
-          color: #FFD700;
+          color: #FFFFFF !important;
           background: rgba(255, 215, 0, 0.1);
         }
 
         .transfer-btn:hover {
           background: rgba(255, 215, 0, 0.2);
           transform: scale(1.1);
+          color: #FFFFFF !important;
+        }
+
+        .transfer-btn svg {
+          color: #FFFFFF !important;
+          fill: #FFFFFF !important;
         }
 
         .remove-btn {
