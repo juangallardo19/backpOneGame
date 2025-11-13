@@ -496,15 +496,11 @@ public class WebSocketGameController {
             log.error("❌ [WebSocket] Error handling player join: {}", e.getMessage(), e);
         }
 
-        // Notify all players about the join (regardless of session state)
-        messagingTemplate.convertAndSend(
-                "/topic/game/" + sessionId,
-                Map.of(
-                        "type", "PLAYER_JOINED",
-                        "player", principal.getName(),
-                        "timestamp", System.currentTimeMillis()
-                )
-        );
+        // NOTE: Do NOT send PLAYER_JOINED event here!
+        // This endpoint is for WebSocket connection/sync, not for joining a room.
+        // When players actually join a room via REST API, the RoomController
+        // already sends the proper PLAYER_JOINED event with complete player data.
+        // Sending it here would create duplicate ghost players with undefined IDs.
     }
 
     /**
