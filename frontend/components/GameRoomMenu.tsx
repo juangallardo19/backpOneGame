@@ -42,6 +42,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
   const [isCreatingRoom, setIsCreatingRoom] = useState(false)
+  const [isStartingGame, setIsStartingGame] = useState(false)
 
   // Configuración del juego (para crear sala)
   const [roomType, setRoomType] = useState<"public" | "private">("public")
@@ -264,6 +265,12 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Iniciar juego
   const handleStartGame = async () => {
+    // Prevent multiple clicks
+    if (isStartingGame) {
+      console.log("⚠️ [LÍDER] Ya se está iniciando el juego, ignorando clic")
+      return
+    }
+
     if (!room) {
       showError("Error", "No hay sala activa")
       return
@@ -275,6 +282,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
 
     try {
+      setIsStartingGame(true)
       console.log("🎮 [LÍDER] Iniciando juego desde sala:", room.code)
       console.log("👥 [LÍDER] Jugadores en sala:", room.players.map(p => p.nickname))
 
@@ -305,6 +313,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
       console.error("❌ [LÍDER] Error al iniciar juego:", error)
       const errorMessage = error.response?.data || error.message || "No se pudo iniciar el juego"
       showError("Error", errorMessage)
+      setIsStartingGame(false) // Reset on error
     }
   }
 
@@ -343,7 +352,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   }
 
   // Determinar si se puede iniciar el juego
-  const canStartGame = room && room.players.length >= 2 && room.players.length <= room.maxPlayers
+  const canStartGame = room && room.players.length >= 2 && room.players.length <= room.maxPlayers && !isStartingGame
 
   // Renderizar lista de jugadores
   const renderPlayers = () => {
@@ -653,9 +662,11 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                     size="lg"
                   >
                     <Play className="mr-2" size={20} />
-                    {canStartGame
-                      ? "INICIAR JUEGO"
-                      : `ESPERANDO JUGADORES (${room.players.length}/2)`
+                    {isStartingGame
+                      ? "INICIANDO JUEGO..."
+                      : canStartGame
+                        ? "INICIAR JUEGO"
+                        : `ESPERANDO JUGADORES (${room.players.length}/2)`
                     }
                   </Button>
                 )}
