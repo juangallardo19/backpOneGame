@@ -419,6 +419,20 @@ public class RoomController {
                     .body("Only room leader can start the game");
         }
 
+        // CRITICAL: Prevent multiple game starts - check if game already started
+        if (room.getStatus() == com.oneonline.backend.model.enums.RoomStatus.IN_PROGRESS) {
+            log.warn("⚠️ [RoomController] Game already in progress for room {}", code);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Game already started");
+        }
+
+        // CRITICAL: Check if room already has a game session
+        if (room.getGameSession() != null) {
+            log.warn("⚠️ [RoomController] Room {} already has an active game session", code);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Game session already exists");
+        }
+
         // Validate minimum players
         if (room.getTotalPlayerCount() < 2) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
