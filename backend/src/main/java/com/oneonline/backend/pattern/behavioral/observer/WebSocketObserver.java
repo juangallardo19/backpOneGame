@@ -52,6 +52,7 @@ public class WebSocketObserver implements GameObserver {
         Map<String, Object> event = createEvent("PLAYER_JOINED", Map.of(
                 "playerId", player.getPlayerId(),
                 "nickname", player.getNickname(),
+                "userEmail", player.getUserEmail() != null ? player.getUserEmail() : "",
                 "isBot", player instanceof com.oneonline.backend.model.domain.BotPlayer,
                 "roomCode", room.getRoomCode(),
                 "totalPlayerCount", room.getTotalPlayerCount()
