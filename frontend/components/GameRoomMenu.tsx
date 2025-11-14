@@ -23,6 +23,7 @@ import { useNotification } from "@/contexts/NotificationContext"
 import { roomService } from "@/services/room.service"
 import { gameService } from "@/services/game.service"
 import { Room, Player } from "@/types/game.types"
+import GameChat from "@/components/GameChat"
 
 interface GameRoomMenuProps {
   onBack?: () => void
@@ -36,6 +37,9 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
+
+  // Estado del chat
+  const [showChat, setShowChat] = useState(true)
 
   // Sincronizar con room del WebSocket
   useEffect(() => {
@@ -574,6 +578,12 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           </div>
         )}
       </div>
+
+      {/* Chat component */}
+      <GameChat
+        isMinimized={!showChat}
+        onToggleMinimize={() => setShowChat(!showChat)}
+      />
 
       <style jsx>{`
         .glass-menu-lobby {
