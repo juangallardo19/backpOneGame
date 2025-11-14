@@ -81,6 +81,23 @@ export const roomService = {
   },
 
   /**
+   * Obtener sala actual del usuario (para reconexión)
+   * Retorna la sala en la que el usuario está actualmente
+   */
+  getCurrentRoom: async (): Promise<Room | null> => {
+    try {
+      const response = await api.get<any>(API_ENDPOINTS.CURRENT_ROOM);
+      return mapBackendRoomToFrontend(response.data);
+    } catch (error: any) {
+      // 404 es esperado si el usuario no está en ninguna sala
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
    * Obtener salas públicas
    */
   getPublicRooms: async (): Promise<Room[]> => {
