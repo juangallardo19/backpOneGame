@@ -929,6 +929,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       } catch (err) {
         console.error('❌ Error en fetch de estado:', err);
       }
+    }
 
       // Crear nueva instancia de WebSocket
       const wsService = getWebSocketService(newSessionId, token);
