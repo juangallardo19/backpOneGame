@@ -49,6 +49,7 @@ public class GameEngine {
     private final BotStrategy botStrategy;
     private final SimpMessagingTemplate messagingTemplate;
     private final GameEndService gameEndService;
+    private final com.oneonline.backend.controller.WebSocketGameController webSocketGameController;
 
     /**
      * Command history for undo functionality
@@ -500,6 +501,9 @@ public class GameEngine {
         while (turnManager.getCurrentPlayer() instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
             BotPlayer bot = (BotPlayer) turnManager.getCurrentPlayer();
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
+
+            // IMPORTANTE: Enviar estado ANTES del delay para que el frontend muestre "Bot thinking..."
+            webSocketGameController.broadcastGameStateAfterBot(session);
 
             try {
                 // DELAY SIEMPRE que sea turno de un bot (ANTES de que juegue)
