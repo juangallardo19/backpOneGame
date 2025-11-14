@@ -27,6 +27,9 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
       'Has sido expulsado de la sala por el líder'
     );
 
+    // CRITICAL: Set flag to show room-selection screen after redirect
+    localStorage.setItem('uno_show_room_selection', 'true');
+
     // Redirigir INMEDIATAMENTE a la página principal
     router.push('/');
 
