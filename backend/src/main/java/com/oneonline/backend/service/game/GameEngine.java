@@ -125,11 +125,12 @@ public class GameEngine {
             // End the game session
             session.endGame(winner.get());
 
-            // CRITICAL: Update room status back to WAITING so a new game can be started
+            // CRITICAL: Reset room completely so a new game can be started
+            // This clears gameSession, updates status to WAITING, and resets player hands
             Room room = session.getRoom();
             if (room != null) {
-                room.setStatus(com.oneonline.backend.model.enums.RoomStatus.WAITING);
-                log.info("🔄 Room {} status updated to WAITING - ready for new game", room.getRoomCode());
+                room.reset();
+                log.info("🔄 Room {} reset complete - ready for new game", room.getRoomCode());
             }
 
             // Send results to all players via WebSocket using the correct event format
