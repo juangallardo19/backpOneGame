@@ -111,9 +111,7 @@ export default function OneCardsBackground() {
         this.scaleRate = 0.003;
 
         this.element = this.createCardElement();
-        console.log('Card element created:', this.element); // Debug
         container!.appendChild(this.element);
-        console.log('Card added to container'); // Debug
 
         this.element.style.transform = `translate(${this.x - this.width / 2}px, ${this.y - this.height / 2}px) rotate(${this.rotation}rad) scale(${this.scale})`;
       }
@@ -168,9 +166,7 @@ export default function OneCardsBackground() {
 
     const createCard = () => {
       if (isPageVisible) {
-        console.log('Creating new card...'); // Debug
         cards.push(new Card());
-        console.log(`Total cards: ${cards.length}`); // Debug
       }
     }
 
