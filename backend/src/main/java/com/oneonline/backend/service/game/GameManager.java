@@ -41,6 +41,10 @@ public class GameManager {
     private final ConcurrentHashMap<String, Room> activeRooms;
     private final ConcurrentHashMap<String, GameSession> activeSessions;
 
+    // Track which users are in which rooms (userEmail -> roomCode)
+    // This prevents users from being in multiple rooms simultaneously
+    private final ConcurrentHashMap<String, String> userRoomMapping;
+
     /**
      * Private constructor - prevents external instantiation
      *
@@ -49,6 +53,7 @@ public class GameManager {
     private GameManager() {
         this.activeRooms = new ConcurrentHashMap<>();
         this.activeSessions = new ConcurrentHashMap<>();
+        this.userRoomMapping = new ConcurrentHashMap<>();
         log.info("GameManager initialized - Singleton instance created");
     }
 
@@ -240,6 +245,88 @@ public class GameManager {
         }
 
         return removed;
+    }
+
+    /**
+     * Track user joining a room
+     *
+     * Records that a user is now in a specific room.
+     * This ensures we can find which room a user is in.
+     *
+     * @param userEmail User's email
+     * @param roomCode Room code they joined
+     */
+    public void trackUserInRoom(String userEmail, String roomCode) {
+        userRoomMapping.put(userEmail, roomCode);
+        log.debug("User {} tracked in room {}", userEmail, roomCode);
+    }
+
+    /**
+     * Remove user from room tracking
+     *
+     * Called when user leaves a room or is kicked.
+     *
+     * @param userEmail User's email
+     */
+    public void untrackUser(String userEmail) {
+        String removedRoom = userRoomMapping.remove(userEmail);
+        if (removedRoom != null) {
+            log.debug("User {} untracked from room {}", userEmail, removedRoom);
+        }
+    }
+
+    /**
+     * Find which room a user is currently in
+     *
+     * @param userEmail User's email
+     * @return Optional<Room> if user is in a room, empty otherwise
+     */
+    public Optional<Room> findUserCurrentRoom(String userEmail) {
+        String roomCode = userRoomMapping.get(userEmail);
+        if (roomCode != null) {
+            return findRoom(roomCode);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Remove user from their current room (if any)
+     *
+     * This is called before joining a new room to ensure users are only in one room at a time.
+     * Returns the room they were removed from (if any).
+     *
+     * @param userEmail User's email
+     * @return Optional<Room> if user was in a room and removed, empty otherwise
+     */
+    public Optional<Room> removeUserFromCurrentRoom(String userEmail) {
+        Optional<Room> currentRoom = findUserCurrentRoom(userEmail);
+
+        if (currentRoom.isPresent()) {
+            Room room = currentRoom.get();
+
+            // Find player in room by email
+            Optional<com.oneonline.backend.model.domain.Player> playerOpt = room.getPlayers().stream()
+                .filter(p -> userEmail.equals(p.getUserEmail()))
+                .findFirst();
+
+            if (playerOpt.isPresent()) {
+                com.oneonline.backend.model.domain.Player player = playerOpt.get();
+                room.removePlayerById(player.getPlayerId());
+                untrackUser(userEmail);
+
+                log.info("User {} removed from previous room {}", userEmail, room.getRoomCode());
+
+                // If room is now empty, remove it
+                if (room.getPlayers().isEmpty()) {
+                    removeRoom(room.getRoomCode());
+                    log.info("Room {} removed (empty after user left)", room.getRoomCode());
+                }
+
+                return Optional.of(room);
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**

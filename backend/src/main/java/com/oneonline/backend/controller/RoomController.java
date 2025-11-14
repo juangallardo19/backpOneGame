@@ -154,6 +154,31 @@ public class RoomController {
     }
 
     /**
+     * Get current room for the authenticated user
+     *
+     * GET /api/rooms/current
+     *
+     * Returns the room the user is currently in (if any).
+     * Useful for reconnecting after page reload.
+     *
+     * @param authentication Current user
+     * @return Room if user is in one, 404 otherwise
+     */
+    @GetMapping("/current")
+    public ResponseEntity<RoomResponse> getCurrentRoom(Authentication authentication) {
+        log.debug("Fetching current room for user: {}", authentication.getName());
+
+        Optional<Room> currentRoom = GameManager.getInstance().findUserCurrentRoom(authentication.getName());
+
+        if (currentRoom.isPresent()) {
+            RoomResponse response = mapToRoomResponse(currentRoom.get());
+            return ResponseEntity.ok(response);
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    /**
      * Join an existing room
      *
      * POST /api/rooms/{code}/join

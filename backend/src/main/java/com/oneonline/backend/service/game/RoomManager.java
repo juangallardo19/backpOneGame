@@ -52,6 +52,10 @@ public class RoomManager {
      * @return Created room
      */
     public Room createRoom(Player creator, GameConfiguration config) {
+        // CRITICAL: Remove user from any previous room they might be in
+        // This ensures users can only be in one room at a time
+        gameManager.removeUserFromCurrentRoom(creator.getUserEmail());
+
         // Generate unique room code
         String roomCode = generateUniqueRoomCode();
 
@@ -68,6 +72,9 @@ public class RoomManager {
 
         // Register room with GameManager
         gameManager.createRoom(room);
+
+        // CRITICAL: Track that this user is now in this room
+        gameManager.trackUserInRoom(creator.getUserEmail(), roomCode);
 
         log.info("Room created: {} by {}", roomCode, creator.getNickname());
 
@@ -88,6 +95,10 @@ public class RoomManager {
      * @return Created private room
      */
     public Room createPrivateRoom(Player creator, GameConfiguration config) {
+        // CRITICAL: Remove user from any previous room they might be in
+        // This ensures users can only be in one room at a time
+        gameManager.removeUserFromCurrentRoom(creator.getUserEmail());
+
         String roomCode = generateUniqueRoomCode();
 
         Room room = new RoomBuilder()
@@ -99,6 +110,9 @@ public class RoomManager {
 
         room.addPlayer(creator);
         gameManager.createRoom(room);
+
+        // CRITICAL: Track that this user is now in this room
+        gameManager.trackUserInRoom(creator.getUserEmail(), roomCode);
 
         log.info("Private room created: {} by {}", roomCode, creator.getNickname());
 
@@ -127,6 +141,10 @@ public class RoomManager {
     public Room joinRoom(String roomCode, Player player) {
         Room room = gameManager.getRoom(roomCode);
 
+        // CRITICAL: Remove user from any previous room they might be in
+        // This ensures users can only be in one room at a time
+        gameManager.removeUserFromCurrentRoom(player.getUserEmail());
+
         // Validate room capacity
         if (room.isFull()) {
             throw new IllegalArgumentException("Room is full: " + roomCode);
@@ -139,6 +157,9 @@ public class RoomManager {
 
         // Add player to room
         room.addPlayer(player);
+
+        // CRITICAL: Track that this user is now in this room
+        gameManager.trackUserInRoom(player.getUserEmail(), roomCode);
 
         log.info("Player {} joined room {}", player.getNickname(), roomCode);
 
@@ -165,6 +186,9 @@ public class RoomManager {
 
         // Remove player
         room.removePlayerById(player.getPlayerId());
+
+        // CRITICAL: Untrack user from room mapping
+        gameManager.untrackUser(player.getUserEmail());
 
         log.info("Player {} left room {}", player.getNickname(), roomCode);
 
@@ -303,6 +327,9 @@ public class RoomManager {
 
         // Remove player
         room.removePlayerById(targetPlayerId);
+
+        // CRITICAL: Untrack user from room mapping
+        gameManager.untrackUser(kickedPlayer.getUserEmail());
 
         log.info("Player {} kicked from room {} by leader {}",
             kickedPlayer.getNickname(), roomCode, room.getLeader().getNickname());
