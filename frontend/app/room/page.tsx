@@ -18,7 +18,7 @@ import GameRoomMenu from "@/components/GameRoomMenu"
 export default function RoomPage() {
   const router = useRouter()
   const { isAuthenticated, user } = useAuth()
-  const { room, disconnectFromGame } = useGame()
+  const { room, leaveRoomAndDisconnect } = useGame()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -28,16 +28,16 @@ export default function RoomPage() {
     }
   }, [isAuthenticated, router])
 
-  // CRITICAL: Cleanup WebSocket when leaving the room page
+  // CRITICAL: Leave room via API and cleanup WebSocket when leaving the room page
   useEffect(() => {
     return () => {
       // This runs when the component unmounts (user navigates away)
       if (room) {
-        console.log('🔌 [Room Page] Usuario saliendo de la sala, desconectando WebSocket...')
-        disconnectFromGame()
+        console.log('🚪 [Room Page] Usuario saliendo de la sala, llamando a leaveRoomAndDisconnect...')
+        leaveRoomAndDisconnect()
       }
     }
-  }, [room, disconnectFromGame])
+  }, [room, leaveRoomAndDisconnect])
 
   const handleBack = () => {
     console.log('👈 [Room Page] Botón volver presionado, navegando a home...')

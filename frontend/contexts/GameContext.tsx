@@ -43,6 +43,7 @@ interface GameContextValue {
   // Gestión de conexión
   connectToGame: (sessionId: string, token?: string, roomData?: any) => Promise<void>;
   disconnectFromGame: () => void;
+  leaveRoomAndDisconnect: () => Promise<void>;
   requestGameState: () => void;
 
   // Utilidades
@@ -994,33 +995,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     handleError,
   ]);
 
-  const disconnectFromGame = useCallback(async () => {
-    if (sessionId && room) {
-      console.log('🔌 Desconectando del juego y saliendo de la sala:', room.code);
-
-      try {
-        // CRITICAL: Call leave room endpoint BEFORE disconnecting WebSocket
-        // This ensures the backend removes us from the room properly
-        const { roomService } = await import('@/services/room.service');
-        await roomService.leaveRoom(room.code);
-        console.log('✅ Successfully left room via API');
-      } catch (error) {
-        console.error('❌ Error leaving room:', error);
-        // Continue with disconnect even if leave fails
-      }
-
-      // Now disconnect WebSocket
-      cleanupWebSocketService(sessionId);
-      wsServiceRef.current = null;
-      setSessionId(null);
-      setIsConnected(false);
-      setGameState(null);
-      setRoom(null);
-      setChatMessages([]);
-      setGameMoves([]);
-    } else if (sessionId) {
-      // No room info, just disconnect WebSocket
-      console.log('🔌 Desconectando del juego (sin información de sala)');
+  const disconnectFromGame = useCallback(() => {
+    if (sessionId) {
+      console.log('🔌 Desconectando del juego');
       cleanupWebSocketService(sessionId);
       wsServiceRef.current = null;
       setSessionId(null);
@@ -1030,7 +1007,40 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       setChatMessages([]);
       setGameMoves([]);
     }
-  }, [sessionId, room]);
+  }, [sessionId]);
+
+  /**
+   * Leave room via API and disconnect from WebSocket
+   *
+   * This function should ONLY be called when the user explicitly wants to leave
+   * the room (e.g., pressing the "volver" button or navigating away).
+   *
+   * DO NOT call this during WebSocket reconnections (like game start transitions).
+   * Use disconnectFromGame() for those cases instead.
+   */
+  const leaveRoomAndDisconnect = useCallback(async () => {
+    if (!room) {
+      console.log('⚠️ No hay sala de la cual salir');
+      disconnectFromGame();
+      return;
+    }
+
+    console.log('🚪 [leaveRoomAndDisconnect] Saliendo de la sala:', room.code);
+
+    try {
+      // First, call the leave room API endpoint
+      const { roomService } = await import('@/services/room.service');
+      await roomService.leaveRoom(room.code);
+      console.log('✅ [leaveRoomAndDisconnect] Successfully left room via API');
+    } catch (error) {
+      console.error('❌ [leaveRoomAndDisconnect] Error leaving room:', error);
+      // Continue with disconnect even if API call fails
+    }
+
+    // Then disconnect from WebSocket and cleanup
+    disconnectFromGame();
+    console.log('✅ [leaveRoomAndDisconnect] Desconectado del WebSocket');
+  }, [room, disconnectFromGame]);
 
   const requestGameState = useCallback(() => {
     if (wsServiceRef.current?.isConnected()) {
@@ -1165,6 +1175,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     // Gestión de conexión
     connectToGame,
     disconnectFromGame,
+    leaveRoomAndDisconnect,
     requestGameState,
 
     // Utilidades

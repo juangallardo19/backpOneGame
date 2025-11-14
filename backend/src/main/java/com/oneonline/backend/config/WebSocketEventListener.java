@@ -83,23 +83,19 @@ public class WebSocketEventListener {
     /**
      * Handle WebSocket disconnect event
      *
-     * IMPORTANT: We DO NOT automatically remove users from rooms on disconnect.
-     * This is because WebSocket disconnections can happen temporarily due to:
-     * - Network hiccups
-     * - Page refreshes
-     * - Brief connection losses
+     * When a user's WebSocket connection is closed, this method logs the
+     * disconnection but DOES NOT automatically remove them from their room.
      *
-     * If we removed users automatically, they would:
-     * - Lose their leader status on brief disconnections
-     * - Be unable to start games after reconnecting
-     * - Create a poor user experience
+     * IMPORTANT DESIGN DECISION:
+     * We do NOT auto-remove users on WebSocket disconnect because:
+     * 1. WebSocket disconnects happen during normal game flow (room → game transition)
+     * 2. Users should only leave rooms via explicit API call to /api/rooms/{code}/leave
+     * 3. This prevents users from being kicked out during WebSocket reconnections
      *
-     * Instead, users are only removed from rooms when:
-     * 1. They explicitly call the /api/rooms/{code}/leave endpoint
-     * 2. They are kicked by the room leader
-     * 3. The room is closed/deleted
-     *
-     * This method only logs the disconnect and cleans up the session tracking.
+     * Users will be removed from rooms when:
+     * - They explicitly call the leave room endpoint
+     * - The frontend cleanup calls the leave API when navigating away
+     * - They are kicked by the room leader
      *
      * @param event SessionDisconnectEvent from Spring WebSocket
      */
@@ -130,15 +126,21 @@ public class WebSocketEventListener {
         }
 
         log.info("🔌 [WebSocket] User {} (session {}) disconnected from WebSocket", userEmail, sessionId);
-        log.info("🔌 [WebSocket] User will remain in their room and can reconnect later");
-        log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
 
-        // NOTE: We do NOT remove the user from their room here.
-        // They must explicitly call /api/rooms/{code}/leave to leave the room.
-        // This prevents issues with:
-        // - Temporary disconnections
-        // - Network hiccups
-        // - Page refreshes
-        // - Users losing leader status unnecessarily
+        // Find which room the user is currently in (for logging only)
+        Optional<Room> currentRoomOpt = gameManager.findUserCurrentRoom(userEmail);
+
+        if (currentRoomOpt.isPresent()) {
+            Room currentRoom = currentRoomOpt.get();
+            String roomCode = currentRoom.getRoomCode();
+
+            log.info("🔌 [WebSocket] User {} was in room {} but will remain in room (can reconnect later)",
+                userEmail, roomCode);
+            log.info("💡 [WebSocket] User will only leave room via explicit API call or kick");
+        } else {
+            log.debug("🔌 [WebSocket] User {} was not in any room", userEmail);
+        }
+
+        log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
     }
 }
