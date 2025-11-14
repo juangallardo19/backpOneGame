@@ -251,7 +251,35 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       console.log('      - players count:', transformedState.players?.length);
       console.log('      - topCard:', transformedState.topCard);
       console.log('   📝 Actualizando gameState en contexto...');
-      setGameState(transformedState);
+
+      // CRITICAL FIX: Preserve current player's hand if not included in update
+      // Backend sends hand only in personal updates, not in general game state updates
+      setGameState(prev => {
+        if (!prev) {
+          console.log('   ℹ️ No previous state, using new state as-is');
+          return transformedState;
+        }
+
+        // Check if the new state has an empty hand but we had cards before
+        const hasHandInPayload = payload.hand && Array.isArray(payload.hand) && payload.hand.length > 0;
+        const hadHandBefore = prev.currentPlayer?.hand && prev.currentPlayer.hand.length > 0;
+        const newStateHasEmptyHand = !transformedState.currentPlayer?.hand || transformedState.currentPlayer.hand.length === 0;
+
+        if (!hasHandInPayload && hadHandBefore && newStateHasEmptyHand) {
+          console.log('   🔄 Preserving previous hand (', prev.currentPlayer.hand.length, 'cards) - update did not include hand data');
+          return {
+            ...transformedState,
+            currentPlayer: transformedState.currentPlayer ? {
+              ...transformedState.currentPlayer,
+              hand: prev.currentPlayer.hand  // Preserve previous hand
+            } : prev.currentPlayer
+          };
+        }
+
+        console.log('   ✅ Using new state (hand was included or we had no hand before)');
+        return transformedState;
+      });
+
       console.log('   ✅ gameState actualizado en contexto');
     } else {
       console.error('   ❌ transformBackendGameState retornó null');
