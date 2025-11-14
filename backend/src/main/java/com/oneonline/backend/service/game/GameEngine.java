@@ -125,6 +125,13 @@ public class GameEngine {
             // End the game session
             session.endGame(winner.get());
 
+            // CRITICAL: Update room status back to WAITING so a new game can be started
+            Room room = session.getRoom();
+            if (room != null) {
+                room.setStatus(com.oneonline.backend.model.enums.RoomStatus.WAITING);
+                log.info("🔄 Room {} status updated to WAITING - ready for new game", room.getRoomCode());
+            }
+
             // Send results to all players via WebSocket using the correct event format
             messagingTemplate.convertAndSend(
                     "/topic/game/" + session.getSessionId(),
