@@ -117,8 +117,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         await connectToGame(room.code, token)
         console.log("✅ WebSocket conectado, esperando sincronización...")
 
-        // Wait a bit for WebSocket to sync room state
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Wait for WebSocket to sync room state (increased to 1 second)
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
       // Navigate to room (GameRoomMenu will use wsRoom from context)
@@ -165,8 +165,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         await connectToGame(roomCode, token)
         console.log("✅ WebSocket conectado, esperando sincronización...")
 
-        // Wait a bit for WebSocket to sync room state
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Wait for WebSocket to sync room state (increased to 1 second)
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
       // Navigate to room (GameRoomMenu will use wsRoom from context)

@@ -48,60 +48,20 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }, [wsRoom])
 
-  // CRITICAL: Auto-reconnect to current room on page load/reload
+  // Timeout para redirigir si no se carga la sala en 5 segundos
   useEffect(() => {
-    const reconnectToCurrentRoom = async () => {
-      // Only try to reconnect if user is logged in and has no room yet
-      if (!user || !token || room) {
-        return
-      }
-
-      // CRITICAL: Check if user was kicked recently (within last 10 seconds)
-      const kickedFlag = localStorage.getItem('uno_kicked_flag')
-      const kickedTimestamp = localStorage.getItem('uno_kicked_timestamp')
-
-      if (kickedFlag === 'true' && kickedTimestamp) {
-        const timeSinceKick = Date.now() - parseInt(kickedTimestamp)
-        if (timeSinceKick < 10000) { // 10 seconds
-          console.log('🚫 Usuario fue expulsado recientemente, evitando reconexión automática')
-          // Clear the flag after checking
-          localStorage.removeItem('uno_kicked_flag')
-          localStorage.removeItem('uno_kicked_timestamp')
-          return
+    if (!room && !wsRoom) {
+      const timeout = setTimeout(() => {
+        console.log('⏰ Timeout: No se cargó la sala después de 5 segundos')
+        console.log('🔙 Redirigiendo de vuelta a selección de salas...')
+        if (onBack) {
+          onBack()
         }
-      }
+      }, 5000) // 5 segundos
 
-      // Clear old kick flags
-      localStorage.removeItem('uno_kicked_flag')
-      localStorage.removeItem('uno_kicked_timestamp')
-
-      try {
-        console.log('🔄 Verificando si el usuario tiene una sala activa...')
-        const currentRoom = await roomService.getCurrentRoom()
-
-        if (currentRoom) {
-          console.log('✅ Sala activa encontrada:', currentRoom.code)
-          console.log('👥 Jugadores en sala:', currentRoom.players.length)
-
-          // Set room state
-          setRoom(currentRoom)
-
-          // Reconnect to WebSocket
-          console.log('🔌 Reconectando al WebSocket de la sala...')
-          await connectToGame(currentRoom.code, token)
-
-          success('Reconectado', `Te has reconectado a la sala ${currentRoom.code}`)
-        } else {
-          console.log('ℹ️ Usuario no está en ninguna sala')
-        }
-      } catch (error: any) {
-        console.error('❌ Error al verificar sala actual:', error)
-        // No mostrar error al usuario, es un check silencioso
-      }
+      return () => clearTimeout(timeout)
     }
-
-    reconnectToCurrentRoom()
-  }, [user, token]) // Only run when user/token changes (on mount if logged in)
+  }, [room, wsRoom, onBack])
 
   // CRITICAL: Redirect ALL players when game starts
   useEffect(() => {
