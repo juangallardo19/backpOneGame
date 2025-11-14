@@ -88,7 +88,7 @@ public class GameEngine {
      * @return true if move successful
      * @throws IllegalArgumentException if move invalid
      */
-    private boolean processMove(Player player, Card card, GameSession session, boolean triggerBots) {
+    public boolean processMove(Player player, Card card, GameSession session, boolean triggerBots) {
         TurnManager turnManager = session.getTurnManager();
 
         // Validate it's player's turn
@@ -502,13 +502,6 @@ public class GameEngine {
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
             try {
-                // Delay ANTES de que el bot actúe para que los jugadores puedan ver el indicador "thinking..."
-                try {
-                    Thread.sleep(3500); // 3.5 segundos de delay
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-
                 // Let bot choose a card using strategy
                 Card chosenCard = botStrategy.chooseCard(bot, session.getTopCard(), session);
 
@@ -576,6 +569,17 @@ public class GameEngine {
                                 // because we'll continue in the while loop
                             }
                         }
+                    }
+                }
+
+                // Delay SOLO si el siguiente jugador también es un bot
+                // Esto permite que el estado se envíe al frontend antes del delay
+                if (turnManager.getCurrentPlayer() instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
+                    try {
+                        log.info("⏸️ Next player is also a bot, waiting 3.5 seconds before continuing...");
+                        Thread.sleep(3500); // 3.5 segundos de delay entre bots
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
                 }
 

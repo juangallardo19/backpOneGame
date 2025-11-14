@@ -133,10 +133,10 @@ public class WebSocketGameController {
 
             log.info("🃏 [WebSocket] Playing card: {} {}", card.getColor(), card.getValue());
 
-            // Process move through GameEngine (this triggers Observer notifications)
+            // Process move through GameEngine (WITHOUT triggering bot turns yet)
             log.info("⚙️ [WebSocket] Procesando jugada con GameEngine...");
-            gameEngine.processMove(player, card, session);
-            log.info("✅ [WebSocket] GameEngine procesó la jugada");
+            gameEngine.processMove(player, card, session, false);
+            log.info("✅ [WebSocket] GameEngine procesó la jugada del jugador");
 
             // Build and broadcast general game state (without hands)
             log.info("🔨 [WebSocket] Construyendo estado general del juego...");
@@ -193,6 +193,36 @@ public class WebSocketGameController {
             }
             log.info("✅ [WebSocket] {} manos personalizadas enviadas", playerCount);
             log.info("✅ [WebSocket] =================================================");
+
+            // NOW process bot turns AFTER sending the state to the frontend
+            // This ensures the player sees their own move before bots play
+            log.info("🤖 [WebSocket] Procesando turnos de bots...");
+            gameEngine.processBotTurns(session);
+            log.info("✅ [WebSocket] Bots procesados");
+
+            // Send updated state after bots played
+            GameStateResponse finalState = buildGameStateResponse(session);
+            messagingTemplate.convertAndSend(
+                    "/topic/game/" + sessionId,
+                    Map.of(
+                            "eventType", "GAME_STATE_UPDATE",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", finalState
+                    )
+            );
+
+            // Send updated hands to human players
+            for (Player p : session.getPlayers()) {
+                if (!(p instanceof BotPlayer)) {
+                    GameStateResponse personalFinalState = buildPersonalGameState(session, p);
+                    messagingTemplate.convertAndSendToUser(
+                            p.getNickname(),
+                            "/queue/game-state",
+                            personalFinalState
+                    );
+                }
+            }
+            log.info("✅ [WebSocket] Estado final enviado después de bots");
 
         } catch (Exception e) {
             log.error("❌ [WebSocket] Error processing card play: {}", e.getMessage(), e);
