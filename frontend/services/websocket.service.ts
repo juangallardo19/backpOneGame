@@ -141,8 +141,9 @@ export class WebSocketService {
             console.log('🔌 STOMP:', str);
           },
 
-          // Reconnect configuration
-          reconnectDelay: 5000,
+          // CRITICAL: Disable automatic reconnection to prevent multiple connections
+          // We'll handle reconnection manually via attemptReconnect() only when appropriate
+          reconnectDelay: 0, // 0 = disabled
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
 
@@ -489,19 +490,26 @@ export class WebSocketService {
    * Desconectar WebSocket
    */
   disconnect(): void {
-    console.log('🔌 Desconectando STOMP');
+    console.log('🔌 [WebSocket] Desconectando STOMP manualmente');
+
+    // CRITICAL: Prevent automatic reconnection
+    this.reconnectAttempts = this.maxReconnectAttempts; // Set to max to prevent reconnection
 
     if (this.subscription) {
+      console.log('🔌 [WebSocket] Unsubscribing from topics...');
       this.subscription.unsubscribe();
       this.subscription = null;
     }
 
     if (this.client) {
+      console.log('🔌 [WebSocket] Deactivating STOMP client...');
+      // Deactivate will close the WebSocket connection
       this.client.deactivate();
       this.client = null;
     }
 
     this.eventCallbacks.clear();
+    console.log('✅ [WebSocket] Desconexión completada');
   }
 
   /**
