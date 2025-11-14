@@ -215,7 +215,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
       // Navigate to room (GameRoomMenu will use wsRoom from context)
       if (onJoinRoomSuccess) {
-        onJoinRoomSuccess(room)
+        onJoinRoomSuccess(joinedRoom)
       } else {
         // Si no hay callback, ir a crear sala por defecto
         onCreateRoom()
