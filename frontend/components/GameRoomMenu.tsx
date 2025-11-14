@@ -93,6 +93,25 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         return
       }
 
+      // CRITICAL: Check if user was kicked recently (within last 10 seconds)
+      const kickedFlag = localStorage.getItem('uno_kicked_flag')
+      const kickedTimestamp = localStorage.getItem('uno_kicked_timestamp')
+
+      if (kickedFlag === 'true' && kickedTimestamp) {
+        const timeSinceKick = Date.now() - parseInt(kickedTimestamp)
+        if (timeSinceKick < 10000) { // 10 seconds
+          console.log('🚫 Usuario fue expulsado recientemente, evitando reconexión automática')
+          // Clear the flag after checking
+          localStorage.removeItem('uno_kicked_flag')
+          localStorage.removeItem('uno_kicked_timestamp')
+          return
+        }
+      }
+
+      // Clear old kick flags
+      localStorage.removeItem('uno_kicked_flag')
+      localStorage.removeItem('uno_kicked_timestamp')
+
       try {
         console.log('🔄 Verificando si el usuario tiene una sala activa...')
         const currentRoom = await roomService.getCurrentRoom()
