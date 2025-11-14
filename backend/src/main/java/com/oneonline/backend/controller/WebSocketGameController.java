@@ -457,6 +457,31 @@ public class WebSocketGameController {
                 log.debug("Session not found with ID/roomCode {}, ignoring", sessionId);
             }
 
+            // CRITICAL: Check if session exists and verify player wasn't kicked
+            if (session != null && session.getRoom() != null) {
+                Room room = session.getRoom();
+                if (room.getKickedPlayerEmails() != null &&
+                    room.getKickedPlayerEmails().contains(principal.getName())) {
+                    log.warn("🚫 [WebSocket] Kicked player {} attempted to reconnect to room {}",
+                        principal.getName(), room.getRoomCode());
+                    // Send error notification to player
+                    Map<String, Object> errorNotification = Map.of(
+                        "eventType", "ERROR",
+                        "data", Map.of(
+                            "message", "You were kicked from this room and cannot rejoin",
+                            "code", "PLAYER_KICKED"
+                        ),
+                        "timestamp", System.currentTimeMillis()
+                    );
+                    messagingTemplate.convertAndSendToUser(
+                        principal.getName(),
+                        "/queue/errors",
+                        errorNotification
+                    );
+                    return; // Prevent kicked player from joining
+                }
+            }
+
             // If session exists and game is in progress, send player their current state
             if (session != null && session.getStatus() == GameStatus.PLAYING) {
                 log.info("🎯 [WebSocket] Game in progress, sending state to {}", principal.getName());

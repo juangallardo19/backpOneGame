@@ -63,6 +63,12 @@ public class Room {
     private List<BotPlayer> bots = new ArrayList<>();
 
     /**
+     * List of kicked player emails (to prevent them from rejoining)
+     */
+    @Builder.Default
+    private List<String> kickedPlayerEmails = new ArrayList<>();
+
+    /**
      * Whether the room is private (requires code to join)
      */
     @Builder.Default

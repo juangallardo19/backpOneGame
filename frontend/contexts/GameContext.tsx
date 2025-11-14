@@ -346,10 +346,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     localStorage.setItem('uno_kicked_flag', 'true');
     localStorage.setItem('uno_kicked_timestamp', Date.now().toString());
 
-    // Disconnect from WebSocket COMPLETELY
+    // CRITICAL: Disconnect from WebSocket and DISABLE auto-reconnection
     if (wsServiceRef.current) {
-      console.log('🔌 Desconectando WebSocket...');
-      wsServiceRef.current.disconnect();
+      console.log('🔌 Desconectando WebSocket y desactivando reconexión...');
+      // Disable reconnection BEFORE disconnecting to prevent race conditions
+      wsServiceRef.current.disableReconnection();
+      // Disconnect with preventReconnect=true
+      wsServiceRef.current.disconnect(true);
       wsServiceRef.current = null;
     }
 
