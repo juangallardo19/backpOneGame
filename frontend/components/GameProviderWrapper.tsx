@@ -19,7 +19,7 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
   const { error: showError, warning: showWarning } = useNotification();
 
   const handleKicked = useCallback(() => {
-    console.log('🚫 Usuario fue expulsado, redirigiendo...');
+    console.log('🚫 Usuario fue expulsado, redirigiendo inmediatamente...');
 
     // Mostrar notificación
     showError(
@@ -27,16 +27,15 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
       'Has sido expulsado de la sala por el líder'
     );
 
-    // Redirigir a la página principal después de un breve delay
+    // Redirigir INMEDIATAMENTE a la página principal
+    router.push('/');
+
+    // Clean up kick flags after navigation
     setTimeout(() => {
-      router.push('/');
-      // Clean up kick flags after navigation (with additional delay)
-      setTimeout(() => {
-        localStorage.removeItem('uno_kicked_flag');
-        localStorage.removeItem('uno_kicked_timestamp');
-        console.log('🧹 Flags de expulsión limpiados después de redirección');
-      }, 2000);
-    }, 1500);
+      localStorage.removeItem('uno_kicked_flag');
+      localStorage.removeItem('uno_kicked_timestamp');
+      console.log('🧹 Flags de expulsión limpiados después de redirección');
+    }, 2000);
   }, [router, showError]);
 
   const handlePlayerKicked = useCallback((playerNickname: string) => {
