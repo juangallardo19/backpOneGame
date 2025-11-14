@@ -502,6 +502,15 @@ public class GameEngine {
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
             try {
+                // DELAY SIEMPRE que sea turno de un bot (ANTES de que juegue)
+                // Esto permite que el frontend muestre "Bot thinking..." durante 3.5 segundos
+                try {
+                    log.info("⏸️ Bot waiting 3.5 seconds before playing...");
+                    Thread.sleep(3500); // 3.5 segundos de delay SIEMPRE para bots
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
                 // Let bot choose a card using strategy
                 Card chosenCard = botStrategy.chooseCard(bot, session.getTopCard(), session);
 
@@ -569,17 +578,6 @@ public class GameEngine {
                                 // because we'll continue in the while loop
                             }
                         }
-                    }
-                }
-
-                // Delay SOLO si el siguiente jugador también es un bot
-                // Esto permite que el estado se envíe al frontend antes del delay
-                if (turnManager.getCurrentPlayer() instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
-                    try {
-                        log.info("⏸️ Next player is also a bot, waiting 3.5 seconds before continuing...");
-                        Thread.sleep(3500); // 3.5 segundos de delay entre bots
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
                     }
                 }
 
