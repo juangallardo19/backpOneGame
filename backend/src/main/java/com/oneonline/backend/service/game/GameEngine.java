@@ -572,9 +572,9 @@ public class GameEngine {
                     }
                 }
 
-                // Brief delay for realism (bots shouldn't play instantly)
+                // Delay para que los jugadores puedan ver las acciones de los bots
                 try {
-                    Thread.sleep(500); // 0.5 second delay
+                    Thread.sleep(3500); // 3.5 segundos de delay
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
