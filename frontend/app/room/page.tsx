@@ -9,7 +9,7 @@
  * 2. Si el usuario accede directamente → Permitir crear nueva sala
  */
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
 import { useGame } from "@/contexts/GameContext"
@@ -20,6 +20,19 @@ export default function RoomPage() {
   const { isAuthenticated, user } = useAuth()
   const { room, leaveRoomAndDisconnect } = useGame()
 
+  // Use refs to keep current values without triggering effect re-runs
+  const roomRef = useRef(room)
+  const leaveRoomAndDisconnectRef = useRef(leaveRoomAndDisconnect)
+
+  // Update refs when values change
+  useEffect(() => {
+    roomRef.current = room
+  }, [room])
+
+  useEffect(() => {
+    leaveRoomAndDisconnectRef.current = leaveRoomAndDisconnect
+  }, [leaveRoomAndDisconnect])
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -29,15 +42,18 @@ export default function RoomPage() {
   }, [isAuthenticated, router])
 
   // CRITICAL: Leave room via API and cleanup WebSocket when leaving the room page
+  // This effect ONLY runs on component unmount, NOT when room state changes
   useEffect(() => {
     return () => {
-      // This runs when the component unmounts (user navigates away)
-      if (room) {
+      // This runs ONLY when the component unmounts (user navigates away)
+      // NOT when room state changes (like when a player joins)
+      if (roomRef.current) {
         console.log('🚪 [Room Page] Usuario saliendo de la sala, llamando a leaveRoomAndDisconnect...')
-        leaveRoomAndDisconnect()
+        leaveRoomAndDisconnectRef.current()
       }
     }
-  }, [room, leaveRoomAndDisconnect])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty dependency array = only runs on mount/unmount
 
   const handleBack = () => {
     console.log('👈 [Room Page] Botón volver presionado, navegando a home...')
