@@ -1,26 +1,21 @@
 "use client"
 
 /**
- * GameRoomMenu - Componente de sala de juego completamente reconstruido
+ * GameRoomMenu - Lobby de sala de juego
  *
- * Este componente maneja dos estados:
- * 1. Configuración: Permite crear una nueva sala con configuraciones personalizadas
- * 2. Lobby: Muestra la sala creada con jugadores, configuración, y controles
+ * Este componente muestra el lobby de la sala donde los jugadores esperan
+ * a que el líder inicie el juego.
  *
  * CARACTERÍSTICAS:
  * - Sincronización en tiempo real con WebSocket
  * - Gestión de jugadores y bots
- * - Configuración de juego personalizable
  * - Verificación de permisos (líder vs jugador)
+ * - Auto-reconexión a sala actual
  */
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Crown, Play, ArrowLeft, Link2, Bot, Users, Settings, Lock, Unlock } from "lucide-react"
+import { Crown, Play, ArrowLeft, Link2, Bot, Users, Lock, Unlock } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/contexts/AuthContext"
 import { useGame } from "@/contexts/GameContext"
@@ -41,38 +36,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false)
-
-  // Configuración del juego (para crear sala)
-  const [roomType, setRoomType] = useState<"public" | "private">("public")
-  const [selectedPreset, setSelectedPreset] = useState<string>("clasico")
-  const [initialCards, setInitialCards] = useState(7)
-  const [turnTimeLimit, setTurnTimeLimit] = useState(60)
-  const [stackCards, setStackCards] = useState(true)
-  const [pointsToWin, setPointsToWin] = useState(500)
-  const [maxPlayers, setMaxPlayers] = useState(4)
-
-  // Presets de configuración
-  const presets = [
-    {
-      id: "clasico",
-      name: "CLÁSICO",
-      description: "Partida casual - configuración personalizable",
-      icon: "/icons/game-controller.png",
-      color: "green",
-      config: { initialCards: 7, turnTimeLimit: 60, stackCards: true, pointsToWin: 500 },
-      customizable: true
-    },
-    {
-      id: "torneo",
-      name: "TORNEO",
-      description: "Modo competitivo - primero en 1000 puntos gana",
-      icon: "/icons/trophy-icon.png",
-      color: "orange",
-      config: { initialCards: 7, turnTimeLimit: 45, stackCards: false, pointsToWin: 1000 },
-      customizable: false
-    },
-  ]
 
   // Sincronizar con room del WebSocket
   useEffect(() => {
@@ -233,50 +196,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }, [room, user, isLeader])
 
-  // Crear nueva sala
-  const handleCreateRoom = async () => {
-    if (!user || !token) {
-      showError("Error", "Debes iniciar sesión para crear una sala")
-      return
-    }
-
-    setIsCreatingRoom(true)
-    try {
-      console.log("🏠 Creando sala con configuración:", {
-        isPrivate: roomType === "private",
-        maxPlayers,
-        turnTimeLimit,
-        stackCards,
-        pointsToWin,
-      })
-
-      // Crear sala en el backend
-      const newRoom = await roomService.createRoom({
-        isPrivate: roomType === "private",
-        maxPlayers,
-        initialHandSize: initialCards,
-        turnTimeLimit,
-        allowStackingCards: stackCards,
-        pointsToWin,
-        tournamentMode: selectedPreset === "torneo",
-        allowBots: true,
-      })
-
-      console.log("✅ Sala creada:", newRoom)
-      setRoom(newRoom)
-
-      // Conectar al WebSocket de la sala
-      console.log("🔌 Conectando al WebSocket de la sala...")
-      await connectToGame(newRoom.code, token)
-
-      success("¡Sala creada!", `Código: ${newRoom.code}`)
-    } catch (error: any) {
-      console.error("❌ Error al crear sala:", error)
-      showError("Error", error.response?.data?.message || "No se pudo crear la sala")
-    } finally {
-      setIsCreatingRoom(false)
-    }
-  }
 
   // Agregar bot (dificultad general fija para comportamiento realista)
   const handleAddBot = async () => {
@@ -389,17 +308,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }
 
-  // Aplicar preset
-  const applyPreset = (presetId: string) => {
-    const preset = presets.find(p => p.id === presetId)
-    if (preset && preset.config) {
-      setInitialCards(preset.config.initialCards)
-      setTurnTimeLimit(preset.config.turnTimeLimit)
-      setStackCards(preset.config.stackCards)
-      setPointsToWin(preset.config.pointsToWin)
-      setSelectedPreset(presetId)
-    }
-  }
 
   // Copiar código al portapapeles
   const copyToClipboard = (text: string) => {
@@ -592,121 +500,8 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           </div>
         </div>
 
-        {/* MODO: No hay sala - Mostrar configuración para crear */}
-        {!room && (
-          <div className="config-mode">
-            <h2 className="mode-title">
-              <Settings className="inline-block mr-2" size={24} />
-              CONFIGURAR NUEVA SALA
-            </h2>
-
-            <div className="config-grid">
-              {/* Presets */}
-              <div className="config-section">
-                <Label className="config-label">MODO DE JUEGO</Label>
-                <div className="presets-grid">
-                  {presets.map((preset) => (
-                    <button
-                      key={preset.id}
-                      className={`preset-card ${selectedPreset === preset.id ? 'selected' : ''}`}
-                      onClick={() => applyPreset(preset.id)}
-                    >
-                      {preset.icon && <Image src={preset.icon} alt={preset.name} width={48} height={48} className="preset-icon" />}
-                      <div className="preset-info">
-                        <span className="preset-name">{preset.name}</span>
-                        <span className="preset-desc">{preset.description}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Configuraciones */}
-              {selectedPreset === "clasico" && (
-                <div className="config-section">
-                  <Label className="config-label">CONFIGURACIONES</Label>
-
-                  <div className="config-options">
-                    {/* Cartas iniciales */}
-                    <div className="config-item">
-                      <Label>Cartas Iniciales</Label>
-                      <Select value={initialCards.toString()} onValueChange={(v) => setInitialCards(parseInt(v))}>
-                        <SelectTrigger className="glass-input">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5 cartas</SelectItem>
-                          <SelectItem value="7">7 cartas (clásico)</SelectItem>
-                          <SelectItem value="10">10 cartas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Tiempo por turno */}
-                    <div className="config-item">
-                      <Label>Tiempo por Turno</Label>
-                      <Select value={turnTimeLimit.toString()} onValueChange={(v) => setTurnTimeLimit(parseInt(v))}>
-                        <SelectTrigger className="glass-input">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30">30 segundos</SelectItem>
-                          <SelectItem value="45">45 segundos</SelectItem>
-                          <SelectItem value="60">60 segundos</SelectItem>
-                          <SelectItem value="90">90 segundos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Acumular +2/+4 */}
-                    <div className="config-item">
-                      <Label>Acumular +2 y +4</Label>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={stackCards} onCheckedChange={setStackCards} />
-                        <span className="text-sm text-white/70">
-                          {stackCards ? "Activado" : "Desactivado"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Visibilidad */}
-              <div className="config-section">
-                <Label className="config-label">VISIBILIDAD</Label>
-                <div className="visibility-toggle">
-                  <button
-                    className={`visibility-btn ${roomType === "public" ? "active" : ""}`}
-                    onClick={() => setRoomType("public")}
-                  >
-                    PÚBLICA
-                  </button>
-                  <button
-                    className={`visibility-btn ${roomType === "private" ? "active" : ""}`}
-                    onClick={() => setRoomType("private")}
-                  >
-                    PRIVADA
-                  </button>
-                </div>
-              </div>
-
-              {/* Botón crear sala */}
-              <Button
-                className="create-room-btn glass-button-primary w-full"
-                onClick={handleCreateRoom}
-                disabled={isCreatingRoom}
-                size="lg"
-              >
-                <Users className="mr-2" size={20} />
-                {isCreatingRoom ? "CREANDO SALA..." : "CREAR SALA"}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* MODO: Sala creada - Mostrar lobby */}
-        {room && (
+        {/* Lobby - Sala de espera */}
+        {room ? (
           <div className="lobby-mode">
             <div className="lobby-grid">
               {/* Columna Izquierda: Jugadores */}
@@ -758,10 +553,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                     <span className="info-label">Estado:</span>
                     <span className="info-value">{room.status === 'WAITING' ? 'Esperando' : room.status}</span>
                   </div>
-                  <div className="info-item">
-                    <span className="info-label">Configuración:</span>
-                    <span className="info-value">{selectedPreset === 'torneo' ? 'Torneo' : 'Clásico'}</span>
-                  </div>
                 </div>
 
                 {/* Botón cambiar privacidad (solo líder) */}
@@ -812,6 +603,15 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
               </div>
             </div>
           </div>
+        ) : (
+          <div className="no-room-message">
+            <p className="text-white text-center text-xl">
+              Cargando sala...
+            </p>
+            <p className="text-white/70 text-center text-sm mt-4">
+              Si no estás en una sala, regresa y únete o crea una.
+            </p>
+          </div>
         )}
       </div>
 
@@ -842,6 +642,15 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         .inner {
           position: relative;
           z-index: 10;
+        }
+
+        .no-room-message {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          padding: 3rem;
         }
 
         .header-section {
