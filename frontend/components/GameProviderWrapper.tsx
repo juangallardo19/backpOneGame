@@ -27,8 +27,8 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
       'Has sido expulsado de la sala por el líder'
     );
 
-    // Redirigir INMEDIATAMENTE a la página principal
-    router.push('/');
+    // Redirigir INMEDIATAMENTE a la página de selección de salas
+    router.push('/rooms');
 
     // Clean up kick flags after navigation
     setTimeout(() => {
