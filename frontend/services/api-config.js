@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   // Rooms
   ROOMS: '/api/rooms',
   PUBLIC_ROOMS: '/api/rooms/public',
+  CURRENT_ROOM: '/api/rooms/current', // NEW: Get current room for user (for reconnect)
   ROOM_DETAIL: (code) => `/api/rooms/${code}`,
   JOIN_ROOM: (code) => `/api/rooms/${code}/join`,
   LEAVE_ROOM: (code) => `/api/rooms/${code}/leave`,

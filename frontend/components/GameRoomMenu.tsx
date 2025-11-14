@@ -85,6 +85,42 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }, [wsRoom])
 
+  // CRITICAL: Auto-reconnect to current room on page load/reload
+  useEffect(() => {
+    const reconnectToCurrentRoom = async () => {
+      // Only try to reconnect if user is logged in and has no room yet
+      if (!user || !token || room) {
+        return
+      }
+
+      try {
+        console.log('🔄 Verificando si el usuario tiene una sala activa...')
+        const currentRoom = await roomService.getCurrentRoom()
+
+        if (currentRoom) {
+          console.log('✅ Sala activa encontrada:', currentRoom.code)
+          console.log('👥 Jugadores en sala:', currentRoom.players.length)
+
+          // Set room state
+          setRoom(currentRoom)
+
+          // Reconnect to WebSocket
+          console.log('🔌 Reconectando al WebSocket de la sala...')
+          await connectToGame(currentRoom.code, token)
+
+          success('Reconectado', `Te has reconectado a la sala ${currentRoom.code}`)
+        } else {
+          console.log('ℹ️ Usuario no está en ninguna sala')
+        }
+      } catch (error: any) {
+        console.error('❌ Error al verificar sala actual:', error)
+        // No mostrar error al usuario, es un check silencioso
+      }
+    }
+
+    reconnectToCurrentRoom()
+  }, [user, token]) // Only run when user/token changes (on mount if logged in)
+
   // CRITICAL: Redirect ALL players when game starts
   useEffect(() => {
     console.log('🔍 [REDIRECT CHECK] gameState cambió:', {
