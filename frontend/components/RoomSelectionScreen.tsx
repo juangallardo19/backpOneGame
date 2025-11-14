@@ -9,6 +9,7 @@ import OneCardsBackground from "@/components/OneCardsBackground"
 import { roomService } from "@/services/room.service"
 import { useNotification } from "@/contexts/NotificationContext"
 import { useGame } from "@/contexts/GameContext"
+import { useAuth } from "@/contexts/AuthContext"
 import { Room } from "@/types/game.types"
 
 interface RoomSelectionScreenProps {
@@ -26,6 +27,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
   const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const { success, error: showError } = useNotification()
   const { connectToGame } = useGame()
+  const { user } = useAuth()
 
   // Load public rooms when entering join room screen
   useEffect(() => {
@@ -48,7 +50,28 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
       const rooms = await roomService.getPublicRooms()
       console.log("✅ Salas públicas cargadas:", rooms)
       console.log("📊 Cantidad de salas:", rooms.length)
-      setPublicRooms(rooms)
+
+      // CRITICAL: Filter out rooms where the user is already a member
+      // This prevents the user from trying to join their own room
+      const filteredRooms = rooms.filter(room => {
+        if (!user) return true
+
+        // Check if user is the leader
+        const isLeader = room.leaderId === user.id
+
+        // Check if user is in the players list
+        const isPlayer = room.players.some(p => p.userEmail === user.email || p.id === user.id)
+
+        if (isLeader || isPlayer) {
+          console.log(`🚫 Filtrando sala ${room.code} - usuario ya es miembro`)
+          return false
+        }
+
+        return true
+      })
+
+      console.log("📊 Salas después de filtrar:", filteredRooms.length)
+      setPublicRooms(filteredRooms)
     } catch (error: any) {
       console.error("❌ Error loading public rooms:", error)
       console.error("❌ Error details:", {
