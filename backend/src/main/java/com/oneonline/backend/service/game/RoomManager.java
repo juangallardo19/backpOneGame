@@ -132,6 +132,7 @@ public class RoomManager {
      * - Room exists
      * - Room not full
      * - Player not already in room
+     * - Player not kicked from room
      *
      * @param roomCode 6-character room code
      * @param player Player joining
@@ -140,6 +141,14 @@ public class RoomManager {
      */
     public Room joinRoom(String roomCode, Player player) {
         Room room = gameManager.getRoom(roomCode);
+
+        // CRITICAL: Check if player was kicked from this room
+        if (room.getKickedPlayerEmails() != null &&
+            room.getKickedPlayerEmails().contains(player.getUserEmail())) {
+            log.warn("Player {} attempted to rejoin room {} after being kicked",
+                player.getUserEmail(), roomCode);
+            throw new IllegalArgumentException("You were kicked from this room and cannot rejoin");
+        }
 
         // CRITICAL: Remove user from any previous room they might be in
         // This ensures users can only be in one room at a time
@@ -324,6 +333,12 @@ public class RoomManager {
 
         // Get player reference before removing
         Player kickedPlayer = targetOpt.get();
+
+        // CRITICAL: Add player email to kicked list to prevent rejoin
+        if (kickedPlayer.getUserEmail() != null && !kickedPlayer.getUserEmail().isEmpty()) {
+            room.getKickedPlayerEmails().add(kickedPlayer.getUserEmail());
+            log.info("Added {} to kicked players list for room {}", kickedPlayer.getUserEmail(), roomCode);
+        }
 
         // Remove player
         room.removePlayerById(targetPlayerId);
