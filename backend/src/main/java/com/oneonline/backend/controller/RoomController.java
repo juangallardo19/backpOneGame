@@ -406,7 +406,7 @@ public class RoomController {
     /**
      * Toggle room privacy (public <-> private)
      *
-     * PUT /api/rooms/{code}/privacy
+     * PUT /api/rooms/{code}/toggle-privacy
      *
      * Only the room leader can change room privacy.
      *
@@ -414,7 +414,7 @@ public class RoomController {
      * @param authentication Current user (must be leader)
      * @return Updated room
      */
-    @PutMapping("/{code}/privacy")
+    @PutMapping("/{code}/toggle-privacy")
     public ResponseEntity<RoomResponse> toggleRoomPrivacy(
             @PathVariable String code,
             Authentication authentication) {
