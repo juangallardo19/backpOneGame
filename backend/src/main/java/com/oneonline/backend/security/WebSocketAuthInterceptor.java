@@ -54,14 +54,20 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
+        // Log ALL commands to see what's happening
+        if (accessor != null) {
+            log.debug("📨 [WebSocket Auth] Message received - Command: {}, SessionId: {}",
+                accessor.getCommand(), accessor.getSessionId());
+        }
+
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            log.debug("🔐 [WebSocket Auth] New WebSocket connection attempt");
+            log.info("🔐 [WebSocket Auth] CONNECT command detected - New WebSocket connection attempt");
 
             // Extract token from headers or query params
             String token = extractToken(accessor);
 
             if (token != null) {
-                log.debug("🔑 [WebSocket Auth] Token found, validating...");
+                log.info("🔑 [WebSocket Auth] Token found, validating...");
 
                 try {
                     // Validate token
@@ -88,10 +94,12 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                         log.warn("⚠️ [WebSocket Auth] Invalid JWT token");
                     }
                 } catch (Exception e) {
-                    log.error("❌ [WebSocket Auth] Error validating token: {}", e.getMessage());
+                    log.error("❌ [WebSocket Auth] Error validating token: {}", e.getMessage(), e);
                 }
             } else {
-                log.warn("⚠️ [WebSocket Auth] No token found in connection (checked headers and query params)");
+                log.warn("⚠️ [WebSocket Auth] No token found in CONNECT command (checked headers and query params)");
+                // Log all available headers for debugging
+                log.warn("⚠️ [WebSocket Auth] Available native headers: {}", accessor.toNativeHeaderMap());
             }
         }
 
@@ -104,40 +112,66 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
      * Checks in order:
      * 1. Authorization header: "Bearer <token>"
      * 2. Query parameter: "token"
-     * 3. Native header: "Authorization"
+     * 3. Native header: "Authorization" (without Bearer)
+     * 4. Native header: "auth" or "Auth"
      *
      * @param accessor STOMP header accessor
      * @return JWT token or null
      */
     private String extractToken(StompHeaderAccessor accessor) {
-        // 1. Check Authorization header
+        log.debug("🔍 [WebSocket Auth] Extracting token from headers...");
+        log.debug("🔍 [WebSocket Auth] All native headers: {}", accessor.toNativeHeaderMap());
+
+        // 1. Check Authorization header with Bearer prefix
         List<String> authHeaders = accessor.getNativeHeader("Authorization");
+        log.debug("🔍 [WebSocket Auth] Authorization header: {}", authHeaders);
+
         if (authHeaders != null && !authHeaders.isEmpty()) {
             String authHeader = authHeaders.get(0);
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
-                log.debug("🔍 [WebSocket Auth] Token found in Authorization header");
+                log.info("🔍 [WebSocket Auth] ✅ Token found in Authorization header (Bearer)");
                 return token;
             }
-        }
-
-        // 2. Check token query parameter (for SockJS fallback)
-        List<String> tokenParams = accessor.getNativeHeader("token");
-        if (tokenParams != null && !tokenParams.isEmpty()) {
-            log.debug("🔍 [WebSocket Auth] Token found in query parameter");
-            return tokenParams.get(0);
-        }
-
-        // 3. Check if token is passed directly in Authorization header without "Bearer"
-        if (authHeaders != null && !authHeaders.isEmpty()) {
-            String authHeader = authHeaders.get(0);
-            if (authHeader != null && !authHeader.isEmpty() && !authHeader.startsWith("Bearer")) {
-                log.debug("🔍 [WebSocket Auth] Token found directly in Authorization header (no Bearer prefix)");
+            // Check if token is passed directly without "Bearer"
+            if (authHeader != null && !authHeader.isEmpty()) {
+                log.info("🔍 [WebSocket Auth] ✅ Token found directly in Authorization header (no Bearer prefix)");
                 return authHeader;
             }
         }
 
-        log.debug("❌ [WebSocket Auth] No token found in headers or query params");
+        // 2. Check lowercase authorization header
+        authHeaders = accessor.getNativeHeader("authorization");
+        if (authHeaders != null && !authHeaders.isEmpty()) {
+            String authHeader = authHeaders.get(0);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                log.info("🔍 [WebSocket Auth] ✅ Token found in authorization header (Bearer)");
+                return token;
+            }
+            if (authHeader != null && !authHeader.isEmpty()) {
+                log.info("🔍 [WebSocket Auth] ✅ Token found in authorization header (no Bearer)");
+                return authHeader;
+            }
+        }
+
+        // 3. Check token query parameter (for SockJS fallback)
+        List<String> tokenParams = accessor.getNativeHeader("token");
+        log.debug("🔍 [WebSocket Auth] token parameter: {}", tokenParams);
+
+        if (tokenParams != null && !tokenParams.isEmpty()) {
+            log.info("🔍 [WebSocket Auth] ✅ Token found in query parameter");
+            return tokenParams.get(0);
+        }
+
+        // 4. Check auth header
+        List<String> authParam = accessor.getNativeHeader("auth");
+        if (authParam != null && !authParam.isEmpty()) {
+            log.info("🔍 [WebSocket Auth] ✅ Token found in auth parameter");
+            return authParam.get(0);
+        }
+
+        log.warn("❌ [WebSocket Auth] No token found in any header");
         return null;
     }
 }
