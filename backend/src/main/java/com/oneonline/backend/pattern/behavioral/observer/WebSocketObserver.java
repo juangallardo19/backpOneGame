@@ -301,6 +301,31 @@ public class WebSocketObserver implements GameObserver {
     }
 
     /**
+     * Player kicked - notify all room members (general) and kicked player (personal).
+     */
+    @Override
+    public void onPlayerKicked(Player player, Room room) {
+        // Send general notification to room (player was kicked)
+        Map<String, Object> roomEvent = createEvent("PLAYER_LEFT", Map.of(
+                "playerId", player.getPlayerId(),
+                "nickname", player.getNickname(),
+                "isBot", player instanceof com.oneonline.backend.model.domain.BotPlayer,
+                "roomCode", room.getRoomCode(),
+                "totalPlayerCount", room.getTotalPlayerCount(),
+                "wasKicked", true
+        ));
+        sendToRoom(room.getRoomCode(), roomEvent);
+
+        // Send personal notification to kicked player
+        Map<String, Object> personalEvent = createEvent("PLAYER_KICKED", Map.of(
+                "roomCode", room.getRoomCode(),
+                "roomName", room.getRoomName(),
+                "message", "Has sido expulsado de la sala"
+        ));
+        sendToPlayer(player.getNickname(), personalEvent);
+    }
+
+    /**
      * Create standardized event structure.
      *
      * @param eventType Type of event
