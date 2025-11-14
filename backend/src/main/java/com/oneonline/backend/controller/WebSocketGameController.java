@@ -747,4 +747,48 @@ public class WebSocketGameController {
                 .startedAt(System.currentTimeMillis())
                 .build();
     }
+
+    /**
+     * PUBLIC METHOD: Send game state update after a bot plays
+     * This allows GameEngine to send intermediate updates during bot turns
+     *
+     * @param session Game session
+     */
+    public void broadcastGameStateAfterBot(GameSession session) {
+        try {
+            String sessionId = session.getSessionId();
+
+            log.info("📤 [Bot Update] Enviando estado después de jugada de bot");
+
+            // Build and send general game state
+            GameStateResponse generalState = buildGameStateResponse(session);
+            messagingTemplate.convertAndSend(
+                    "/topic/game/" + sessionId,
+                    Map.of(
+                            "eventType", "GAME_STATE_UPDATE",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", generalState
+                    )
+            );
+
+            // Send updated hands to human players
+            for (Player p : session.getPlayers()) {
+                if (!(p instanceof BotPlayer)) {
+                    GameStateResponse personalState = buildPersonalGameState(session, p);
+                    messagingTemplate.convertAndSendToUser(
+                            p.getNickname(),
+                            "/queue/game-state",
+                            personalState
+                    );
+                }
+            }
+
+            log.info("✅ [Bot Update] Estado enviado: {} es turno actual",
+                    session.getCurrentPlayer().getNickname());
+
+        } catch (Exception e) {
+            log.error("❌ Error broadcasting state after bot: {}", e.getMessage(), e);
+        }
+    }
 }
+
