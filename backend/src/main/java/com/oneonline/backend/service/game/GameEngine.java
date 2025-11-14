@@ -502,6 +502,13 @@ public class GameEngine {
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
             try {
+                // Delay ANTES de que el bot actúe para que los jugadores puedan ver el indicador "thinking..."
+                try {
+                    Thread.sleep(3500); // 3.5 segundos de delay
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
                 // Let bot choose a card using strategy
                 Card chosenCard = botStrategy.chooseCard(bot, session.getTopCard(), session);
 
@@ -570,13 +577,6 @@ public class GameEngine {
                             }
                         }
                     }
-                }
-
-                // Delay para que los jugadores puedan ver las acciones de los bots
-                try {
-                    Thread.sleep(3500); // 3.5 segundos de delay
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
                 }
 
             } catch (Exception e) {
