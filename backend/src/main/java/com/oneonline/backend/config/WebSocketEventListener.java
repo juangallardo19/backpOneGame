@@ -9,19 +9,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * WebSocketEventListener - Handles WebSocket connection lifecycle events
  *
- * Listens for WebSocket disconnection events and automatically removes
- * players from their rooms when they disconnect (e.g., navigating away,
- * closing browser, network issues).
+ * Listens for WebSocket connection and disconnection events to automatically
+ * manage room membership when users navigate away or lose connection.
  *
  * EVENTS HANDLED:
- * - SessionDisconnectEvent: When a WebSocket connection is closed
+ * - SessionConnectEvent: When a WebSocket connection is established (track user)
+ * - SessionDisconnectEvent: When a WebSocket connection is closed (auto-leave room)
  *
  * AUTO-LEAVE FUNCTIONALITY:
  * When a user disconnects from WebSocket:
@@ -48,6 +51,35 @@ public class WebSocketEventListener {
     private final RoomManager roomManager;
     private final GameManager gameManager = GameManager.getInstance();
 
+    // Track WebSocket sessions: sessionId -> userEmail
+    private final Map<String, String> sessionUserMap = new ConcurrentHashMap<>();
+
+    /**
+     * Handle WebSocket connect event
+     *
+     * Tracks which user is associated with which WebSocket session.
+     * This allows us to properly identify users when they disconnect.
+     *
+     * @param event SessionConnectEvent from Spring WebSocket
+     */
+    @EventListener
+    public void handleWebSocketConnect(SessionConnectEvent event) {
+        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+
+        String sessionId = headerAccessor.getSessionId();
+        String userEmail = headerAccessor.getUser() != null ?
+            headerAccessor.getUser().getName() : null;
+
+        if (sessionId != null && userEmail != null) {
+            sessionUserMap.put(sessionId, userEmail);
+            log.info("🔗 [WebSocket] User {} connected with session {}", userEmail, sessionId);
+            log.debug("🔗 [WebSocket] Active sessions: {}", sessionUserMap.size());
+        } else {
+            log.warn("⚠️ [WebSocket] Connection without proper authentication - sessionId: {}, user: {}",
+                sessionId, userEmail);
+        }
+    }
+
     /**
      * Handle WebSocket disconnect event
      *
@@ -56,7 +88,7 @@ public class WebSocketEventListener {
      * their current room.
      *
      * FLOW:
-     * 1. Extract user email from WebSocket session
+     * 1. Extract user email from WebSocket session or session map
      * 2. Find which room the user is in
      * 3. Find the player object in that room
      * 4. Call RoomManager.leaveRoom() to properly remove them
@@ -68,16 +100,26 @@ public class WebSocketEventListener {
     public void handleWebSocketDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
 
-        // Get user principal (email) from WebSocket session
-        String userEmail = headerAccessor.getUser() != null ?
-            headerAccessor.getUser().getName() : null;
+        String sessionId = headerAccessor.getSessionId();
+
+        log.info("🔌 [WebSocket] Session {} disconnecting...", sessionId);
+
+        // Try to get user email from session map first (more reliable)
+        String userEmail = sessionUserMap.remove(sessionId);
+
+        // Fallback to Principal if not in map
+        if (userEmail == null && headerAccessor.getUser() != null) {
+            userEmail = headerAccessor.getUser().getName();
+            log.debug("🔌 [WebSocket] User email retrieved from Principal: {}", userEmail);
+        }
 
         if (userEmail == null) {
-            log.debug("🔌 [WebSocket] User disconnected but no principal found in session");
+            log.debug("🔌 [WebSocket] Session {} disconnected but no user found", sessionId);
+            log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
             return;
         }
 
-        log.info("🔌 [WebSocket] User {} disconnected from WebSocket", userEmail);
+        log.info("🔌 [WebSocket] User {} (session {}) disconnected from WebSocket", userEmail, sessionId);
 
         try {
             // Find which room the user is currently in
@@ -134,6 +176,8 @@ public class WebSocketEventListener {
             } catch (Exception ex) {
                 log.error("❌ [WebSocket] Failed to untrack user {}: {}", userEmail, ex.getMessage());
             }
+        } finally {
+            log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
         }
     }
 }
