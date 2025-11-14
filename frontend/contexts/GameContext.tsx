@@ -761,31 +761,35 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
 
       // Obtener estado desde el backend ANTES de conectar WebSocket (OPTIONAL)
       // This is kept as a fallback but won't block if it fails
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
-        const authToken = token || localStorage.getItem('uno_auth_token');
+      if (!roomData) {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
+          const authToken = token || localStorage.getItem('uno_auth_token');
 
-        // Primero intentar obtener como SALA (pre-juego)
-        const roomUrl = `${apiUrl}/api/rooms/${newSessionId}`;
-        console.log('🏠 (Opcional) Intentando obtener sala:', roomUrl);
-        console.log('🔑 Token:', authToken ? 'Presente' : 'No presente');
+          // Primero intentar obtener como SALA (pre-juego)
+          const roomUrl = `${apiUrl}/api/rooms/${newSessionId}`;
+          console.log('🏠 (Opcional) Intentando obtener sala:', roomUrl);
+          console.log('🔑 Token:', authToken ? 'Presente' : 'No presente');
 
-        const roomResponse = await fetch(roomUrl, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
+          let roomResponse: Response;
+          try {
+            roomResponse = await fetch(roomUrl, {
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
+          } catch (err: any) {
+            console.log('⚠️ Fetch de sala falló, continuando con WebSocket:', err.message);
+            throw err; // Re-throw to skip the rest of this block
           }
-        }).catch(err => {
-          console.log('⚠️ Fetch de sala falló, continuando con WebSocket:', err.message);
-          return { ok: false };
-        });
 
-        console.log('📊 Respuesta de sala:', {
-          status: (roomResponse as any).status,
-          ok: roomResponse.ok,
-          statusText: (roomResponse as any).statusText
-        });
+          console.log('📊 Respuesta de sala:', {
+            status: roomResponse.status,
+            ok: roomResponse.ok,
+            statusText: roomResponse.statusText
+          });
 
-        if (roomResponse.ok) {
+          if (roomResponse.ok) {
           // Es una SALA (pre-juego)
           const roomData = await roomResponse.json();
           console.log('📡 Información de sala obtenida:', roomData);
