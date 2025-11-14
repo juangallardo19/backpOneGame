@@ -10,7 +10,7 @@ import { AudioProvider } from "@/contexts/AudioContext"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { NotificationProvider } from "@/contexts/NotificationContext"
 import NotificationToast from "@/components/NotificationToast"
-import GameProviderWrapper from "../components/GameProviderWrapper"
+import GameProviderWrapper from "@/components/GameProviderWrapper"
 
 export const metadata: Metadata = {
   title: "UNO - Juego de Cartas Online",

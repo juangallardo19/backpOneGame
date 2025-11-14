@@ -91,7 +91,6 @@ export class WebSocketService {
   private isConnecting = false;
   private token: string | null = null;
   private subscription: StompSubscription | null = null;
-  private shouldReconnect: boolean = true; // Flag to control reconnection
 
   constructor(roomCode: string, token?: string) {
     this.roomCode = roomCode;
@@ -163,12 +162,9 @@ export class WebSocketService {
             console.log('🔌 WebSocket cerrado:', event.code, event.reason);
             this.isConnecting = false;
 
-            // CRITICAL: Only attempt reconnect if shouldReconnect flag is true
-            // This prevents kicked players from auto-reconnecting
-            if (this.shouldReconnect && event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+            // Attempt reconnect if not intentional closure
+            if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
               this.attemptReconnect();
-            } else if (!this.shouldReconnect) {
-              console.log('🚫 Reconexión desactivada (usuario expulsado o desconexión intencional)');
             }
           },
 
@@ -485,16 +481,9 @@ export class WebSocketService {
 
   /**
    * Desconectar WebSocket
-   * @param preventReconnect Si es true, desactiva la reconexión automática (usado al expulsar)
    */
-  disconnect(preventReconnect: boolean = false): void {
-    console.log('🔌 Desconectando STOMP', preventReconnect ? '(reconexión desactivada)' : '');
-
-    // CRITICAL: Disable auto-reconnect if preventReconnect is true
-    if (preventReconnect) {
-      this.shouldReconnect = false;
-      console.log('🚫 Reconexión automática DESACTIVADA permanentemente');
-    }
+  disconnect(): void {
+    console.log('🔌 Desconectando STOMP');
 
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -507,14 +496,6 @@ export class WebSocketService {
     }
 
     this.eventCallbacks.clear();
-  }
-
-  /**
-   * Disable auto-reconnection (used when player is kicked)
-   */
-  disableReconnection(): void {
-    console.log('🚫 Desactivando reconexión automática');
-    this.shouldReconnect = false;
   }
 
   /**

@@ -5,7 +5,7 @@
  * ACTUALIZADO: Usa AuthContext para autenticación
  */
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Play, Settings, Users, LogOut, Trophy } from "lucide-react"
 import Image from "next/image"
@@ -30,16 +30,6 @@ export default function HomePage() {
   // Usar AuthContext en vez de estado local
   const { user, isAuthenticated, logout, isLoading } = useAuth()
   const { success } = useNotification()
-
-  // CRITICAL: Check if should show room-selection after being kicked
-  useEffect(() => {
-    const showRoomSelection = localStorage.getItem('uno_show_room_selection')
-    if (showRoomSelection === 'true' && isAuthenticated) {
-      console.log('🔄 Usuario expulsado, mostrando pantalla de selección de salas')
-      setCurrentScreen('room-selection')
-      localStorage.removeItem('uno_show_room_selection')
-    }
-  }, [isAuthenticated])
 
   const handleLogout = async () => {
     await logout()
