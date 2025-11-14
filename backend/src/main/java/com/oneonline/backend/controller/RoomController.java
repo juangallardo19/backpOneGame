@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -425,9 +426,9 @@ public class RoomController {
         }
 
         // Toggle privacy
-        room.setPrivate(!room.isPrivate());
+        room.setPrivateRoom(!room.isPrivateRoom());
 
-        log.info("Room {} privacy changed to: {}", code, room.isPrivate() ? "PRIVATE" : "PUBLIC");
+        log.info("Room {} privacy changed to: {}", code, room.isPrivateRoom() ? "PRIVATE" : "PUBLIC");
 
         RoomResponse response = mapToRoomResponse(room);
         return ResponseEntity.ok(response);
