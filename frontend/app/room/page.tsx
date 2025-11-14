@@ -18,11 +18,14 @@ import GameRoomMenu from "@/components/GameRoomMenu"
 export default function RoomPage() {
   const router = useRouter()
   const { isAuthenticated, user } = useAuth()
-  const { room, leaveRoomAndDisconnect } = useGame()
+  const { room, gameState, leaveRoomAndDisconnect } = useGame()
 
   // Use refs to keep current values without triggering effect re-runs
   const roomRef = useRef(room)
   const leaveRoomAndDisconnectRef = useRef(leaveRoomAndDisconnect)
+
+  // Flag to indicate we're navigating to game (don't leave room)
+  const isNavigatingToGameRef = useRef(false)
 
   // Update refs when values change
   useEffect(() => {
@@ -32,6 +35,14 @@ export default function RoomPage() {
   useEffect(() => {
     leaveRoomAndDisconnectRef.current = leaveRoomAndDisconnect
   }, [leaveRoomAndDisconnect])
+
+  // Detect when game starts (GAME_STARTED event received)
+  useEffect(() => {
+    if (gameState && gameState.status === 'PLAYING') {
+      console.log('🎮 [Room Page] Game started detected, setting navigation flag')
+      isNavigatingToGameRef.current = true
+    }
+  }, [gameState])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -46,7 +57,13 @@ export default function RoomPage() {
   useEffect(() => {
     return () => {
       // This runs ONLY when the component unmounts (user navigates away)
-      // NOT when room state changes (like when a player joins)
+      // Check if we're navigating to game - if so, DON'T leave room
+      if (isNavigatingToGameRef.current) {
+        console.log('🎮 [Room Page] Navegando al juego - NO se ejecuta leave')
+        return
+      }
+
+      // NOT navigating to game - user is leaving the room page
       if (roomRef.current) {
         console.log('🚪 [Room Page] Usuario saliendo de la sala, llamando a leaveRoomAndDisconnect...')
         leaveRoomAndDisconnectRef.current()
@@ -61,6 +78,8 @@ export default function RoomPage() {
   }
 
   const handleStartGame = () => {
+    console.log('🎯 [Room Page] Iniciando juego, estableciendo flag de navegación')
+    isNavigatingToGameRef.current = true
     router.push('/game')
   }
 
