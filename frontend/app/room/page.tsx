@@ -69,8 +69,9 @@ export default function RoomPage() {
         leaveRoomAndDisconnectRef.current()
       }
     }
+    // We intentionally use refs and empty deps to run cleanup only on unmount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty dependency array = only runs on mount/unmount
+  }, [])
 
   const handleBack = () => {
     console.log('👈 [Room Page] Botón volver presionado, navegando a home...')
