@@ -16,7 +16,7 @@ interface GameProviderWrapperProps {
 
 export default function GameProviderWrapper({ children }: GameProviderWrapperProps) {
   const router = useRouter();
-  const { error: showError } = useNotification();
+  const { error: showError, warning: showWarning } = useNotification();
 
   const handleKicked = useCallback(() => {
     console.log('🚫 Usuario fue expulsado, redirigiendo...');
@@ -33,8 +33,18 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
     }, 1500);
   }, [router, showError]);
 
+  const handlePlayerKicked = useCallback((playerNickname: string) => {
+    console.log('🚫 Jugador expulsado de la sala:', playerNickname);
+
+    // Mostrar notificación a los demás jugadores
+    showWarning(
+      'Jugador expulsado',
+      `${playerNickname} ha sido expulsado de la sala`
+    );
+  }, [showWarning]);
+
   return (
-    <GameProvider onKicked={handleKicked}>
+    <GameProvider onKicked={handleKicked} onPlayerKicked={handlePlayerKicked}>
       {children}
     </GameProvider>
   );

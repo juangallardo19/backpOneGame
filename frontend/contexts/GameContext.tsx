@@ -72,9 +72,10 @@ export const useGame = () => {
 export interface GameProviderProps {
   children: React.ReactNode;
   onKicked?: () => void; // Callback cuando el jugador es expulsado
+  onPlayerKicked?: (playerNickname: string) => void; // Callback cuando otro jugador es expulsado
 }
 
-export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }) => {
+export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, onPlayerKicked }) => {
   // Estado
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
@@ -297,6 +298,16 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }
   const handlePlayerLeft = useCallback((payload: any) => {
     console.log('👋 Jugador salió:', payload);
 
+    // CRITICAL: Check if player was kicked and show notification
+    if (payload.wasKicked) {
+      console.log('🚫 Jugador fue expulsado:', payload.nickname);
+
+      // Call the onPlayerKicked callback if provided
+      if (onPlayerKicked) {
+        onPlayerKicked(payload.nickname);
+      }
+    }
+
     // CRITICAL: Update room state by removing player
     setRoom(prevRoom => {
       if (!prevRoom) return prevRoom;
@@ -306,7 +317,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }
         players: prevRoom.players.filter(p => p.id !== payload.playerId),
       };
     });
-  }, []);
+  }, [onPlayerKicked]);
 
   const handleLeadershipTransferred = useCallback((payload: any) => {
     console.log('👑 Liderazgo transferido:', payload);
@@ -331,10 +342,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }
     console.log('  🏠 Sala:', payload.roomName);
     console.log('  📨 Mensaje:', payload.message);
 
-    // Disconnect from WebSocket
+    // CRITICAL: Mark that user was kicked to prevent auto-reconnect
+    localStorage.setItem('uno_kicked_flag', 'true');
+    localStorage.setItem('uno_kicked_timestamp', Date.now().toString());
+
+    // Disconnect from WebSocket COMPLETELY
     if (wsServiceRef.current) {
+      console.log('🔌 Desconectando WebSocket...');
       wsServiceRef.current.disconnect();
       wsServiceRef.current = null;
+    }
+
+    // Cleanup any WebSocket instances for the current room
+    if (sessionId) {
+      cleanupWebSocketService(sessionId);
     }
 
     // Clear room and game state
@@ -342,12 +363,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }
     setGameState(null);
     setSessionId(null);
     setIsConnected(false);
+    setChatMessages([]);
+    setGameMoves([]);
+    setGameResults(null);
 
     // Call the onKicked callback if provided
     if (onKicked) {
       onKicked();
     }
-  }, [onKicked]);
+  }, [onKicked, sessionId]);
 
   const handleGameStarted = useCallback(async (payload: any) => {
     console.log('🎯 GAME_STARTED evento recibido!');
