@@ -23,7 +23,7 @@ import { useNotification } from "@/contexts/NotificationContext"
 import { roomService } from "@/services/room.service"
 import { gameService } from "@/services/game.service"
 import { Room, Player } from "@/types/game.types"
-import GameChat from "@/components/GameChat"
+import HalftoneWaves from "@/components/halftone-waves"
 
 interface GameRoomMenuProps {
   onBack?: () => void
@@ -37,9 +37,6 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
-
-  // Estado del chat
-  const [showChat, setShowChat] = useState(true)
 
   // Sincronizar con room del WebSocket
   useEffect(() => {
@@ -439,15 +436,21 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   }
 
   return (
-    <div className="glass-menu-lobby">
-      <span className="shine shine-top"></span>
-      <span className="shine shine-bottom"></span>
-      <span className="glow glow-top"></span>
-      <span className="glow glow-bottom"></span>
-      <span className="glow glow-bright glow-top"></span>
-      <span className="glow glow-bright glow-bottom"></span>
+    <>
+      {/* Background animado con halftone waves */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <HalftoneWaves />
+      </div>
 
-      <div className="inner">
+      <div className="glass-menu-lobby">
+        <span className="shine shine-top"></span>
+        <span className="shine shine-bottom"></span>
+        <span className="glow glow-top"></span>
+        <span className="glow glow-bottom"></span>
+        <span className="glow glow-bright glow-top"></span>
+        <span className="glow glow-bright glow-bottom"></span>
+
+        <div className="inner">
         {/* Header */}
         <div className="header-section">
           <Button
@@ -579,15 +582,10 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
         )}
       </div>
 
-      {/* Chat component */}
-      <GameChat
-        isMinimized={!showChat}
-        onToggleMinimize={() => setShowChat(!showChat)}
-      />
-
       <style jsx>{`
         .glass-menu-lobby {
           position: relative;
+          z-index: 10;
           width: 95vw;
           max-width: 1400px;
           min-height: 600px;
@@ -597,15 +595,15 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           padding: 2em;
           background: linear-gradient(
             235deg,
-            hsl(45 50% 10% / 0.8),
+            hsl(45 50% 10% / 0.5),
             hsl(45 50% 10% / 0) 33%
           ),
           linear-gradient(
             45deg,
-            hsl(0 50% 10% / 0.8),
+            hsl(0 50% 10% / 0.5),
             hsl(0 50% 10% / 0) 33%
           ),
-          linear-gradient(hsl(220deg 25% 4.8% / 0.66));
+          linear-gradient(hsl(220deg 25% 4.8% / 0.4));
           backdrop-filter: blur(12px);
         }
 
@@ -1421,6 +1419,7 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
           left: 0;
         }
       `}</style>
-    </div>
+      </div>
+    </>
   )
 }
