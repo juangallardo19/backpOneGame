@@ -698,23 +698,66 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   // FUNCIONES DE CONEXIÓN
   // ============================================
 
-  const connectToGame = useCallback(async (newSessionId: string, token?: string) => {
+  const connectToGame = useCallback(async (newSessionId: string, token?: string, roomData?: any) => {
     try {
       setIsLoading(true);
       setError(null);
 
       console.log('🎮 Conectando al juego/sala:', newSessionId);
+      if (roomData) {
+        console.log('📦 Usando información de sala proporcionada:', roomData);
+      }
 
       // Desconectar sesión anterior si existe
       if (wsServiceRef.current) {
         wsServiceRef.current.disconnect();
       }
 
-      // SIMPLIFIED APPROACH: Skip initial fetch, rely on WebSocket for state
+      // If roomData was provided (from joinRoom), use it immediately
+      if (roomData) {
+        console.log('✅ Estableciendo estado de sala con información proporcionada');
+
+        // Map players from backend PlayerInfo to frontend Player format
+        const players = (roomData.players || []).map((p: any) => ({
+          id: p.playerId || p.id,
+          nickname: p.nickname,
+          userEmail: p.userEmail || '',
+          isBot: p.isBot || false,
+          status: p.status || PlayerStatus.ACTIVE,
+          cardCount: 0,
+          hasCalledUno: false,
+          calledOne: false,
+        }));
+
+        console.log('👥 Jugadores mapeados:', players);
+
+        // Set room state immediately
+        setRoom({
+          code: roomData.roomCode || roomData.code,
+          name: roomData.roomName || roomData.name || `Sala ${roomData.roomCode || roomData.code}`,
+          leaderId: roomData.hostId || roomData.leaderId,
+          isPrivate: roomData.isPrivate || false,
+          status: roomData.status || 'WAITING',
+          players: players,
+          maxPlayers: roomData.maxPlayers || 4,
+          config: {
+            maxPlayers: roomData.maxPlayers || 4,
+            pointsToWin: roomData.config?.pointsToWin || 500,
+            turnTimeLimit: roomData.config?.turnTimeLimit || 60,
+            allowStackingDrawCards: roomData.config?.allowStackingCards || true,
+            preset: 'CLASSIC'
+          },
+          createdAt: roomData.createdAt ? new Date(roomData.createdAt).toISOString() : new Date().toISOString()
+        });
+
+        console.log('✅ Estado de sala establecido correctamente');
+      }
+
+      // SIMPLIFIED APPROACH: Skip initial fetch if we already have room data
       // The initial fetch was causing 400 errors and wasn't necessary
-      // The WebSocket will send ROOM_UPDATE events with the full state
-      console.log('⏭️ Saltando fetch inicial, confiando en WebSocket para el estado');
-      console.log('📡 El WebSocket enviará el estado completo de la sala');
+      // The WebSocket will send updates for any changes
+      console.log('⏭️ Saltando fetch inicial (ya tenemos los datos o confiamos en WebSocket)');
+      console.log('📡 El WebSocket enviará actualizaciones para cualquier cambio');
 
       // Obtener estado desde el backend ANTES de conectar WebSocket (OPTIONAL)
       // This is kept as a fallback but won't block if it fails
