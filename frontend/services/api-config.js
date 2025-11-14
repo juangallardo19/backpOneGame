@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   // Rooms
   ROOMS: '/api/rooms',
   PUBLIC_ROOMS: '/api/rooms/public',
+  CURRENT_ROOM: '/api/rooms/current',
   ROOM_DETAIL: (code) => `/api/rooms/${code}`,
   JOIN_ROOM: (code) => `/api/rooms/${code}/join`,
   LEAVE_ROOM: (code) => `/api/rooms/${code}/leave`,
@@ -23,6 +24,7 @@ export const API_ENDPOINTS = {
   ADD_BOT: (code) => `/api/rooms/${code}/bot`,
   REMOVE_BOT: (code, botId) => `/api/rooms/${code}/bot/${botId}`,
   TRANSFER_LEADER: (code, newLeaderId) => `/api/rooms/${code}/leader/${newLeaderId}`,
+  TOGGLE_PRIVACY: (code) => `/api/rooms/${code}/toggle-privacy`,
   START_GAME_FROM_ROOM: (code) => `/api/rooms/${code}/start`, // NEW: Start game from room
   
   // Game
