@@ -119,12 +119,13 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
      * @return JWT token or null
      */
     private String extractToken(StompHeaderAccessor accessor) {
-        log.debug("🔍 [WebSocket Auth] Extracting token from headers...");
-        log.debug("🔍 [WebSocket Auth] All native headers: {}", accessor.toNativeHeaderMap());
+        log.info("🔍 [WebSocket Auth] ========== EXTRACTING TOKEN ==========");
+        log.info("🔍 [WebSocket Auth] All native headers: {}", accessor.toNativeHeaderMap());
+        log.info("🔍 [WebSocket Auth] Session attributes: {}", accessor.getSessionAttributes());
 
         // 1. Check Authorization header with Bearer prefix
         List<String> authHeaders = accessor.getNativeHeader("Authorization");
-        log.debug("🔍 [WebSocket Auth] Authorization header: {}", authHeaders);
+        log.info("🔍 [WebSocket Auth] Authorization header: {}", authHeaders);
 
         if (authHeaders != null && !authHeaders.isEmpty()) {
             String authHeader = authHeaders.get(0);
@@ -155,23 +156,37 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             }
         }
 
-        // 3. Check token query parameter (for SockJS fallback)
+        // 3. Check token query parameter (for SockJS - most reliable method)
+        // SockJS passes query params from original URL in native headers
         List<String> tokenParams = accessor.getNativeHeader("token");
-        log.debug("🔍 [WebSocket Auth] token parameter: {}", tokenParams);
+        log.info("🔍 [WebSocket Auth] token query parameter: {}", tokenParams);
 
         if (tokenParams != null && !tokenParams.isEmpty()) {
-            log.info("🔍 [WebSocket Auth] ✅ Token found in query parameter");
-            return tokenParams.get(0);
+            String token = tokenParams.get(0);
+            log.info("🔍 [WebSocket Auth] ✅ Token found in token query parameter");
+            return token;
         }
 
-        // 4. Check auth header
+        // 4. Check session attributes (SockJS sometimes stores query params here)
+        if (accessor.getSessionAttributes() != null) {
+            Object tokenAttr = accessor.getSessionAttributes().get("token");
+            if (tokenAttr != null) {
+                log.info("🔍 [WebSocket Auth] ✅ Token found in session attributes");
+                return tokenAttr.toString();
+            }
+        }
+
+        // 5. Check auth header (alternative parameter name)
         List<String> authParam = accessor.getNativeHeader("auth");
+        log.info("🔍 [WebSocket Auth] auth parameter: {}", authParam);
+
         if (authParam != null && !authParam.isEmpty()) {
             log.info("🔍 [WebSocket Auth] ✅ Token found in auth parameter");
             return authParam.get(0);
         }
 
-        log.warn("❌ [WebSocket Auth] No token found in any header");
+        log.warn("❌ [WebSocket Auth] No token found in any location");
+        log.warn("❌ [WebSocket Auth] Available headers: {}", accessor.toNativeHeaderMap().keySet());
         return null;
     }
 }

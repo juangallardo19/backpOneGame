@@ -119,11 +119,17 @@ export class WebSocketService {
         this.client = new Client({
           // Use SockJS for connection
           webSocketFactory: () => {
-            // SockJS endpoint is /ws (not /ws/game/{roomCode})
-            return new SockJS(`${API_BASE_URL}/ws`) as any;
+            // CRITICAL FIX: Pass token as query parameter for SockJS compatibility
+            // SockJS doesn't always send connectHeaders correctly, so we use query params
+            const wsUrl = this.token
+              ? `${API_BASE_URL}/ws?token=${encodeURIComponent(this.token)}`
+              : `${API_BASE_URL}/ws`;
+
+            console.log('🔗 Connecting to WebSocket URL:', wsUrl.replace(this.token || '', '***TOKEN***'));
+            return new SockJS(wsUrl) as any;
           },
 
-          // Connection headers (JWT token)
+          // Connection headers (JWT token) - backup method
           connectHeaders: this.token
             ? {
                 Authorization: `Bearer ${this.token}`,

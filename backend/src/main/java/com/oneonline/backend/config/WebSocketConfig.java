@@ -43,6 +43,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final WebSocketHandshakeInterceptor webSocketHandshakeInterceptor;
 
     /**
      * Configure message broker for routing messages
@@ -99,6 +100,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     "https://*.vercel.app",               // Vercel deployments
                     "https://oneonline-frontend.vercel.app" // Production frontend
                 )
+                .addInterceptors(webSocketHandshakeInterceptor) // CRITICAL: Capture query params
                 .withSockJS();  // Enable SockJS fallback for older browsers
     }
 
