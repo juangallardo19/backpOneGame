@@ -211,6 +211,19 @@ export const roomService = {
       throw error;
     }
   },
+
+  /**
+   * Cambiar privacidad de sala (público/privado)
+   * Solo el líder puede cambiar la privacidad
+   */
+  toggleRoomPrivacy: async (code: string): Promise<Room> => {
+    try {
+      const response = await api.put<any>(API_ENDPOINTS.TOGGLE_PRIVACY(code));
+      return mapBackendRoomToFrontend(response.data);
+    } catch (error: any) {
+      throw error;
+    }
+  },
 };
 
 export default roomService;
