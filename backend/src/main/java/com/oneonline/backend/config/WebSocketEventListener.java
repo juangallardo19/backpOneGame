@@ -105,13 +105,16 @@ public class WebSocketEventListener {
         log.info("🔌 [WebSocket] Session {} disconnecting...", sessionId);
 
         // Try to get user email from session map first (more reliable)
-        String userEmail = sessionUserMap.remove(sessionId);
+        String tempEmail = sessionUserMap.remove(sessionId);
 
         // Fallback to Principal if not in map
-        if (userEmail == null && headerAccessor.getUser() != null) {
-            userEmail = headerAccessor.getUser().getName();
-            log.debug("🔌 [WebSocket] User email retrieved from Principal: {}", userEmail);
+        if (tempEmail == null && headerAccessor.getUser() != null) {
+            tempEmail = headerAccessor.getUser().getName();
+            log.debug("🔌 [WebSocket] User email retrieved from Principal: {}", tempEmail);
         }
+
+        // Make userEmail final for use in lambda expressions
+        final String userEmail = tempEmail;
 
         if (userEmail == null) {
             log.debug("🔌 [WebSocket] Session {} disconnected but no user found", sessionId);
