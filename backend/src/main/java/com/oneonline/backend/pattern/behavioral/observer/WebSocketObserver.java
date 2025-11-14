@@ -317,11 +317,13 @@ public class WebSocketObserver implements GameObserver {
         sendToRoom(room.getRoomCode(), roomEvent);
 
         // Send personal notification to kicked player
-        Map<String, Object> personalEvent = createEvent("PLAYER_KICKED", Map.of(
-                "roomCode", room.getRoomCode(),
-                "roomName", room.getRoomName(),
-                "message", "Has sido expulsado de la sala"
-        ));
+        // Use HashMap to allow null values
+        Map<String, Object> personalData = new HashMap<>();
+        personalData.put("roomCode", room.getRoomCode());
+        personalData.put("roomName", room.getRoomName() != null ? room.getRoomName() : "Sala " + room.getRoomCode());
+        personalData.put("message", "Has sido expulsado de la sala");
+
+        Map<String, Object> personalEvent = createEvent("PLAYER_KICKED", personalData);
         sendToPlayer(player.getNickname(), personalEvent);
     }
 
