@@ -41,7 +41,7 @@ interface GameContextValue {
   sendEmote: (emoteId: string) => void;
 
   // Gestión de conexión
-  connectToGame: (sessionId: string, token?: string) => Promise<void>;
+  connectToGame: (sessionId: string, token?: string, roomData?: any) => Promise<void>;
   disconnectFromGame: () => void;
   requestGameState: () => void;
 
