@@ -286,6 +286,21 @@ public class WebSocketObserver implements GameObserver {
     }
 
     /**
+     * Leadership transferred - notify all room members.
+     */
+    @Override
+    public void onLeadershipTransferred(Room room, Player oldLeader, Player newLeader) {
+        Map<String, Object> event = createEvent("LEADERSHIP_TRANSFERRED", Map.of(
+                "roomCode", room.getRoomCode(),
+                "oldLeaderId", oldLeader.getPlayerId(),
+                "oldLeaderNickname", oldLeader.getNickname(),
+                "newLeaderId", newLeader.getPlayerId(),
+                "newLeaderNickname", newLeader.getNickname()
+        ));
+        sendToRoom(room.getRoomCode(), event);
+    }
+
+    /**
      * Create standardized event structure.
      *
      * @param eventType Type of event

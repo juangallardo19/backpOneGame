@@ -388,11 +388,16 @@ public class RoomController {
                 .orElseThrow(() -> new IllegalArgumentException("Room not found: " + code));
 
         String currentLeaderId = room.getLeader().getPlayerId();
+        Player oldLeader = room.getLeader();
 
         // Transfer leadership
         Room updatedRoom = roomManager.transferLeadership(code, currentLeaderId, newLeaderId);
 
         log.info("Leadership transferred in room {}", code);
+
+        // Notify all room members via WebSocket
+        Player newLeader = updatedRoom.getLeader();
+        webSocketObserver.onLeadershipTransferred(updatedRoom, oldLeader, newLeader);
 
         RoomResponse response = mapToRoomResponse(updatedRoom);
         return ResponseEntity.ok(response);

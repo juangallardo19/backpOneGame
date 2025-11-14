@@ -307,6 +307,24 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, []);
 
+  const handleLeadershipTransferred = useCallback((payload: any) => {
+    console.log('👑 Liderazgo transferido:', payload);
+    console.log('  👤 Líder anterior:', payload.oldLeaderNickname);
+    console.log('  👤 Nuevo líder:', payload.newLeaderNickname);
+
+    // CRITICAL: Update room state with new leader
+    setRoom(prevRoom => {
+      if (!prevRoom) return prevRoom;
+
+      console.log('✅ Actualizando leaderId en room:', payload.newLeaderId);
+
+      return {
+        ...prevRoom,
+        leaderId: payload.newLeaderId,
+      };
+    });
+  }, []);
+
   const handleGameStarted = useCallback(async (payload: any) => {
     console.log('🎯 GAME_STARTED evento recibido!');
     console.log('📦 Payload completo:', payload);
@@ -356,6 +374,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
       wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
       wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.LEADERSHIP_TRANSFERRED, (event) => handleLeadershipTransferred(event.payload));
       wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
       wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
       wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));
@@ -800,6 +819,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
       wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
       wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.LEADERSHIP_TRANSFERRED, (event) => handleLeadershipTransferred(event.payload));
       wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
       wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
       wsService.on(GameEventType.CARD_PLAYED, (event) => handleCardPlayed(event.payload));

@@ -180,4 +180,13 @@ public interface GameObserver {
      * @param session Game session that was resumed
      */
     void onGameResumed(GameSession session);
+
+    /**
+     * Called when room leadership is transferred.
+     *
+     * @param room Room where leadership was transferred
+     * @param oldLeader Previous leader
+     * @param newLeader New leader
+     */
+    void onLeadershipTransferred(Room room, Player oldLeader, Player newLeader);
 }
