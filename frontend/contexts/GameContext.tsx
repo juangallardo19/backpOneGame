@@ -349,9 +349,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     // CRITICAL: Disconnect from WebSocket and DISABLE auto-reconnection
     if (wsServiceRef.current) {
       console.log('🔌 Desconectando WebSocket y desactivando reconexión...');
-      // Disable reconnection BEFORE disconnecting to prevent race conditions
-      wsServiceRef.current.disableReconnection();
-      // Disconnect with preventReconnect=true
+      // Disconnect with preventReconnect=true (this also sets shouldReconnect=false)
       wsServiceRef.current.disconnect(true);
       wsServiceRef.current = null;
     }
