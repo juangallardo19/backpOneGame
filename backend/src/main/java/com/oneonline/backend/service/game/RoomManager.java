@@ -335,7 +335,7 @@ public class RoomManager {
             kickedPlayer.getNickname(), roomCode, room.getLeader().getNickname());
 
         // CRITICAL: Notify all clients via WebSocket that player was kicked
-        webSocketObserver.onPlayerLeft(kickedPlayer, room);
+        webSocketObserver.onPlayerKicked(kickedPlayer, room);
 
         // If room empty (no human players), remove it
         if (room.getPlayers().isEmpty()) {

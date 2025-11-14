@@ -8,9 +8,9 @@ import "./game-room.css"
 import { Suspense } from "react"
 import { AudioProvider } from "@/contexts/AudioContext"
 import { AuthProvider } from "@/contexts/AuthContext"
-import { GameProvider } from "@/contexts/GameContext"
 import { NotificationProvider } from "@/contexts/NotificationContext"
 import NotificationToast from "@/components/NotificationToast"
+import GameProviderWrapper from "@/components/GameProviderWrapper"
 
 export const metadata: Metadata = {
   title: "UNO - Juego de Cartas Online",
@@ -34,14 +34,14 @@ export default function RootLayout({
         {/* Providers anidados en el orden correcto */}
         <NotificationProvider>
           <AuthProvider>
-            <GameProvider>
+            <GameProviderWrapper>
               <AudioProvider>
                 <Suspense fallback={<div>Loading...</div>}>
                   {children}
                 </Suspense>
                 <Analytics />
               </AudioProvider>
-            </GameProvider>
+            </GameProviderWrapper>
           </AuthProvider>
           {/* Notificaciones Toast - renderizadas globalmente */}
           <NotificationToast />

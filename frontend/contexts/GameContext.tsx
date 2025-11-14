@@ -71,9 +71,10 @@ export const useGame = () => {
 
 interface GameProviderProps {
   children: React.ReactNode;
+  onKicked?: () => void; // Callback cuando el jugador es expulsado
 }
 
-export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
+export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked }) => {
   // Estado
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
@@ -325,6 +326,29 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, []);
 
+  const handlePlayerKicked = useCallback((payload: any) => {
+    console.log('🚫 Fuiste expulsado de la sala:', payload);
+    console.log('  🏠 Sala:', payload.roomName);
+    console.log('  📨 Mensaje:', payload.message);
+
+    // Disconnect from WebSocket
+    if (wsServiceRef.current) {
+      wsServiceRef.current.disconnect();
+      wsServiceRef.current = null;
+    }
+
+    // Clear room and game state
+    setRoom(null);
+    setGameState(null);
+    setSessionId(null);
+    setIsConnected(false);
+
+    // Call the onKicked callback if provided
+    if (onKicked) {
+      onKicked();
+    }
+  }, [onKicked]);
+
   const handleGameStarted = useCallback(async (payload: any) => {
     console.log('🎯 GAME_STARTED evento recibido!');
     console.log('📦 Payload completo:', payload);
@@ -374,6 +398,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
       wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
       wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.PLAYER_KICKED, (event) => handlePlayerKicked(event.payload));
       wsService.on(GameEventType.LEADERSHIP_TRANSFERRED, (event) => handleLeadershipTransferred(event.payload));
       wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
       wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));
@@ -819,6 +844,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       wsService.on(GameEventType.GAME_STATE_UPDATE, (event) => handleGameStateUpdate(event.payload));
       wsService.on(GameEventType.PLAYER_JOINED, (event) => handlePlayerJoined(event.payload));
       wsService.on(GameEventType.PLAYER_LEFT, (event) => handlePlayerLeft(event.payload));
+      wsService.on(GameEventType.PLAYER_KICKED, (event) => handlePlayerKicked(event.payload));
       wsService.on(GameEventType.LEADERSHIP_TRANSFERRED, (event) => handleLeadershipTransferred(event.payload));
       wsService.on(GameEventType.GAME_STARTED, (event) => handleGameStarted(event.payload));
       wsService.on(GameEventType.GAME_ENDED, (event) => handleGameEnded(event.payload));

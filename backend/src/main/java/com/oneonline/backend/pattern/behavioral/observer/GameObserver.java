@@ -189,4 +189,12 @@ public interface GameObserver {
      * @param newLeader New leader
      */
     void onLeadershipTransferred(Room room, Player oldLeader, Player newLeader);
+
+    /**
+     * Called when a player is kicked from a room.
+     *
+     * @param player Player who was kicked
+     * @param room Room from which player was kicked
+     */
+    void onPlayerKicked(Player player, Room room);
 }
