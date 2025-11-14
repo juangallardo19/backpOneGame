@@ -205,7 +205,7 @@ export const roomService = {
    */
   transferLeader: async (code: string, newLeaderId: string): Promise<Room> => {
     try {
-      const response = await api.post<any>(API_ENDPOINTS.TRANSFER_LEADER(code, newLeaderId));
+      const response = await api.put<any>(API_ENDPOINTS.TRANSFER_LEADER(code, newLeaderId));
       return mapBackendRoomToFrontend(response.data);
     } catch (error: any) {
       throw error;

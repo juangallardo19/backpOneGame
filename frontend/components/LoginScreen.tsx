@@ -19,7 +19,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
-  const [activeTab, setActiveTab] = useState<"login" | "register" | "guest">("login")
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [transitionKey, setTransitionKey] = useState(0)
   const [validationErrors, setValidationErrors] = useState<{
     email?: string
@@ -86,12 +86,11 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
     })
   }
 
-  const handleTabChange = (newTab: "login" | "register" | "guest") => {
+  const handleTabChange = (newTab: "login" | "register") => {
     if (newTab === activeTab) return
     setActiveTab(newTab)
     setTransitionKey(prev => prev + 1) // Fuerza re-animación
   }
-  const [guestNickname, setGuestNickname] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   // Login form
@@ -108,7 +107,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
   const [showRegisterPasswordConfirm, setShowRegisterPasswordConfirm] = useState(false)
 
   // Hooks
-  const { login, register: registerUser, loginAsGuest, error: authError } = useAuth()
+  const { login, register: registerUser, error: authError } = useAuth()
   const { success, error: showError } = useNotification()
 
 
@@ -127,28 +126,6 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
       button.classList.remove('button-pulse')
       button.style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.3)"
     }, 400)
-  }
-
-  // Handle Guest Login
-  const handleGuestLogin = async (e?: React.MouseEvent<HTMLButtonElement>) => {
-    if (e) {
-      animateButton(e)
-    }
-    if (guestNickname.trim().length < 3) {
-      showError("Error", "El nickname debe tener al menos 3 caracteres")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      await loginAsGuest(guestNickname)
-      success("¡Bienvenido!", `Iniciaste sesión como ${guestNickname}`)
-      onLoginSuccess()
-    } catch (error: any) {
-      showError("Error", error.message || "Error al iniciar sesión como invitado")
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   // Handle Email/Username Login
@@ -299,16 +276,6 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
           >
             Registrarse
           </button>
-          <button
-            className={`flex-1 py-4 px-8 rounded-xl font-bold transition-all duration-500 ease-in-out text-xl whitespace-nowrap flex items-center justify-center min-w-0 ${
-              activeTab === "guest"
-                ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-xl border-2 border-orange-400 transform scale-105"
-                : "bg-white/10 text-white/70 hover:bg-white/20 border-2 border-transparent hover:scale-105"
-            }`}
-            onClick={() => handleTabChange("guest")}
-          >
-            Invitado
-          </button>
         </div>
 
         {/* Login Form */}
@@ -433,7 +400,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
                 )}
               </div>
             </div>
-            
+
             {/* Passwords in grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
@@ -496,34 +463,6 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
             >
               {isLoading ? "Registrando..." : "Registrarse"}
             </Button>
-          </div>
-        )}
-
-        {/* Guest Form */}
-        {activeTab === "guest" && (
-          <div key={`guest-${transitionKey}`} className="space-y-4 form-transition">
-            <div className="w-full">
-              <Input
-                type="text"
-                placeholder="Ingresa tu nickname"
-                value={guestNickname}
-                onChange={(e) => setGuestNickname(e.target.value)}
-                className="glass-input text-center w-full"
-                disabled={isLoading}
-                onKeyPress={(e) => e.key === "Enter" && handleGuestLogin()}
-              />
-            </div>
-            <Button
-              onClick={handleGuestLogin}
-              className="w-full glass-button-primary py-4 text-2xl font-bold rounded-2xl"
-              size="lg"
-              disabled={isLoading}
-            >
-              {isLoading ? "Entrando..." : "Jugar como Invitado"}
-            </Button>
-            <p className="text-white/60 text-lg text-center w-full px-4">
-              Los invitados no pueden guardar su progreso
-            </p>
           </div>
         )}
       </div>
