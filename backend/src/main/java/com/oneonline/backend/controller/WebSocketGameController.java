@@ -12,6 +12,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -449,37 +450,49 @@ public class WebSocketGameController {
         log.info("🎮 [WebSocket] Player {} joining session/room {}", principal.getName(), sessionId);
 
         try {
-            // Try to find game session (could be sessionId or roomCode)
+            // CRITICAL: Check if player was kicked BEFORE allowing them to join
+            // Try to find the room (either via session or directly by roomCode)
+            Room room = null;
             GameSession session = null;
+
             try {
                 session = resolveSession(sessionId);
+                if (session != null && session.getRoom() != null) {
+                    room = session.getRoom();
+                }
             } catch (Exception e) {
-                log.debug("Session not found with ID/roomCode {}, ignoring", sessionId);
+                log.debug("Session not found with ID/roomCode {}, trying to find room directly", sessionId);
             }
 
-            // CRITICAL: Check if session exists and verify player wasn't kicked
-            if (session != null && session.getRoom() != null) {
-                Room room = session.getRoom();
-                if (room.getKickedPlayerEmails() != null &&
-                    room.getKickedPlayerEmails().contains(principal.getName())) {
-                    log.warn("🚫 [WebSocket] Kicked player {} attempted to reconnect to room {}",
-                        principal.getName(), room.getRoomCode());
-                    // Send error notification to player
-                    Map<String, Object> errorNotification = Map.of(
-                        "eventType", "ERROR",
-                        "data", Map.of(
-                            "message", "You were kicked from this room and cannot rejoin",
-                            "code", "PLAYER_KICKED"
-                        ),
-                        "timestamp", System.currentTimeMillis()
-                    );
-                    messagingTemplate.convertAndSendToUser(
-                        principal.getName(),
-                        "/queue/errors",
-                        errorNotification
-                    );
-                    return; // Prevent kicked player from joining
+            // If session not found, try to find room directly by roomCode
+            if (room == null) {
+                Optional<Room> roomOpt = gameManager.findRoom(sessionId);
+                if (roomOpt.isPresent()) {
+                    room = roomOpt.get();
+                    log.debug("🏠 [WebSocket] Found room directly by code: {}", sessionId);
                 }
+            }
+
+            // CRITICAL: Verify player wasn't kicked from this room
+            if (room != null && room.getKickedPlayerEmails() != null &&
+                room.getKickedPlayerEmails().contains(principal.getName())) {
+                log.warn("🚫 [WebSocket] KICKED player {} attempted to reconnect to room {}",
+                    principal.getName(), room.getRoomCode());
+
+                // Send error message to kicked player
+                String errorMessage = "You were kicked from this room and cannot rejoin";
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", errorMessage);
+                errorResponse.put("code", "PLAYER_KICKED");
+
+                messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    errorResponse
+                );
+
+                log.info("❌ [WebSocket] Rejected connection from kicked player: {}", principal.getName());
+                return; // STOP - do not allow kicked player to join
             }
 
             // If session exists and game is in progress, send player their current state
