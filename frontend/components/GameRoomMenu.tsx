@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Crown, Play, ArrowLeft, Link2, Bot, Users, Settings } from "lucide-react"
+import { Crown, Play, ArrowLeft, Link2, Bot, Users, Settings, Lock, Unlock } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/contexts/AuthContext"
 import { useGame } from "@/contexts/GameContext"
@@ -743,9 +743,19 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                   <Button
                     className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 mb-3"
                     onClick={handleTogglePrivacy}
-                    size="md"
+                    size="default"
                   >
-                    {room.isPrivate ? "🔒 Hacer Pública" : "🔓 Hacer Privada"}
+                    {room.isPrivate ? (
+                      <>
+                        <Unlock className="mr-2" size={16} />
+                        Hacer Pública
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="mr-2" size={16} />
+                        Hacer Privada
+                      </>
+                    )}
                   </Button>
                 )}
 
