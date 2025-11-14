@@ -40,7 +40,6 @@ import java.util.Stack;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GameEngine {
 
     private final CardValidator cardValidator;
@@ -50,6 +49,25 @@ public class GameEngine {
     private final SimpMessagingTemplate messagingTemplate;
     private final GameEndService gameEndService;
     private final com.oneonline.backend.controller.WebSocketGameController webSocketGameController;
+
+    // Constructor con @Lazy para romper la dependencia circular
+    public GameEngine(
+            CardValidator cardValidator,
+            EffectProcessor effectProcessor,
+            OneManager oneManager,
+            BotStrategy botStrategy,
+            SimpMessagingTemplate messagingTemplate,
+            GameEndService gameEndService,
+            @org.springframework.context.annotation.Lazy com.oneonline.backend.controller.WebSocketGameController webSocketGameController
+    ) {
+        this.cardValidator = cardValidator;
+        this.effectProcessor = effectProcessor;
+        this.oneManager = oneManager;
+        this.botStrategy = botStrategy;
+        this.messagingTemplate = messagingTemplate;
+        this.gameEndService = gameEndService;
+        this.webSocketGameController = webSocketGameController;
+    }
 
     /**
      * Command history for undo functionality
@@ -502,7 +520,7 @@ public class GameEngine {
             BotPlayer bot = (BotPlayer) turnManager.getCurrentPlayer();
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
-            // IMPORTANTE: Enviar estado ANTES del delay para que el frontend muestre "Bot thinking..."
+            // IMPORTANTE: Enviar estado completo ANTES del delay para que el frontend muestre "Bot thinking..."
             webSocketGameController.broadcastGameStateAfterBot(session);
 
             try {
