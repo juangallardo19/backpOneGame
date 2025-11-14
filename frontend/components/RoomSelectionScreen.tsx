@@ -84,10 +84,16 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
       // Conectar al WebSocket de la sala
       const token = localStorage.getItem('uno_auth_token')
       if (token) {
+        console.log("🔌 Conectando al WebSocket de la sala creada...")
         await connectToGame(newRoom.code, token)
+        console.log("✅ WebSocket conectado")
+
+        // Wait for WebSocket to sync room state
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
-      // Navegar a la pantalla de configuración de sala
+      // Navegar INMEDIATAMENTE al lobby
+      console.log("🚀 Navegando al lobby de la sala...")
       onCreateRoom()
     } catch (error: any) {
       console.error("❌ Error al crear sala:", error)
@@ -101,7 +107,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
   const handleJoinPublicRoom = async (room: Room) => {
     setIsLoading(true)
     try {
-      console.log("🔍 Uniendo a sala pública:", room.code)
+      console.log("🔍 Intentando unirse a sala pública:", room.code)
 
       // Join room via backend API
       const joinedRoom = await roomService.joinRoom(room.code)
