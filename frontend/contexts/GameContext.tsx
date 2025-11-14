@@ -69,7 +69,7 @@ export const useGame = () => {
 // PROVIDER
 // ============================================
 
-interface GameProviderProps {
+export interface GameProviderProps {
   children: React.ReactNode;
   onKicked?: () => void; // Callback cuando el jugador es expulsado
 }
