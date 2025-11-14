@@ -30,6 +30,12 @@ export default function GameProviderWrapper({ children }: GameProviderWrapperPro
     // Redirigir a la página principal después de un breve delay
     setTimeout(() => {
       router.push('/');
+      // Clean up kick flags after navigation (with additional delay)
+      setTimeout(() => {
+        localStorage.removeItem('uno_kicked_flag');
+        localStorage.removeItem('uno_kicked_timestamp');
+        console.log('🧹 Flags de expulsión limpiados después de redirección');
+      }, 2000);
     }, 1500);
   }, [router, showError]);
 

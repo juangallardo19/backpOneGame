@@ -175,6 +175,13 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
   // CRITICAL FIX: Poll room status for non-leaders
   // This is a workaround because backend doesn't send GAME_STARTED to room topic
   useEffect(() => {
+    // CRITICAL: Don't start polling if user was kicked
+    const kickedFlag = localStorage.getItem('uno_kicked_flag')
+    if (kickedFlag === 'true') {
+      console.log('🚫 [POLLING] Usuario expulsado, no iniciar polling')
+      return
+    }
+
     if (!room || !user || isLeader) {
       return; // Only poll for non-leaders
     }
