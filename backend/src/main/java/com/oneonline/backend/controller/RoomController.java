@@ -398,6 +398,42 @@ public class RoomController {
     }
 
     /**
+     * Toggle room privacy (public <-> private)
+     *
+     * PUT /api/rooms/{code}/privacy
+     *
+     * Only the room leader can change room privacy.
+     *
+     * @param code Room code
+     * @param authentication Current user (must be leader)
+     * @return Updated room
+     */
+    @PutMapping("/{code}/privacy")
+    public ResponseEntity<RoomResponse> toggleRoomPrivacy(
+            @PathVariable String code,
+            Authentication authentication) {
+
+        log.info("Toggle privacy request for room {} by {}", code, authentication.getName());
+
+        Room room = roomManager.findRoom(code)
+                .orElseThrow(() -> new IllegalArgumentException("Room not found: " + code));
+
+        // Verify caller is leader
+        if (!room.getLeader().getUserEmail().equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(null);
+        }
+
+        // Toggle privacy
+        room.setPrivate(!room.isPrivate());
+
+        log.info("Room {} privacy changed to: {}", code, room.isPrivate() ? "PRIVATE" : "PUBLIC");
+
+        RoomResponse response = mapToRoomResponse(room);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Get room details
      *
      * GET /api/rooms/{code}

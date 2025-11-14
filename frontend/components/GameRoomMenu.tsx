@@ -298,6 +298,25 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
     }
   }
 
+  // Cambiar privacidad de sala
+  const handleTogglePrivacy = async () => {
+    if (!room) return
+
+    try {
+      console.log("🔐 Cambiando privacidad de sala:", room.code)
+      const updatedRoom = await roomService.toggleRoomPrivacy(room.code)
+      console.log("✅ Privacidad cambiada a:", updatedRoom.isPrivate ? "Privada" : "Pública")
+      setRoom(updatedRoom)
+      success(
+        "Privacidad actualizada",
+        updatedRoom.isPrivate ? "La sala ahora es privada" : "La sala ahora es pública"
+      )
+    } catch (error: any) {
+      console.error("❌ Error al cambiar privacidad:", error)
+      showError("Error", "No se pudo cambiar la privacidad de la sala")
+    }
+  }
+
   // Iniciar juego
   const handleStartGame = async () => {
     if (!room) {
@@ -718,6 +737,17 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
                     <span className="info-value">{selectedPreset === 'torneo' ? 'Torneo' : 'Clásico'}</span>
                   </div>
                 </div>
+
+                {/* Botón cambiar privacidad (solo líder) */}
+                {isLeader && (
+                  <Button
+                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 mb-3"
+                    onClick={handleTogglePrivacy}
+                    size="md"
+                  >
+                    {room.isPrivate ? "🔒 Hacer Pública" : "🔓 Hacer Privada"}
+                  </Button>
+                )}
 
                 {/* Botón iniciar juego (solo líder) */}
                 {isLeader && (
