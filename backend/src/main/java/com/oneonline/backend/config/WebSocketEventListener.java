@@ -83,16 +83,23 @@ public class WebSocketEventListener {
     /**
      * Handle WebSocket disconnect event
      *
-     * When a user's WebSocket connection is closed (by navigating away,
-     * closing browser, etc.), this method automatically removes them from
-     * their current room.
+     * IMPORTANT: We DO NOT automatically remove users from rooms on disconnect.
+     * This is because WebSocket disconnections can happen temporarily due to:
+     * - Network hiccups
+     * - Page refreshes
+     * - Brief connection losses
      *
-     * FLOW:
-     * 1. Extract user email from WebSocket session or session map
-     * 2. Find which room the user is in
-     * 3. Find the player object in that room
-     * 4. Call RoomManager.leaveRoom() to properly remove them
-     * 5. RoomManager handles notifications, leadership transfer, room cleanup
+     * If we removed users automatically, they would:
+     * - Lose their leader status on brief disconnections
+     * - Be unable to start games after reconnecting
+     * - Create a poor user experience
+     *
+     * Instead, users are only removed from rooms when:
+     * 1. They explicitly call the /api/rooms/{code}/leave endpoint
+     * 2. They are kicked by the room leader
+     * 3. The room is closed/deleted
+     *
+     * This method only logs the disconnect and cleans up the session tracking.
      *
      * @param event SessionDisconnectEvent from Spring WebSocket
      */
@@ -123,64 +130,15 @@ public class WebSocketEventListener {
         }
 
         log.info("🔌 [WebSocket] User {} (session {}) disconnected from WebSocket", userEmail, sessionId);
+        log.info("🔌 [WebSocket] User will remain in their room and can reconnect later");
+        log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
 
-        try {
-            // Find which room the user is currently in
-            Optional<Room> currentRoomOpt = gameManager.findUserCurrentRoom(userEmail);
-
-            if (currentRoomOpt.isEmpty()) {
-                log.debug("🔌 [WebSocket] User {} was not in any room", userEmail);
-                return;
-            }
-
-            Room currentRoom = currentRoomOpt.get();
-            String roomCode = currentRoom.getRoomCode();
-
-            log.info("🔌 [WebSocket] User {} was in room {}, removing them...", userEmail, roomCode);
-
-            // Find the player object in the room
-            Optional<Player> playerOpt = currentRoom.getPlayers().stream()
-                .filter(p -> userEmail.equals(p.getUserEmail()))
-                .findFirst();
-
-            if (playerOpt.isEmpty()) {
-                log.warn("🔌 [WebSocket] User {} in room {} but player object not found", userEmail, roomCode);
-                // Still untrack the user even if player not found
-                gameManager.untrackUser(userEmail);
-                return;
-            }
-
-            Player player = playerOpt.get();
-
-            // Use RoomManager to properly leave the room
-            // This handles:
-            // - Removing player from room
-            // - Untracking user from GameManager
-            // - WebSocket notifications to other players
-            // - Leadership transfer if needed
-            // - Room cleanup if empty
-            Room updatedRoom = roomManager.leaveRoom(roomCode, player);
-
-            if (updatedRoom == null) {
-                log.info("✅ [WebSocket] Room {} closed after {} left (no players remaining)",
-                    roomCode, userEmail);
-            } else {
-                log.info("✅ [WebSocket] User {} successfully removed from room {} on disconnect",
-                    userEmail, roomCode);
-            }
-
-        } catch (Exception e) {
-            log.error("❌ [WebSocket] Error handling disconnect for user {}: {}",
-                userEmail, e.getMessage(), e);
-
-            // Even if there's an error, try to untrack the user
-            try {
-                gameManager.untrackUser(userEmail);
-            } catch (Exception ex) {
-                log.error("❌ [WebSocket] Failed to untrack user {}: {}", userEmail, ex.getMessage());
-            }
-        } finally {
-            log.debug("🔌 [WebSocket] Remaining active sessions: {}", sessionUserMap.size());
-        }
+        // NOTE: We do NOT remove the user from their room here.
+        // They must explicitly call /api/rooms/{code}/leave to leave the room.
+        // This prevents issues with:
+        // - Temporary disconnections
+        // - Network hiccups
+        // - Page refreshes
+        // - Users losing leader status unnecessarily
     }
 }

@@ -58,7 +58,8 @@ public class CorsConfig {
             "http://localhost:5173",              // Vite development
             "http://localhost:4200",              // Angular development
             "https://*.vercel.app",               // Vercel deployments
-            "https://oneonline-frontend.vercel.app" // Production frontend
+            "https://oneonline-frontend.vercel.app", // Production frontend
+            "https://one-game-iota.vercel.app"    // User's frontend deployment
         ));
 
         // Allowed HTTP methods
