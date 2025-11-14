@@ -54,19 +54,34 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
       // CRITICAL: Filter out rooms where the user is already a member
       // This prevents the user from trying to join their own room
       const filteredRooms = rooms.filter(room => {
-        if (!user) return true
+        if (!user) {
+          console.log("⚠️ No hay usuario autenticado, mostrando todas las salas")
+          return true
+        }
 
-        // Check if user is the leader
-        const isLeader = room.leaderId === user.id
+        console.log(`🔍 Revisando sala ${room.code}:`, {
+          roomLeaderId: room.leaderId,
+          userId: user.id,
+          userEmail: user.email,
+          players: room.players.map(p => ({ id: p.id, email: p.userEmail }))
+        })
+
+        // Check if user is the leader (compare as strings to handle UUID vs number)
+        const isLeader = String(room.leaderId) === String(user.id)
 
         // Check if user is in the players list
-        const isPlayer = room.players.some(p => p.userEmail === user.email || p.id === user.id)
+        const isPlayer = room.players.some(p => {
+          const matchEmail = p.userEmail === user.email
+          const matchId = String(p.id) === String(user.id)
+          return matchEmail || matchId
+        })
 
         if (isLeader || isPlayer) {
-          console.log(`🚫 Filtrando sala ${room.code} - usuario ya es miembro`)
+          console.log(`🚫 Filtrando sala ${room.code} - usuario ya es miembro (isLeader: ${isLeader}, isPlayer: ${isPlayer})`)
           return false
         }
 
+        console.log(`✅ Sala ${room.code} - usuario NO es miembro, mostrando`)
         return true
       })
 

@@ -710,27 +710,36 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
         wsServiceRef.current.disconnect();
       }
 
-      // Obtener estado desde el backend ANTES de conectar WebSocket
-      // IMPORTANTE: Distinguir entre sala (pre-juego) y juego activo
+      // SIMPLIFIED APPROACH: Skip initial fetch, rely on WebSocket for state
+      // The initial fetch was causing 400 errors and wasn't necessary
+      // The WebSocket will send ROOM_UPDATE events with the full state
+      console.log('⏭️ Saltando fetch inicial, confiando en WebSocket para el estado');
+      console.log('📡 El WebSocket enviará el estado completo de la sala');
+
+      // Obtener estado desde el backend ANTES de conectar WebSocket (OPTIONAL)
+      // This is kept as a fallback but won't block if it fails
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://oneonlinebackend-production.up.railway.app';
         const authToken = token || localStorage.getItem('uno_auth_token');
 
         // Primero intentar obtener como SALA (pre-juego)
         const roomUrl = `${apiUrl}/api/rooms/${newSessionId}`;
-        console.log('🏠 Intentando obtener sala:', roomUrl);
+        console.log('🏠 (Opcional) Intentando obtener sala:', roomUrl);
         console.log('🔑 Token:', authToken ? 'Presente' : 'No presente');
 
         const roomResponse = await fetch(roomUrl, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
+        }).catch(err => {
+          console.log('⚠️ Fetch de sala falló, continuando con WebSocket:', err.message);
+          return { ok: false };
         });
 
         console.log('📊 Respuesta de sala:', {
-          status: roomResponse.status,
+          status: (roomResponse as any).status,
           ok: roomResponse.ok,
-          statusText: roomResponse.statusText
+          statusText: (roomResponse as any).statusText
         });
 
         if (roomResponse.ok) {
