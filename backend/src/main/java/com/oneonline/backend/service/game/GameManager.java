@@ -45,13 +45,6 @@ public class GameManager {
     // This prevents users from being in multiple rooms simultaneously
     private final ConcurrentHashMap<String, String> userRoomMapping;
 
-    // Track when users joined rooms (userEmail -> timestamp)
-    // Used to enforce 30-second reconnection timeout
-    private final ConcurrentHashMap<String, Long> userRoomTimestamps;
-
-    // Reconnection timeout in milliseconds (30 seconds)
-    private static final long RECONNECTION_TIMEOUT_MS = 30000;
-
     /**
      * Private constructor - prevents external instantiation
      *
@@ -61,7 +54,6 @@ public class GameManager {
         this.activeRooms = new ConcurrentHashMap<>();
         this.activeSessions = new ConcurrentHashMap<>();
         this.userRoomMapping = new ConcurrentHashMap<>();
-        this.userRoomTimestamps = new ConcurrentHashMap<>();
         log.info("GameManager initialized - Singleton instance created");
     }
 
@@ -260,15 +252,13 @@ public class GameManager {
      *
      * Records that a user is now in a specific room.
      * This ensures we can find which room a user is in.
-     * Also tracks the timestamp for reconnection timeout enforcement.
      *
      * @param userEmail User's email
      * @param roomCode Room code they joined
      */
     public void trackUserInRoom(String userEmail, String roomCode) {
         userRoomMapping.put(userEmail, roomCode);
-        userRoomTimestamps.put(userEmail, System.currentTimeMillis());
-        log.debug("User {} tracked in room {} at {}", userEmail, roomCode, System.currentTimeMillis());
+        log.debug("User {} tracked in room {}", userEmail, roomCode);
     }
 
     /**
@@ -280,7 +270,6 @@ public class GameManager {
      */
     public void untrackUser(String userEmail) {
         String removedRoom = userRoomMapping.remove(userEmail);
-        userRoomTimestamps.remove(userEmail);
         if (removedRoom != null) {
             log.debug("User {} untracked from room {}", userEmail, removedRoom);
         }
@@ -289,30 +278,13 @@ public class GameManager {
     /**
      * Find which room a user is currently in
      *
-     * CRITICAL: Enforces 30-second reconnection timeout.
-     * If more than 30 seconds have passed since the user joined the room,
-     * they are automatically removed from the room and null is returned.
-     *
      * @param userEmail User's email
-     * @return Optional<Room> if user is in a room and within timeout, empty otherwise
+     * @return Optional<Room> if user is in a room, empty otherwise
      */
     public Optional<Room> findUserCurrentRoom(String userEmail) {
         String roomCode = userRoomMapping.get(userEmail);
         if (roomCode == null) {
             return Optional.empty();
-        }
-
-        // Check if reconnection timeout has expired (30 seconds)
-        Long joinTimestamp = userRoomTimestamps.get(userEmail);
-        if (joinTimestamp != null) {
-            long elapsedTime = System.currentTimeMillis() - joinTimestamp;
-            if (elapsedTime > RECONNECTION_TIMEOUT_MS) {
-                log.info("⏱️ User {} reconnection timeout expired ({} ms), removing from room {}",
-                        userEmail, elapsedTime, roomCode);
-                // Remove user from room automatically
-                removeUserFromCurrentRoom(userEmail);
-                return Optional.empty();
-            }
         }
 
         return findRoom(roomCode);
