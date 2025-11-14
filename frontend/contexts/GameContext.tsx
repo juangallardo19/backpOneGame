@@ -265,7 +265,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
         const hadHandBefore = prev.currentPlayer?.hand && prev.currentPlayer.hand.length > 0;
         const newStateHasEmptyHand = !transformedState.currentPlayer?.hand || transformedState.currentPlayer.hand.length === 0;
 
-        if (!hasHandInPayload && hadHandBefore && newStateHasEmptyHand) {
+        if (!hasHandInPayload && hadHandBefore && newStateHasEmptyHand && prev.currentPlayer) {
           console.log('   🔄 Preserving previous hand (', prev.currentPlayer.hand.length, 'cards) - update did not include hand data');
           return {
             ...transformedState,
