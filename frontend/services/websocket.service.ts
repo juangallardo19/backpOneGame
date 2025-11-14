@@ -268,6 +268,28 @@ export class WebSocketService {
     });
     console.log('✅ Suscrito a /user/queue/game-state');
 
+    // Subscribe to personal notification queue (for kicked player, etc.)
+    console.log(`📡 ========== SUSCRIBIENDO A COLA DE NOTIFICACIONES ==========`);
+    console.log(`   🎯 Queue: /user/queue/notification`);
+    this.client.subscribe(`/user/queue/notification`, (message: IMessage) => {
+      try {
+        console.log('🔔 ========== NOTIFICACIÓN PERSONAL RECIBIDA ==========');
+        console.log('   📦 Raw message body:', message.body);
+        const payload = JSON.parse(message.body);
+        console.log('   📋 Payload parseado:', payload);
+        console.log('   🏷️ Event type:', payload.eventType || payload.type);
+
+        // Convert to GameEvent format and handle
+        const gameEvent: GameEvent = this.convertToGameEvent(payload);
+        console.log('   ✨ GameEvent final:', gameEvent);
+        this.handleEvent(gameEvent);
+        console.log('✅ [NOTIFICATION] Notificación procesada correctamente');
+      } catch (err) {
+        console.error('❌ Error parseando notificación personal:', err);
+      }
+    });
+    console.log('✅ Suscrito a /user/queue/notification');
+
     // Also subscribe to error queue
     this.client.subscribe(`/user/queue/errors`, (message: IMessage) => {
       try {
