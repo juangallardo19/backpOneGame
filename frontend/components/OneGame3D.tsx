@@ -50,6 +50,10 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
   const isMyTurn = isMyTurnFn();
 
+  // Check if current turn player is a bot
+  const currentTurnPlayer = gameState?.players?.find(p => p.id === gameState?.currentTurnPlayerId);
+  const isBotTurn = currentTurnPlayer?.isBot || false;
+
   // Check if player should call ONE
   const shouldCallUno = currentPlayer && currentPlayer.hand.length === 1 && !currentPlayer.calledOne;
 
@@ -289,8 +293,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         <div className="game-info">
           <h2 className="game-title">🎴 ONE GAME 🎴</h2>
-          <p className="game-status">
-            {isMyTurn ? "🎯 Your Turn!" : `Waiting for ${gameState.currentPlayer?.nickname || "player"}...`}
+          <p className={`game-status ${isBotTurn ? 'bot-thinking' : ''}`}>
+            {isMyTurn
+              ? "🎯 Your Turn!"
+              : isBotTurn
+                ? `🤖 ${currentTurnPlayer?.nickname} thinking...`
+                : `Waiting for ${gameState.currentPlayer?.nickname || "player"}...`
+            }
           </p>
         </div>
 
@@ -526,6 +535,24 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           font-size: 0.9rem;
           color: rgba(255, 255, 255, 0.8);
           margin: 0;
+          transition: all 0.3s ease;
+        }
+
+        .game-status.bot-thinking {
+          color: #a78bfa;
+          font-weight: 600;
+          animation: bot-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes bot-pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.02);
+          }
         }
 
         /* LEFT SIDEBAR: Chat + Player Stats */
