@@ -40,7 +40,6 @@ import java.util.Stack;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GameEngine {
 
     private final CardValidator cardValidator;
@@ -49,6 +48,26 @@ public class GameEngine {
     private final BotStrategy botStrategy;
     private final SimpMessagingTemplate messagingTemplate;
     private final GameEndService gameEndService;
+    private final com.oneonline.backend.controller.WebSocketGameController webSocketGameController;
+
+    // Constructor con @Lazy para romper la dependencia circular
+    public GameEngine(
+            CardValidator cardValidator,
+            EffectProcessor effectProcessor,
+            OneManager oneManager,
+            BotStrategy botStrategy,
+            SimpMessagingTemplate messagingTemplate,
+            GameEndService gameEndService,
+            @org.springframework.context.annotation.Lazy com.oneonline.backend.controller.WebSocketGameController webSocketGameController
+    ) {
+        this.cardValidator = cardValidator;
+        this.effectProcessor = effectProcessor;
+        this.oneManager = oneManager;
+        this.botStrategy = botStrategy;
+        this.messagingTemplate = messagingTemplate;
+        this.gameEndService = gameEndService;
+        this.webSocketGameController = webSocketGameController;
+    }
 
     /**
      * Command history for undo functionality
@@ -501,28 +520,8 @@ public class GameEngine {
             BotPlayer bot = (BotPlayer) turnManager.getCurrentPlayer();
             log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
 
-            // IMPORTANTE: Enviar notificación de inicio de turno de bot para que el frontend muestre "Bot thinking..."
-            try {
-                messagingTemplate.convertAndSend(
-                        "/topic/game/" + session.getSessionId(),
-                        Map.of(
-                                "eventType", "BOT_TURN_STARTING",
-                                "timestamp", System.currentTimeMillis(),
-                                "data", Map.of(
-                                        "botId", bot.getPlayerId(),
-                                        "botNickname", bot.getNickname(),
-                                        "topCard", session.getTopCard() != null ?
-                                                Map.of(
-                                                        "color", session.getTopCard().getColor().name(),
-                                                        "value", session.getTopCard().getValue()
-                                                ) : null
-                                )
-                        )
-                );
-                log.info("📤 Sent BOT_TURN_STARTING notification for {}", bot.getNickname());
-            } catch (Exception e) {
-                log.error("Failed to send bot turn notification", e);
-            }
+            // IMPORTANTE: Enviar estado completo ANTES del delay para que el frontend muestre "Bot thinking..."
+            webSocketGameController.broadcastGameStateAfterBot(session);
 
             try {
                 // DELAY SIEMPRE que sea turno de un bot (ANTES de que juegue)
