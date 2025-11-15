@@ -4,7 +4,7 @@
  * GameResultsModal - Modal que muestra la tabla de resultados al finalizar el juego
  *
  * Características:
- * - Muestra animación de victoria durante 5 segundos
+ * - Muestra animación de victoria durante 5 segundos (solo al jugador ganador)
  * - Muestra la tabla de posiciones ordenada con diseño negro/rojo
  * - Indica puntos ganados por cada jugador
  * - Destaca al ganador con ribbon rojo
@@ -14,6 +14,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameEndResult, PlayerResult } from '@/types/game.types';
 import VictoryAnimation from './VictoryAnimation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface GameResultsModalProps {
   results: GameEndResult;
@@ -21,16 +22,24 @@ interface GameResultsModalProps {
 }
 
 const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose }) => {
-  const [showAnimation, setShowAnimation] = useState(true);
+  const { user } = useAuth();
+
+  // Verificar si el usuario actual es el ganador
+  const isCurrentUserWinner = user && results.winnerId === user.id;
+
+  const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
 
   useEffect(() => {
+    // Solo ejecutar el timer si el usuario actual es el ganador
+    if (!isCurrentUserWinner) return;
+
     // Después de 5 segundos, ocultar la animación y mostrar la tabla
     const timer = setTimeout(() => {
       setShowAnimation(false);
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isCurrentUserWinner]);
 
   // Si se está mostrando la animación, renderizar solo la animación
   if (showAnimation) {
