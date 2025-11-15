@@ -25,23 +25,27 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   const { user } = useAuth();
 
   // Verificar si el usuario actual es el ganador
-  // Lógica híbrida que funciona para usuarios autenticados e invitados:
-  // 1. Si hay winnerId (usuario autenticado ganó), comparar por ID
-  // 2. Si winnerId es null (invitado o bot ganó), comparar por nickname
-  const isCurrentUserWinner = user && (
-    // Usuario autenticado ganador: comparar por userId
-    (results.winnerId !== null && String(results.winnerId) === String(user.id)) ||
-    // Invitado ganador: comparar por nickname (cuando winnerId es null)
-    (results.winnerId === null && results.winnerNickname === user.nickname)
+  // Buscar en playerRankings al ganador (position === 1) y comparar con el usuario actual
+  const winnerResult = results.playerRankings.find(p => p.position === 1);
+
+  const isCurrentUserWinner = user && winnerResult && (
+    // Opción 1: Comparar por userId (usuarios autenticados)
+    (winnerResult.userId !== null && user.id !== null &&
+     String(winnerResult.userId) === String(user.id)) ||
+    // Opción 2: Comparar por nickname (invitados sin userId)
+    (winnerResult.nickname === user.nickname)
   );
 
   // Debug log para verificar la comparación
   console.log('🏆 Victory Animation Debug:');
-  console.log('   - User ID:', user?.id, '(type:', typeof user?.id, ')');
-  console.log('   - User Nickname:', user?.nickname);
-  console.log('   - Winner ID:', results.winnerId, '(type:', typeof results.winnerId, ')');
-  console.log('   - Winner Nickname:', results.winnerNickname);
-  console.log('   - Is Current User Winner:', isCurrentUserWinner);
+  console.log('   📋 Game Results:', results);
+  console.log('   👤 Current User:', {
+    id: user?.id,
+    nickname: user?.nickname,
+    email: user?.email
+  });
+  console.log('   🏆 Winner from rankings:', winnerResult);
+  console.log('   ✅ Is Current User Winner:', isCurrentUserWinner);
 
   const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
 
