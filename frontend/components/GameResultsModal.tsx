@@ -43,254 +43,277 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
 
   // Después de 5 segundos, mostrar la tabla de resultados
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#fbfaff] backdrop-blur-sm">
-      <main className="leaderboard-main">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="results-container">
         {/* Header */}
-        <div className="header">
-          <h1>Ranking</h1>
+        <div className="results-header">
+          <h1 className="results-title">Clasificación Final</h1>
         </div>
 
-        {/* Leaderboard */}
-        <div className="leaderboard">
-          <div className="ribbon"></div>
-          <table>
-            <tbody>
-              {results.playerRankings.slice(0, 4).map((player: PlayerResult, index: number) => (
-                <tr key={player.userId || player.nickname} className={index === 0 ? 'first-place' : ''}>
-                  <td className="number">{player.position}</td>
-                  <td className="name">
-                    {player.nickname}
-                    {player.isBot && <span className="bot-badge">🤖</span>}
-                  </td>
-                  <td className="points">
-                    {player.pointsEarned} pts
-                    {player.position === 1 && (
-                      <img
-                        className="gold-medal"
-                        src="https://github.com/malunaridev/Challenges-iCodeThis/blob/master/4-leaderboard/assets/gold-medal.png?raw=true"
-                        alt="gold medal"
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Leaderboard Table */}
+        <div className="results-table">
+          {results.playerRankings.slice(0, 4).map((player: PlayerResult) => (
+            <div
+              key={player.userId || player.nickname}
+              className={`player-row ${player.position === 1 ? 'winner-row' : ''}`}
+            >
+              {/* Position */}
+              <div className="position-badge">
+                {player.position}
+              </div>
 
-          {/* Buttons */}
-          <div className="buttons">
-            <button className="continue" onClick={onClose}>
-              Volver a la Sala
-            </button>
-          </div>
+              {/* Player Info */}
+              <div className="player-info">
+                <div className="player-name">{player.nickname}</div>
+                {player.isBot && <div className="bot-label">BOT</div>}
+              </div>
+
+              {/* Stats */}
+              <div className="player-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Cartas:</span>
+                  <span className="stat-value">{player.remainingCards}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Puntos:</span>
+                  <span className="stat-value points-earned">+{player.pointsEarned}</span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
+
+        {/* Footer Button */}
+        <div className="results-footer">
+          <button className="back-button" onClick={onClose}>
+            Volver a la Sala
+          </button>
+        </div>
+      </div>
 
       <style jsx>{`
-        .leaderboard-main {
-          width: clamp(320px, 90%, 40rem);
-          min-height: 43rem;
-          background-color: #ffffff;
-          box-shadow: 0px 5px 15px 8px rgba(228, 231, 251, 0.5);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          border-radius: 0.5rem;
-          animation: fadeIn 0.5s ease-out forwards;
+        .results-container {
+          width: clamp(320px, 90%, 600px);
+          background: linear-gradient(
+            135deg,
+            rgba(17, 17, 17, 0.98) 0%,
+            rgba(25, 25, 25, 0.95) 100%
+          );
+          border-radius: 20px;
+          border: 2px solid rgba(220, 38, 38, 0.3);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                      0 0 0 1px rgba(220, 38, 38, 0.1);
+          overflow: hidden;
+          animation: slideIn 0.4s ease-out;
         }
 
-        .header {
-          width: 100%;
+        .results-header {
+          background: linear-gradient(
+            135deg,
+            rgba(220, 38, 38, 0.9) 0%,
+            rgba(153, 27, 27, 0.9) 100%
+          );
+          padding: clamp(1.5rem, 4vw, 2rem);
+          text-align: center;
+          border-bottom: 2px solid rgba(220, 38, 38, 0.5);
+        }
+
+        .results-title {
+          font-size: clamp(1.5rem, 5vw, 2rem);
+          font-weight: 700;
+          color: #ffffff;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          margin: 0;
+          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .results-table {
+          padding: clamp(1rem, 3vw, 1.5rem);
+          display: flex;
+          flex-direction: column;
+          gap: clamp(0.75rem, 2vw, 1rem);
+        }
+
+        .player-row {
+          display: flex;
+          align-items: center;
+          gap: clamp(0.75rem, 2.5vw, 1.25rem);
+          padding: clamp(1rem, 3vw, 1.25rem);
+          background: rgba(30, 30, 30, 0.6);
+          border-radius: 12px;
+          border: 1px solid rgba(60, 60, 60, 0.5);
+          transition: all 0.3s ease;
+        }
+
+        .player-row:hover {
+          background: rgba(40, 40, 40, 0.7);
+          border-color: rgba(220, 38, 38, 0.3);
+          transform: translateX(5px);
+        }
+
+        .winner-row {
+          background: linear-gradient(
+            135deg,
+            rgba(220, 38, 38, 0.25) 0%,
+            rgba(153, 27, 27, 0.15) 100%
+          );
+          border: 2px solid rgba(220, 38, 38, 0.6);
+          box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
+        }
+
+        .winner-row:hover {
+          background: linear-gradient(
+            135deg,
+            rgba(220, 38, 38, 0.35) 0%,
+            rgba(153, 27, 27, 0.25) 100%
+          );
+          border-color: rgba(220, 38, 38, 0.8);
+          transform: translateX(5px) scale(1.02);
+        }
+
+        .position-badge {
+          min-width: clamp(2.5rem, 8vw, 3.5rem);
+          height: clamp(2.5rem, 8vw, 3.5rem);
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 2.5rem 2rem;
+          background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+          border: 2px solid rgba(220, 38, 38, 0.4);
+          border-radius: 10px;
+          font-size: clamp(1.25rem, 4vw, 1.75rem);
+          font-weight: 700;
+          color: #dc2626;
+          text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
         }
 
-        h1 {
-          font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: clamp(1.5rem, 4vw, 1.7rem);
-          color: #141a39;
-          text-transform: uppercase;
-          font-weight: 500;
+        .winner-row .position-badge {
+          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+          border-color: #fca5a5;
+          color: #ffffff;
+          box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);
         }
 
-        .leaderboard {
-          width: 100%;
-          position: relative;
+        .player-info {
           flex: 1;
           display: flex;
           flex-direction: column;
+          gap: 0.25rem;
         }
 
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          table-layout: fixed;
-          color: #141a39;
-          margin-bottom: 2rem;
+        .player-name {
+          font-size: clamp(1rem, 3.5vw, 1.25rem);
+          font-weight: 600;
+          color: #ffffff;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
 
-        tbody tr {
-          transition: all 0.2s ease-in-out;
-          border-radius: 0.2rem;
+        .winner-row .player-name {
+          color: #fca5a5;
+          font-weight: 700;
         }
 
-        tbody tr:not(.first-place):hover {
-          background-color: #fff;
-          transform: scale(1.05);
-          box-shadow: 0px 5px 15px 8px rgba(228, 231, 251, 0.8);
+        .bot-label {
+          font-size: clamp(0.7rem, 2vw, 0.85rem);
+          color: #9ca3af;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        tbody tr:nth-child(odd):not(.first-place) {
-          background-color: #f9f9f9;
-        }
-
-        tbody tr.first-place {
-          color: #fff;
-          background-color: transparent;
-        }
-
-        td {
-          height: 5rem;
-          font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: clamp(1.1rem, 3vw, 1.4rem);
-          padding: 1rem 2rem;
-          position: relative;
-        }
-
-        .number {
-          width: 3rem;
-          font-size: clamp(1.8rem, 5vw, 2.2rem);
-          font-weight: bold;
-          text-align: left;
-        }
-
-        .name {
-          text-align: left;
-          font-size: clamp(1rem, 3vw, 1.2rem);
+        .player-stats {
           display: flex;
-          align-items: center;
-          gap: 0.5rem;
+          gap: clamp(0.75rem, 3vw, 1.5rem);
         }
 
-        .bot-badge {
-          font-size: 0.9rem;
-        }
-
-        .points {
-          font-weight: bold;
-          font-size: clamp(1.1rem, 3vw, 1.3rem);
+        .stat-item {
           display: flex;
-          justify-content: flex-end;
+          flex-direction: column;
           align-items: center;
-          text-align: right;
+          gap: 0.25rem;
         }
 
-        .gold-medal {
-          height: 3rem;
-          margin-left: 1rem;
+        .stat-label {
+          font-size: clamp(0.7rem, 2vw, 0.85rem);
+          color: #9ca3af;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        .ribbon {
-          width: calc(100% + 2rem);
-          height: 5.5rem;
-          top: -0.5rem;
-          background-color: #dc2626;
-          position: absolute;
-          left: -1rem;
-          box-shadow: 0px 15px 11px -6px rgba(122, 122, 125, 0.5);
-          z-index: 0;
+        .stat-value {
+          font-size: clamp(1rem, 3vw, 1.25rem);
+          font-weight: 700;
+          color: #e5e7eb;
         }
 
-        .ribbon::before {
-          content: "";
-          height: 1.5rem;
-          width: 1.5rem;
-          bottom: -0.8rem;
-          left: 0.35rem;
-          transform: rotate(45deg);
-          background-color: #991b1b;
-          position: absolute;
-          z-index: -1;
+        .points-earned {
+          color: #dc2626;
         }
 
-        .ribbon::after {
-          content: "";
-          height: 1.5rem;
-          width: 1.5rem;
-          bottom: -0.8rem;
-          right: 0.35rem;
-          transform: rotate(45deg);
-          background-color: #991b1b;
-          position: absolute;
-          z-index: -1;
+        .winner-row .points-earned {
+          color: #fca5a5;
+          text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
         }
 
-        .buttons {
-          width: 100%;
-          padding: 0 2rem 3rem;
+        .results-footer {
+          padding: clamp(1rem, 3vw, 1.5rem);
+          border-top: 1px solid rgba(60, 60, 60, 0.5);
           display: flex;
           justify-content: center;
-          gap: 2rem;
-          margin-top: auto;
         }
 
-        .continue {
-          width: 14rem;
-          height: 3.5rem;
-          font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          font-size: clamp(1.1rem, 3vw, 1.3rem);
-          color: #fff;
+        .back-button {
+          padding: clamp(0.75rem, 2.5vw, 1rem) clamp(2rem, 6vw, 3rem);
+          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+          border: none;
+          border-radius: 12px;
+          color: #ffffff;
+          font-size: clamp(1rem, 3vw, 1.15rem);
+          font-weight: 600;
           text-transform: uppercase;
-          background-color: #dc2626;
-          border: 0;
-          border-bottom: 0.3rem solid #991b1b;
-          border-radius: 2rem;
+          letter-spacing: 0.05em;
           cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
         }
 
-        .continue:hover {
-          background-color: #b91c1c;
+        .back-button:hover {
+          background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
           transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
         }
 
-        .continue:active {
-          border-bottom: 0;
+        .back-button:active {
           transform: translateY(0);
         }
 
-        @keyframes fadeIn {
+        @keyframes slideIn {
           from {
             opacity: 0;
-            transform: scale(0.9);
+            transform: translateY(-20px) scale(0.95);
           }
           to {
             opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @media (max-width: 740px) {
-          .leaderboard-main {
-            width: 95%;
-          }
-
-          td {
-            padding: 0.8rem 1rem;
+            transform: translateY(0) scale(1);
           }
         }
 
         @media (max-width: 500px) {
-          .gold-medal {
-            height: 2.5rem;
-            margin-left: 0.5rem;
+          .results-container {
+            width: 95%;
           }
 
-          .ribbon {
-            height: 5rem;
+          .player-row {
+            flex-wrap: wrap;
+          }
+
+          .player-stats {
+            width: 100%;
+            justify-content: space-around;
+            margin-top: 0.5rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(60, 60, 60, 0.3);
           }
         }
       `}</style>
