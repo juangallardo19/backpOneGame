@@ -19,7 +19,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Users } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -40,6 +40,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true);
+  const [perspective, setPerspective] = useState(true);
 
   // Get current player from gameState
   const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
@@ -148,13 +149,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const getCardSymbol = (card: Card) => {
     switch (card.type) {
       case 'SKIP':
-        return 'SKIP';
+        return '⊘';
       case 'REVERSE':
-        return 'REV';
+        return '⇄';
       case 'DRAW_TWO':
         return '+2';
       case 'WILD':
-        return 'WILD';
+        return 'W';
       case 'WILD_DRAW_FOUR':
         return '+4';
       case 'NUMBER':
@@ -199,226 +200,397 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     );
   }
 
+  // Get other players by position
+  const otherPlayers = gameState.players?.filter(p => p.id !== currentPlayer?.id) || [];
+  const topPlayer = otherPlayers[0];
+  const leftPlayer = otherPlayers[1];
+  const rightPlayer = otherPlayers[2];
+
   return (
-    <div className="one-game-3d">
+    <div className="game-container">
       {/* Header */}
-      <div className="game-header">
-        <Button
-          onClick={onBack}
-          className="back-btn"
-          variant="outline"
-        >
-          <ArrowLeft className="mr-2" size={18} />
-          Leave Game
-        </Button>
+      <header className="game-header">
+        <button className="back-button" onClick={onBack}>
+          <ArrowLeft size={20} />
+          <span>Leave Game</span>
+        </button>
 
         <div className="game-info">
-          <h2 className="game-title">ONE GAME</h2>
+          <h1 className="game-title">ONE GAME</h1>
           <p className={`game-status ${isBotTurn ? 'bot-thinking' : ''}`}>
             {isMyTurn
               ? "Your Turn!"
               : isBotTurn
                 ? `${currentTurnPlayer?.nickname} thinking...`
-                : `Waiting for ${gameState.currentPlayer?.nickname || "player"}...`
+                : `Waiting for ${currentTurnPlayer?.nickname || "player"}...`
             }
           </p>
         </div>
-      </div>
 
-      {/* LEFT SIDEBAR: Chat + Player Stats */}
-      <div className="left-sidebar">
-        {/* Player Stats Table */}
-        <div className="player-stats-panel">
-          <h3 className="panel-title">Players</h3>
-          <div className="player-stats-list">
-            {gameState.players?.map((player) => (
-              <div
-                key={player.id}
-                className={`player-stat-item ${
-                  gameState.currentTurnPlayerId === player.id ? 'active-turn' : ''
-                } ${player.id === currentPlayer?.id ? 'is-you' : ''}`}
-              >
-                <div className="player-stat-info">
-                  <span className="player-stat-name">
-                    {player.nickname}
-                    {player.id === currentPlayer?.id && ' (You)'}
-                  </span>
-                  <span className="player-stat-cards">
-                    {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
-                    {player.calledOne && ' [ONE!]'}
-                  </span>
-                </div>
-                {gameState.currentTurnPlayerId === player.id && (
-                  <div className="turn-indicator-mini">▶</div>
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="header-controls">
+          <button className="control-btn" onClick={() => setPerspective(!perspective)}>
+            {perspective ? '3D' : '2D'}
+          </button>
+          <button className="control-btn" onClick={() => setShowChat(!showChat)}>
+            <MessageSquare size={18} />
+          </button>
         </div>
+      </header>
 
-        {/* Chat */}
-        <div className="chat-container-wrapper">
-          <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
-        </div>
-      </div>
-
-      {/* RIGHT SIDEBAR: ONE Button */}
-      <div className="right-sidebar">
-        {shouldCallUno && (
-          <div className="uno-button-container">
-            <div className="uno-warning">Call ONE!</div>
-            <button onClick={handleCallOne} className="uno-button pulsing">
-              <div className="uno-logo">
-                <div className="uno-text">ONE</div>
-                <div className="uno-subtitle">ONE!</div>
-              </div>
-            </button>
-            <div className="uno-hint">You have 1 card left!</div>
-          </div>
-        )}
-      </div>
-
-      {/* Game Board */}
-      <div className="game-board">
-        {/* Other Players */}
-        <div className="other-players">
-          {gameState.players
-            ?.filter(p => p.id !== currentPlayer?.id)
-            .map((player) => (
-              <div key={player.id} className="player-card">
-                <div className="player-info">
-                  <span className="player-name">{player.nickname}</span>
-                  <span className="player-cards">{player.cardCount} cards</span>
-                </div>
-                {gameState.currentTurnPlayerId === player.id && (
-                  <div className="turn-indicator">▶</div>
-                )}
-              </div>
-            ))}
-        </div>
-
-        {/* Center - Top Card & Draw Pile */}
-        <div className="center-area">
-          <div className="draw-pile" onClick={isMyTurn ? handleDrawCard : undefined}>
-            <div className="pile-card card-back">
-              <div className="card-pattern">ONE</div>
-              <div className="pile-count">{gameState.drawPileCount}</div>
+      <div className="game-layout">
+        {/* Left Sidebar */}
+        <aside className="left-sidebar">
+          {/* Players Panel */}
+          <div className="panel players-panel">
+            <div className="panel-header">
+              <Users size={18} />
+              <h3>Players</h3>
             </div>
-            {isMyTurn && <p className="draw-hint">Click to draw</p>}
-          </div>
-
-          <div className="discard-pile">
-            {gameState.topCard && (
-              <div className={`pile-card ${getCardColorClass(gameState.topCard.color)}`}>
-                <div className="card-value">{getCardSymbol(gameState.topCard)}</div>
-                <div className="card-color">{gameState.topCard.color}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Current Player Hand */}
-        <div className="player-hand">
-          <div className="hand-title">Your Hand ({currentPlayer?.hand.length || 0} cards)</div>
-          <div className="hand-cards">
-            {currentPlayer?.hand.map((card) => {
-              const canPlay = canPlayCard(card);
-
-              return (
+            <div className="players-list">
+              {gameState.players?.map((player) => (
                 <div
-                  key={card.id}
-                  className={`hand-card ${getCardColorClass(card.color)} ${
-                    canPlay && isMyTurn ? 'playable' : 'disabled'
-                  } ${selectedCardId === card.id ? 'selected' : ''}`}
-                  onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
+                  key={player.id}
+                  className={`player-item ${gameState.currentTurnPlayerId === player.id ? 'active' : ''} ${player.id === currentPlayer?.id ? 'is-you' : ''}`}
                 >
-                  <div className="card-value-small">{getCardSymbol(card)}</div>
-                  <div className="card-symbol">
-                    {getCardSymbol(card)}
+                  <div className="player-info">
+                    <span className="player-name">
+                      {player.nickname}
+                      {player.id === currentPlayer?.id && ' (You)'}
+                    </span>
+                    <span className="player-cards">
+                      {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
+                      {player.calledOne && ' [ONE!]'}
+                    </span>
+                  </div>
+                  {gameState.currentTurnPlayerId === player.id && (
+                    <div className="turn-indicator">▶</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Chat Panel */}
+          {showChat && (
+            <div className="panel chat-panel">
+              <div className="chat-container-wrapper">
+                <GameChat isMinimized={false} onToggleMinimize={() => setShowChat(false)} />
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Game Board */}
+        <main className={`game-board ${perspective ? 'perspective-3d' : ''}`}>
+          <div className="game-table-wrapper">
+
+            {/* Top Player */}
+            {topPlayer && (
+              <div className="table-section section-top">
+                <div className="player-cards-area">
+                  <p className="player-label-small">
+                    {topPlayer.nickname} ({topPlayer.cardCount})
+                    {topPlayer.calledOne && ' [ONE!]'}
+                  </p>
+                  <div className="cards-row">
+                    {[...Array(Math.min(topPlayer.cardCount, 5))].map((_, i) => (
+                      <div
+                        key={i}
+                        className="game-card card-back card-small"
+                        style={{
+                          transform: `translateX(${(i - Math.floor(Math.min(topPlayer.cardCount, 5) / 2)) * 30}px)`,
+                          zIndex: i
+                        }}
+                      >
+                        <div className="card-border">
+                          <div className="card-inner-back">
+                            <div className="card-oval-back"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            )}
 
-        {/* Game Stats */}
-        <div className="game-stats">
-          <div className="stat">
-            <span className="stat-label">Direction:</span>
-            <span className="stat-value">{gameState.direction === 'CLOCKWISE' ? 'Clockwise' : 'Counter-Clockwise'}</span>
+            {/* Left Player */}
+            {leftPlayer && (
+              <div className="table-section section-left">
+                <div className="player-cards-area">
+                  <p className="player-label-small">
+                    {leftPlayer.nickname} ({leftPlayer.cardCount})
+                    {leftPlayer.calledOne && ' [ONE!]'}
+                  </p>
+                  <div className="cards-column">
+                    {[...Array(Math.min(leftPlayer.cardCount, 5))].map((_, i) => (
+                      <div
+                        key={i}
+                        className="game-card card-back card-small"
+                        style={{
+                          transform: `translateY(${(i - Math.floor(Math.min(leftPlayer.cardCount, 5) / 2)) * 30}px)`,
+                          zIndex: i
+                        }}
+                      >
+                        <div className="card-border">
+                          <div className="card-inner-back">
+                            <div className="card-oval-back"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Right Player */}
+            {rightPlayer && (
+              <div className="table-section section-right">
+                <div className="player-cards-area">
+                  <p className="player-label-small">
+                    {rightPlayer.nickname} ({rightPlayer.cardCount})
+                    {rightPlayer.calledOne && ' [ONE!]'}
+                  </p>
+                  <div className="cards-column">
+                    {[...Array(Math.min(rightPlayer.cardCount, 5))].map((_, i) => (
+                      <div
+                        key={i}
+                        className="game-card card-back card-small"
+                        style={{
+                          transform: `translateY(${(i - Math.floor(Math.min(rightPlayer.cardCount, 5) / 2)) * 30}px)`,
+                          zIndex: i
+                        }}
+                      >
+                        <div className="card-border">
+                          <div className="card-inner-back">
+                            <div className="card-oval-back"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Center - Piles */}
+            <div className="table-section section-center">
+              <div className="piles-container">
+
+                {/* Draw Pile */}
+                <div className="pile-area" onClick={isMyTurn ? handleDrawCard : undefined} style={{ cursor: isMyTurn ? 'pointer' : 'default' }}>
+                  <div className="pile-stack">
+                    <div className="game-card card-back card-medium pile-shadow"></div>
+                    <div className="game-card card-back card-medium pile-shadow" style={{ transform: 'translate(2px, 2px)' }}></div>
+                    <div className="game-card card-back card-medium pile-top">
+                      <div className="card-border">
+                        <div className="card-inner-back">
+                          <div className="card-oval-back"></div>
+                          <div className="pile-count">{gameState.drawPileCount}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="pile-text">Draw</p>
+                </div>
+
+                {/* Discard Pile */}
+                <div className="pile-area">
+                  <div className="pile-stack">
+                    {gameState.topCard && (
+                      <>
+                        <div className={`game-card card-medium pile-shadow ${getCardColorClass(gameState.topCard.color)}`}></div>
+                        <div className={`game-card card-medium pile-shadow ${getCardColorClass(gameState.topCard.color)}`} style={{ transform: 'translate(2px, 2px)' }}></div>
+                        <div className={`game-card card-medium pile-top ${getCardColorClass(gameState.topCard.color)}`}>
+                          <div className="card-border-white">
+                            <div className="card-inner-color">
+                              <div className="card-corner top-left">{getCardSymbol(gameState.topCard)}</div>
+                              <div className="card-center-value">{getCardSymbol(gameState.topCard)}</div>
+                              <div className="card-corner bottom-right">{getCardSymbol(gameState.topCard)}</div>
+                              <div className="card-oval-color"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <p className="pile-text">Discard</p>
+                </div>
+
+              </div>
+
+              {/* Direction Indicator */}
+              <div className="direction-badge">
+                <div className="dir-icon">
+                  {gameState.direction === 'CLOCKWISE' ? '↻' : '↺'}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Player (You) */}
+            <div className="table-section section-bottom">
+              <div className="your-hand-area">
+                <p className="player-label-small">Your Hand ({currentPlayer?.hand.length || 0})</p>
+                <div className="your-cards-row">
+                  {currentPlayer?.hand.map((card, index) => {
+                    const canPlay = canPlayCard(card);
+                    const totalCards = currentPlayer.hand.length;
+                    const center = (totalCards - 1) / 2;
+                    const offset = (index - center) * 70;
+                    const rotation = (index - center) * 2;
+
+                    return (
+                      <div
+                        key={card.id}
+                        className={`game-card card-medium ${getCardColorClass(card.color)} ${
+                          canPlay && isMyTurn ? 'card-playable' : 'card-disabled'
+                        } ${selectedCardId === card.id ? 'card-selected' : ''}`}
+                        style={{
+                          transform: `translateX(${offset}px) rotate(${rotation}deg)`,
+                          zIndex: selectedCardId === card.id ? 100 : index,
+                          ['--card-x' as any]: `${offset}px`,
+                          ['--card-rotation' as any]: `${rotation}deg`
+                        }}
+                        onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
+                      >
+                        <div className="card-border-white">
+                          <div className="card-inner-color">
+                            <div className="card-corner top-left">{getCardSymbol(card)}</div>
+                            <div className="card-center-value">{getCardSymbol(card)}</div>
+                            <div className="card-corner bottom-right">{getCardSymbol(card)}</div>
+                            <div className="card-oval-color"></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
           </div>
-          <div className="stat">
-            <span className="stat-label">Cards Left:</span>
-            <span className="stat-value">{gameState.drawPileCount}</span>
-          </div>
-        </div>
+        </main>
+
+        {/* Right Sidebar - ONE Button */}
+        <aside className="right-sidebar">
+          {shouldCallUno && (
+            <div className="uno-container">
+              <div className="uno-alert">Call ONE!</div>
+              <button className="uno-button-wrapper" onClick={handleCallOne}>
+                <div className="uno-fallback">
+                  <div className="uno-text">ONE</div>
+                </div>
+              </button>
+              <div className="uno-hint">You have 1 card left!</div>
+            </div>
+          )}
+        </aside>
       </div>
 
       {/* Color Picker Modal (RF26) */}
       {showColorPicker && (
-        <div className="color-picker-modal">
+        <div className="modal-overlay">
           <div className="modal-content">
             <h3>Choose a color</h3>
             <div className="color-options">
               {['RED', 'YELLOW', 'GREEN', 'BLUE'].map((color) => (
                 <button
                   key={color}
-                  className={`color-btn color-btn-${color.toLowerCase()}`}
+                  className={`color-button color-${color.toLowerCase()}`}
                   onClick={() => handleChooseColor(color as any)}
                 >
                   {color}
                 </button>
               ))}
             </div>
-            <Button
-              variant="outline"
+            <button
+              className="cancel-button"
               onClick={() => {
                 setShowColorPicker(false);
                 setSelectedCardId(null);
               }}
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       <style jsx>{`
-        .one-game-3d {
+        * {
+          box-sizing: border-box;
+        }
+
+        .game-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
           color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
           overflow: hidden;
         }
 
+        /* Header */
         .game-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 1rem 2rem;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(10px);
           border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+          z-index: 100;
+        }
+
+        .back-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .back-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+          transform: translateX(-3px);
+        }
+
+        .game-info {
+          text-align: center;
         }
 
         .game-title {
-          font-size: 1.5rem;
-          font-weight: 800;
           margin: 0;
+          font-size: 1.8rem;
+          font-weight: 900;
+          letter-spacing: 2px;
+          background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+          background-size: 300% 300%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradient-shift 3s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
         }
 
         .game-status {
+          margin: 0.25rem 0 0 0;
           font-size: 0.9rem;
-          color: rgba(255, 255, 255, 0.8);
-          margin: 0;
-          transition: all 0.3s ease;
+          color: #4ade80;
+          font-weight: 600;
         }
 
         .game-status.bot-thinking {
           color: #a78bfa;
-          font-weight: 600;
           animation: bot-pulse 1.5s ease-in-out infinite;
         }
 
@@ -433,42 +605,77 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           }
         }
 
-        /* LEFT SIDEBAR: Chat + Player Stats */
+        .header-controls {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .control-btn {
+          padding: 0.5rem 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Layout */
+        .game-layout {
+          display: grid;
+          grid-template-columns: 280px 1fr 200px;
+          height: calc(100vh - 80px);
+          gap: 1rem;
+          padding: 1rem;
+        }
+
+        /* Sidebars */
         .left-sidebar {
-          position: fixed;
-          left: 0;
-          top: 80px;
-          bottom: 0;
-          width: 300px;
           display: flex;
           flex-direction: column;
           gap: 1rem;
-          padding: 1rem;
-          z-index: 50;
+          overflow-y: auto;
         }
 
-        .player-stats-panel {
-          background: rgba(0, 0, 0, 0.7);
+        .panel {
+          background: rgba(0, 0, 0, 0.6);
           border-radius: 12px;
-          padding: 1rem;
-          backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          overflow: hidden;
         }
 
-        .panel-title {
+        .panel-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header h3 {
+          margin: 0;
           font-size: 1rem;
           font-weight: 700;
-          margin: 0 0 0.75rem 0;
-          color: rgba(255, 255, 255, 0.9);
         }
 
-        .player-stats-list {
+        .players-panel {
+          flex-shrink: 0;
+        }
+
+        .players-list {
+          padding: 0.75rem;
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
         }
 
-        .player-stat-item {
+        .player-item {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -479,43 +686,49 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           transition: all 0.2s;
         }
 
-        .player-stat-item.active-turn {
+        .player-item.active {
           background: rgba(76, 175, 80, 0.2);
-          border-color: #4CAF50;
-          box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+          border-color: #4caf50;
+          box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
         }
 
-        .player-stat-item.is-you {
-          border-color: rgba(33, 150, 243, 0.5);
-          background: rgba(33, 150, 243, 0.1);
+        .player-item.is-you {
+          border-color: rgba(74, 222, 128, 0.5);
+          background: rgba(74, 222, 128, 0.1);
         }
 
-        .player-stat-info {
+        .player-info {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
         }
 
-        .player-stat-name {
+        .player-name {
           font-size: 0.9rem;
           font-weight: 600;
-          color: rgba(255, 255, 255, 0.9);
         }
 
-        .player-stat-cards {
+        .player-cards {
           font-size: 0.8rem;
           color: rgba(255, 255, 255, 0.7);
         }
 
-        .turn-indicator-mini {
-          color: #4CAF50;
+        .turn-indicator {
+          color: #4ade80;
           font-size: 1.2rem;
-          animation: pulse-mini 1s infinite;
+          animation: pulse-arrow 1s infinite;
         }
 
-        @keyframes pulse-mini {
+        @keyframes pulse-arrow {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.2); }
+          50% { opacity: 0.6; transform: scale(1.3); }
+        }
+
+        .chat-panel {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
         }
 
         .chat-container-wrapper {
@@ -523,74 +736,77 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           overflow: hidden;
         }
 
-        /* RIGHT SIDEBAR: UNO Button */
+        /* Right Sidebar - UNO Button */
         .right-sidebar {
-          position: fixed;
-          right: 20px;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .uno-button-container {
+        .uno-container {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 1rem;
         }
 
-        .uno-warning {
-          background: rgba(244, 67, 54, 0.9);
+        .uno-alert {
+          background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
           color: white;
           padding: 0.5rem 1rem;
           border-radius: 8px;
           font-weight: 700;
           font-size: 0.9rem;
           animation: flash 1s infinite;
-          box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+          box-shadow: 0 4px 15px rgba(244, 67, 54, 0.5);
         }
 
         @keyframes flash {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
+          50% { opacity: 0.5; }
         }
 
-        .uno-button {
-          width: 150px;
-          height: 150px;
+        .uno-button-wrapper {
+          width: 160px;
+          height: 160px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          border: 5px solid white;
-          box-shadow: 0 8px 24px rgba(245, 87, 108, 0.6);
+          border: none;
+          background: transparent;
           cursor: pointer;
           transition: all 0.3s;
+          animation: pulse-uno 1.5s infinite;
+          padding: 0;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        .uno-button:hover {
+        .uno-button-wrapper:hover {
           transform: scale(1.1);
-          box-shadow: 0 12px 32px rgba(245, 87, 108, 0.8);
-        }
-
-        .uno-button.pulsing {
-          animation: pulse-uno 1s infinite;
         }
 
         @keyframes pulse-uno {
           0%, 100% {
             transform: scale(1);
-            box-shadow: 0 8px 24px rgba(245, 87, 108, 0.6);
+            filter: drop-shadow(0 8px 25px rgba(245, 87, 108, 0.6));
           }
           50% {
             transform: scale(1.05);
-            box-shadow: 0 12px 32px rgba(245, 87, 108, 0.9);
+            filter: drop-shadow(0 12px 35px rgba(245, 87, 108, 0.9));
           }
         }
 
-        .uno-logo {
-          text-align: center;
+        .uno-fallback {
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          border: 4px solid white;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 25px rgba(245, 87, 108, 0.6);
         }
 
         .uno-text {
@@ -601,304 +817,372 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           line-height: 1;
         }
 
-        .uno-subtitle {
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.9);
-          margin-top: 0.25rem;
-        }
-
         .uno-hint {
           background: rgba(0, 0, 0, 0.7);
           padding: 0.5rem 1rem;
           border-radius: 8px;
           font-size: 0.85rem;
-          color: rgba(255, 255, 255, 0.9);
           text-align: center;
         }
 
+        /* GAME BOARD */
         .game-board {
-          position: absolute;
-          left: 320px;
-          right: 200px;
-          top: 80px;
-          bottom: 0;
+          position: relative;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 16px;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
           padding: 2rem;
         }
 
-        .other-players {
-          display: flex;
+        .game-board.perspective-3d {
+          perspective: 1000px;
+        }
+
+        .game-table-wrapper {
+          width: 700px;
+          height: 550px;
+          display: grid;
+          grid-template-columns: 1fr 2fr 1fr;
+          grid-template-rows: 1fr 2fr 1fr;
           gap: 1rem;
+          transform-style: preserve-3d;
+        }
+
+        .game-board.perspective-3d .game-table-wrapper {
+          transform: rotateX(10deg);
+        }
+
+        /* Table Sections */
+        .table-section {
+          display: flex;
+          align-items: center;
           justify-content: center;
         }
 
-        .player-card {
-          position: relative;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 1rem;
-          border-radius: 12px;
-          min-width: 150px;
-          backdrop-filter: blur(10px);
-          border: 2px solid rgba(255, 255, 255, 0.2);
+        .section-top {
+          grid-column: 2;
+          grid-row: 1;
         }
 
-        .player-info {
+        .section-left {
+          grid-column: 1;
+          grid-row: 2;
+        }
+
+        .section-right {
+          grid-column: 3;
+          grid-row: 2;
+        }
+
+        .section-center {
+          grid-column: 2;
+          grid-row: 2;
+          position: relative;
+        }
+
+        .section-bottom {
+          grid-column: 2;
+          grid-row: 3;
+        }
+
+        /* Player Cards Areas */
+        .player-cards-area {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 0.5rem;
         }
 
-        .player-name {
+        .player-label-small {
+          font-size: 0.75rem;
           font-weight: 600;
-          font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.9);
+          margin: 0;
+          text-align: center;
         }
 
-        .player-cards {
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 0.8rem;
-        }
-
-        .turn-indicator {
-          position: absolute;
-          top: -10px;
-          right: -10px;
-          background: #4CAF50;
-          color: white;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-          animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.1);
-          }
-        }
-
-        .center-area {
-          display: flex;
-          gap: 3rem;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .draw-pile, .discard-pile {
+        .cards-row,
+        .cards-column {
           position: relative;
-        }
-
-        .draw-pile {
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
-
-        .draw-pile:hover {
-          transform: translateY(-5px);
-        }
-
-        .pile-card {
-          width: 120px;
-          height: 180px;
-          border-radius: 12px;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .cards-row {
+          height: 5em;
+          width: 10em;
+        }
+
+        .cards-column {
+          width: 4em;
+          height: 10em;
+          flex-direction: column;
+        }
+
+        /* Cards */
+        .game-card {
+          position: absolute;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+        }
+
+        .card-small {
+          width: 3.5em;
+          height: 5.4em;
+        }
+
+        .card-medium {
+          width: 4.5em;
+          height: 6.9em;
+        }
+
+        .card-border,
+        .card-border-white {
+          width: 100%;
+          height: 100%;
+          background: white;
+          border-radius: 0.6em;
+          padding: 0.2em;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Card Back */
+        .card-back .card-border {
+          background: white;
+        }
+
+        .card-inner-back {
+          width: 100%;
+          height: 100%;
+          background: #1a1a1a;
+          border-radius: 0.4em;
           position: relative;
           overflow: hidden;
         }
 
-        .card-back {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: 3px solid white;
-        }
-
-        .card-pattern {
-          font-size: 2rem;
-          font-weight: 900;
-          color: white;
-          opacity: 0.3;
-        }
-
-        .pile-count {
+        .card-oval-back {
           position: absolute;
-          bottom: 10px;
-          right: 10px;
-          background: rgba(0, 0, 0, 0.7);
-          color: white;
-          padding: 0.25rem 0.5rem;
-          border-radius: 6px;
-          font-weight: 700;
-        }
-
-        .draw-hint {
-          position: absolute;
-          bottom: -30px;
+          width: 70%;
+          height: 75%;
+          background: #dc251c;
+          top: 50%;
           left: 50%;
-          transform: translateX(-50%);
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.8);
-          white-space: nowrap;
+          transform: translate(-50%, -50%) rotate(12deg);
+          border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
         }
 
-        .card-value, .card-color {
-          font-weight: 800;
-          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-        }
-
-        .card-value {
-          font-size: 3rem;
-        }
-
-        .card-color {
-          font-size: 0.9rem;
-          opacity: 0.8;
-        }
-
-        .card-red {
-          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-        }
-
-        .card-yellow {
-          background: linear-gradient(135deg, #feca57 0%, #ee5a6f 100%);
-        }
-
-        .card-green {
-          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        }
-
-        .card-blue {
-          background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-        }
-
-        .card-wild {
-          background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
-        }
-
-        .player-hand {
+        /* Card Colors */
+        .card-inner-color {
           width: 100%;
-          max-width: 800px;
+          height: 100%;
+          border-radius: 0.4em;
+          position: relative;
+          overflow: hidden;
         }
 
-        .hand-title {
-          text-align: center;
-          margin-bottom: 1rem;
-          font-weight: 600;
-          font-size: 1.1rem;
+        .card-red .card-inner-color {
+          background: linear-gradient(135deg, #dc251c 0%, #ff4444 100%);
+          color: white;
         }
 
-        .hand-cards {
+        .card-yellow .card-inner-color {
+          background: linear-gradient(135deg, #fcf604 0%, #ffed4e 100%);
+          color: #333;
+        }
+
+        .card-blue .card-inner-color {
+          background: linear-gradient(135deg, #0493de 0%, #3ab0ff 100%);
+          color: white;
+        }
+
+        .card-green .card-inner-color {
+          background: linear-gradient(135deg, #018d41 0%, #00c853 100%);
+          color: white;
+        }
+
+        .card-wild .card-inner-color {
+          background: linear-gradient(135deg, #1f1b18 0%, #333 50%, #1f1b18 100%);
+          color: white;
+        }
+
+        .card-oval-color {
+          position: absolute;
+          width: 85%;
+          height: 75%;
+          background: white;
+          opacity: 0.25;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(12deg);
+          border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        }
+
+        .card-corner {
+          position: absolute;
+          font-size: 0.7em;
+          font-weight: 800;
+        }
+
+        .card-corner.top-left {
+          top: 0.3em;
+          left: 0.3em;
+        }
+
+        .card-corner.bottom-right {
+          bottom: 0.3em;
+          right: 0.3em;
+          transform: rotate(180deg);
+        }
+
+        .card-center-value {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 2.5em;
+          font-weight: 900;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+          z-index: 5;
+        }
+
+        /* Piles */
+        .piles-container {
           display: flex;
-          gap: 0.75rem;
-          justify-content: center;
-          flex-wrap: wrap;
-        }
-
-        .hand-card {
-          width: 80px;
-          height: 120px;
-          border-radius: 8px;
-          display: flex;
-          flex-direction: column;
+          gap: 3em;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-          transition: all 0.3s;
-          border: 2px solid white;
-          cursor: pointer;
-          position: relative;
+          height: 100%;
         }
 
-        .hand-card.playable {
-          transform: translateY(-10px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(76, 175, 80, 0.6);
-          border-color: #4CAF50;
-        }
-
-        .hand-card.playable:hover {
-          transform: translateY(-15px) scale(1.05);
-          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(76, 175, 80, 0.8);
-        }
-
-        .hand-card.disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .hand-card.selected {
-          transform: translateY(-20px) scale(1.1);
-          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(33, 150, 243, 0.8);
-          border-color: #2196F3;
-        }
-
-        .card-value-small {
-          font-size: 0.8rem;
-          font-weight: 700;
-          position: absolute;
-          top: 5px;
-          left: 5px;
-        }
-
-        .card-symbol {
-          font-size: 2rem;
-          font-weight: 800;
-        }
-
-        .game-stats {
+        .pile-area {
           display: flex;
-          gap: 2rem;
-          justify-content: center;
-          padding: 1rem;
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 12px;
-        }
-
-        .stat {
-          display: flex;
+          flex-direction: column;
           align-items: center;
           gap: 0.5rem;
         }
 
-        .stat-label {
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 0.9rem;
+        .pile-stack {
+          position: relative;
+          width: 4.5em;
+          height: 6.9em;
         }
 
-        .stat-value {
+        .pile-shadow {
+          position: absolute;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 0.6em;
+        }
+
+        .pile-top {
+          position: absolute;
+          z-index: 10;
+        }
+
+        .pile-top:hover {
+          transform: translateY(-0.5em);
+        }
+
+        .pile-count {
+          position: absolute;
+          bottom: 0.4em;
+          right: 0.4em;
+          background: rgba(0, 0, 0, 0.8);
           color: white;
+          padding: 0.2em 0.5em;
+          border-radius: 4px;
           font-weight: 700;
-          font-size: 1.1rem;
+          font-size: 0.75em;
+          z-index: 15;
         }
 
-        .color-picker-modal {
+        .pile-text {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+          margin: 0;
+        }
+
+        .direction-badge {
+          position: absolute;
+          top: 0.5em;
+          right: 0.5em;
+          background: rgba(76, 175, 80, 0.95);
+          width: 2.5em;
+          height: 2.5em;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.5);
+        }
+
+        .dir-icon {
+          font-size: 1.5em;
+          color: white;
+          font-weight: 900;
+        }
+
+        /* Your Hand */
+        .your-hand-area {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .your-cards-row {
+          position: relative;
+          height: 8em;
+          min-width: 25em;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .card-playable:hover {
+          transform: translateX(var(--card-x, 0)) translateY(-2em) rotate(var(--card-rotation, 0)) scale(1.05) !important;
+          z-index: 1000 !important;
+          filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7));
+        }
+
+        .card-selected {
+          transform: translateX(var(--card-x, 0)) translateY(-2.5em) rotate(var(--card-rotation, 0)) scale(1.08) !important;
+          filter: drop-shadow(0 8px 18px rgba(59, 130, 246, 0.8));
+          z-index: 999 !important;
+        }
+
+        .card-selected .card-border-white {
+          box-shadow: 0 0 0 3px #3b82f6;
+        }
+
+        .card-disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        /* Modal */
+        .modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(0, 0, 0, 0.85);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          backdrop-filter: blur(5px);
         }
 
         .modal-content {
           background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
           padding: 2rem;
           border-radius: 16px;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
           border: 2px solid rgba(255, 255, 255, 0.2);
-          min-width: 300px;
+          min-width: 320px;
         }
 
         .modal-content h3 {
@@ -914,43 +1198,63 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           margin-bottom: 1.5rem;
         }
 
-        .color-btn {
-          padding: 1rem;
-          border: 2px solid white;
-          border-radius: 8px;
+        .color-button {
+          padding: 1.5rem;
+          border: 3px solid white;
+          border-radius: 12px;
           font-weight: 700;
+          font-size: 1rem;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: all 0.2s;
           color: white;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
 
-        .color-btn:hover {
+        .color-button:hover {
           transform: scale(1.05);
+          box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
         }
 
-        .color-btn-red {
-          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        .color-button.color-red {
+          background: linear-gradient(135deg, #dc251c 0%, #ff4444 100%);
         }
 
-        .color-btn-yellow {
-          background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%);
+        .color-button.color-yellow {
+          background: linear-gradient(135deg, #fcf604 0%, #ffed4e 100%);
+          color: #333;
         }
 
-        .color-btn-green {
-          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        .color-button.color-green {
+          background: linear-gradient(135deg, #018d41 0%, #00c853 100%);
         }
 
-        .color-btn-blue {
-          background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        .color-button.color-blue {
+          background: linear-gradient(135deg, #0493de 0%, #3ab0ff 100%);
         }
 
+        .cancel-button {
+          width: 100%;
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          color: white;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cancel-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Loading State */
         .game-loading {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           height: 100vh;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
           color: white;
         }
 
@@ -966,6 +1270,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+          .game-layout {
+            grid-template-columns: 250px 1fr 180px;
+          }
         }
       `}</style>
 
