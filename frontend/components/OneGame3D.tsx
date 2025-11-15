@@ -417,13 +417,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 </div>
 
               </div>
-
-              {/* Direction Indicator */}
-              <div className="direction-badge">
-                <div className="dir-icon">
-                  {gameState.direction === 'CLOCKWISE' ? '↻' : '↺'}
-                </div>
-              </div>
             </div>
 
             {/* Bottom Player (You) */}
@@ -435,11 +428,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                     const canPlay = canPlayCard(card);
                     const totalCards = currentPlayer.hand.length;
                     const center = (totalCards - 1) / 2;
-                    const offset = (index - center) * 70;
-                    const rotation = (index - center) * 2;
-                    // Z-index: las cartas del centro tienen mayor prioridad para evitar que queden por debajo
+                    const offset = (index - center) * 80; // Mayor separación
+                    const rotation = (index - center) * 3;
+                    // Z-index: las cartas del centro tienen el MAYOR z-index
                     const distanceFromCenter = Math.abs(index - center);
-                    const baseZIndex = totalCards - Math.floor(distanceFromCenter);
+                    const baseZIndex = 50 - Math.floor(distanceFromCenter * 2);
 
                     return (
                       <div
@@ -451,7 +444,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                           transform: `translateX(${offset}px) rotate(${rotation}deg)`,
                           zIndex: selectedCardId === card.id ? 100 : baseZIndex,
                           ['--card-x' as any]: `${offset}px`,
-                          ['--card-rotation' as any]: `${rotation}deg`
+                          ['--card-rotation' as any]: `${rotation}deg`,
+                          pointerEvents: 'auto'
                         }}
                         onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
                       >
@@ -1106,27 +1100,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           margin: 0;
         }
 
-        .direction-badge {
-          position: absolute;
-          top: 0.5em;
-          right: 0.5em;
-          background: rgba(76, 175, 80, 0.95);
-          width: 2.5em;
-          height: 2.5em;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px solid white;
-          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.5);
-        }
-
-        .dir-icon {
-          font-size: 1.5em;
-          color: white;
-          font-weight: 900;
-        }
-
         /* Your Hand */
         .your-hand-area {
           display: flex;
@@ -1138,7 +1111,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .your-cards-row {
           position: relative;
           height: 8em;
-          min-width: 25em;
+          min-width: 30em;
           display: flex;
           align-items: center;
           justify-content: center;
