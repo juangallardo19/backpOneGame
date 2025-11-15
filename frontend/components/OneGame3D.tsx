@@ -271,13 +271,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           </div>
 
           {/* Chat Panel */}
-          {showChat && (
-            <div className="panel chat-panel">
-              <div className="chat-container-wrapper">
-                <GameChat isMinimized={false} onToggleMinimize={() => setShowChat(false)} />
-              </div>
+          <div className="panel chat-panel">
+            <div className="chat-container-wrapper">
+              <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
             </div>
-          )}
+          </div>
         </aside>
 
         {/* Game Board */}
@@ -439,6 +437,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                     const center = (totalCards - 1) / 2;
                     const offset = (index - center) * 70;
                     const rotation = (index - center) * 2;
+                    // Z-index: las cartas del centro tienen mayor prioridad para evitar que queden por debajo
+                    const distanceFromCenter = Math.abs(index - center);
+                    const baseZIndex = totalCards - Math.floor(distanceFromCenter);
 
                     return (
                       <div
@@ -448,7 +449,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                         } ${selectedCardId === card.id ? 'card-selected' : ''}`}
                         style={{
                           transform: `translateX(${offset}px) rotate(${rotation}deg)`,
-                          zIndex: selectedCardId === card.id ? 100 : index,
+                          zIndex: selectedCardId === card.id ? 100 : baseZIndex,
                           ['--card-x' as any]: `${offset}px`,
                           ['--card-rotation' as any]: `${rotation}deg`
                         }}
@@ -1162,6 +1163,12 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .card-disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          pointer-events: auto;
+        }
+
+        .card-playable {
+          cursor: pointer;
+          pointer-events: auto;
         }
 
         /* Modal */
