@@ -4,15 +4,17 @@
  * GameResultsModal - Modal que muestra la tabla de resultados al finalizar el juego
  *
  * Características:
+ * - Muestra animación de victoria durante 3 segundos
  * - Muestra la tabla de posiciones ordenada
  * - Indica puntos ganados por cada jugador
  * - Destaca al ganador
  * - Permite volver a la sala
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameEndResult, PlayerResult } from '@/types/game.types';
 import { Trophy, Medal, Crown, Star, Users, Clock, Target } from 'lucide-react';
+import VictoryAnimation from './VictoryAnimation';
 
 interface GameResultsModalProps {
   results: GameEndResult;
@@ -20,6 +22,16 @@ interface GameResultsModalProps {
 }
 
 const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose }) => {
+  const [showAnimation, setShowAnimation] = useState(true);
+
+  useEffect(() => {
+    // Después de 3 segundos, ocultar la animación y mostrar la tabla
+    const timer = setTimeout(() => {
+      setShowAnimation(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
   /**
    * Get medal icon based on position
    */
@@ -56,9 +68,19 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
     return 'text-gray-400';
   };
 
+  // Si se está mostrando la animación, renderizar solo la animación
+  if (showAnimation) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+        <VictoryAnimation />
+      </div>
+    );
+  }
+
+  // Después de 3 segundos, mostrar la tabla de resultados
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl mx-4 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 rounded-2xl shadow-2xl border-2 border-purple-500/30 overflow-hidden">
+      <div className="relative w-full max-w-2xl mx-4 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 rounded-2xl shadow-2xl border-2 border-purple-500/30 overflow-hidden animate-fadeIn">
 
         {/* Confetti effect overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 via-transparent to-transparent pointer-events-none" />
@@ -153,6 +175,23 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
           </button>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        :global(.animate-fadeIn) {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
