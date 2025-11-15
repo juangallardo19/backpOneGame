@@ -25,14 +25,22 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   const { user } = useAuth();
 
   // Verificar si el usuario actual es el ganador
-  // Convertir ambos valores a string para comparación (maneja tanto number como string)
-  const isCurrentUserWinner = user && results.winnerId !== null &&
-    String(results.winnerId) === String(user.id);
+  // Lógica híbrida que funciona para usuarios autenticados e invitados:
+  // 1. Si hay winnerId (usuario autenticado ganó), comparar por ID
+  // 2. Si winnerId es null (invitado o bot ganó), comparar por nickname
+  const isCurrentUserWinner = user && (
+    // Usuario autenticado ganador: comparar por userId
+    (results.winnerId !== null && String(results.winnerId) === String(user.id)) ||
+    // Invitado ganador: comparar por nickname (cuando winnerId es null)
+    (results.winnerId === null && results.winnerNickname === user.nickname)
+  );
 
   // Debug log para verificar la comparación
   console.log('🏆 Victory Animation Debug:');
   console.log('   - User ID:', user?.id, '(type:', typeof user?.id, ')');
+  console.log('   - User Nickname:', user?.nickname);
   console.log('   - Winner ID:', results.winnerId, '(type:', typeof results.winnerId, ')');
+  console.log('   - Winner Nickname:', results.winnerNickname);
   console.log('   - Is Current User Winner:', isCurrentUserWinner);
 
   const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
