@@ -40,7 +40,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true);
-  const [perspective, setPerspective] = useState(true);
+  const [perspective, setPerspective] = useState(false); // Desactivada por defecto para probar
 
   // Get current player from gameState
   const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
@@ -428,12 +428,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                     const canPlay = canPlayCard(card);
                     const totalCards = currentPlayer.hand.length;
                     const center = (totalCards - 1) / 2;
-                    const offset = (index - center) * 60; // Separación reducida
+                    const offset = (index - center) * 60; // Separación de 60px
                     const rotation = (index - center) * 3;
-                    // Z-index INVERTIDO: las cartas del centro tienen el MAYOR z-index
-                    // Calculamos distancia del centro y damos mayor prioridad a las cercanas
+                    // Z-index: las cartas del centro tienen el MAYOR z-index
                     const distanceFromCenter = Math.abs(index - center);
-                    const baseZIndex = 100 - distanceFromCenter * 5;
+                    const baseZIndex = 50 - Math.floor(distanceFromCenter * 2);
 
                     return (
                       <div
@@ -443,10 +442,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                         } ${selectedCardId === card.id ? 'card-selected' : ''}`}
                         style={{
                           transform: `translateX(${offset}px) rotate(${rotation}deg)`,
-                          zIndex: selectedCardId === card.id ? 200 : baseZIndex,
+                          zIndex: selectedCardId === card.id ? 100 : baseZIndex,
+                          ['--card-x' as any]: `${offset}px`,
+                          ['--card-rotation' as any]: `${rotation}deg`,
+                          pointerEvents: 'auto'
                         }}
                         onClick={(e) => {
-                          e.stopPropagation();
+                          console.log('Card clicked:', index, card.id, 'canPlay:', canPlay, 'isMyTurn:', isMyTurn);
                           if (canPlay && isMyTurn) {
                             handlePlayCard(card.id);
                           }
@@ -883,6 +885,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .section-bottom {
           grid-column: 2;
           grid-row: 3;
+          overflow: visible;
         }
 
         /* Player Cards Areas */
@@ -1109,15 +1112,23 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           flex-direction: column;
           align-items: center;
           gap: 0.5rem;
+          width: 100%;
+          overflow: visible;
         }
 
         .your-cards-row {
           position: relative;
-          height: 8em;
-          min-width: 25em;
+          height: 10em;
+          width: 100%;
+          min-width: 40em;
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: visible;
+        }
+
+        .game-card {
+          pointer-events: auto;
         }
 
         .card-playable {
@@ -1126,13 +1137,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         .card-playable:hover {
-          transform: translateY(-2em) scale(1.05) !important;
           z-index: 1000 !important;
-          filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7));
+          filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7)) brightness(1.1);
         }
 
         .card-selected {
-          transform: translateY(-2.5em) scale(1.08) !important;
           filter: drop-shadow(0 8px 18px rgba(59, 130, 246, 0.8));
           z-index: 999 !important;
         }
