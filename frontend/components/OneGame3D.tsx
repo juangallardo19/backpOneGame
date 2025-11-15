@@ -4,19 +4,23 @@
  * OneGame3D - 3D Game Board Component (Backend Connected)
  * RF24-RF39: Gameplay with backend integration
  *
+ * This component renders the game using GameContext (backend state)
+ * instead of local game logic.
+ *
  * Features:
- * - 3D UNO-style card visualization
+ * - 3D card visualization
  * - Real-time game state from WebSocket
  * - Connected to GameContext for all actions
  * - Chat integration (LEFT)
  * - Player stats table (LEFT)
  * - ONE button (RIGHT)
+ * - Emotes support
  */
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Hand, MessageCircle, Smile } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -30,21 +34,50 @@ interface OneGame3DProps {
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
   const router = useRouter();
-  const { gameState, playCard, drawCard, callUno, gameResults, clearGameResults } = useGame();
+  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote, isMyTurn: isMyTurnFn, gameResults, clearGameResults, room } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [playerEmojis, setPlayerEmojis] = useState<Record<string, string>>({});
 
+  // Get current player from gameState
   const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
-  const isMyTurn = useGame().isMyTurn();
+  // FIXED: Use the isMyTurn function from context instead of comparing user.id
+  // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
+  const isMyTurn = isMyTurnFn();
+
+  // Check if current turn player is a bot
   const currentTurnPlayer = gameState?.players?.find(p => p.id === gameState?.currentTurnPlayerId);
   const isBotTurn = currentTurnPlayer?.isBot || false;
+
+  // Check if player should call ONE
   const shouldCallUno = currentPlayer && currentPlayer.hand.length === 1 && !currentPlayer.calledOne;
 
-  // Handle card play
+  // Log gameState changes
+  useEffect(() => {
+    console.log('🎮 ========== ONE GAME 3D - GAMESTATE UPDATED ==========');
+    console.log('  📊 gameState:', gameState);
+    console.log('  👤 user:', user);
+    console.log('  🎴 currentPlayer:', currentPlayer);
+    console.log('  🃏 currentPlayer.hand:', currentPlayer?.hand);
+    console.log('  📏 hand size:', currentPlayer?.hand?.length);
+    console.log('  🎯 isMyTurn:', isMyTurn);
+    console.log('  🎲 currentTurnPlayerId:', gameState?.currentTurnPlayerId);
+    console.log('  🆔 currentPlayer.id:', currentPlayer?.id);
+    if (currentPlayer?.hand) {
+      console.log('  🎴 Cards in hand:');
+      for (const card of currentPlayer.hand) {
+        console.log(`    - ${card.color} ${card.value} (${card.id})`);
+      }
+    }
+    console.log('✅ =================================================');
+  }, [gameState, currentPlayer, isMyTurn, user]);
+
+  // RF24-RF39: Handle card play
   const handlePlayCard = async (cardId: string) => {
     if (!isMyTurn) {
       showError("Not your turn", "Wait for your turn to play");
@@ -54,6 +87,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     const card = currentPlayer?.hand.find(c => c.id === cardId);
     if (!card) return;
 
+    // If it's a wild card (RF26: Choose color after wild)
     if (card.color === 'WILD') {
       setSelectedCardId(cardId);
       setShowColorPicker(true);
@@ -61,14 +95,18 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
 
     try {
+      // RF27: Validate card can be played (backend will validate)
+      // RF31: Play special card
       await playCard(cardId);
-      success("Card played", `Played ${card.color} ${getCardSymbol(card)}`);
+      const cardDisplay = getCardSymbol(card);
+      success("Card played", `Played ${card.color} ${cardDisplay}`);
       setSelectedCardId(null);
     } catch (error: any) {
       showError("Cannot play card", error.message || "Invalid move");
     }
   };
 
+  // RF26: Choose color for wild cards
   const handleChooseColor = async (color: 'RED' | 'YELLOW' | 'GREEN' | 'BLUE') => {
     if (!selectedCardId) return;
 
@@ -82,20 +120,32 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
+  // RF24-RF39: Handle draw card
   const handleDrawCard = async () => {
+    console.log('📥 ========== HANDLE DRAW CARD ==========');
+    console.log('  🎯 isMyTurn:', isMyTurn);
+    console.log('  👤 user:', user);
+    console.log('  🎮 gameState:', gameState);
+
     if (!isMyTurn) {
+      console.log('  ❌ Not your turn');
       showError("Not your turn", "Wait for your turn to draw");
       return;
     }
 
     try {
+      console.log('  📤 Calling drawCard()...');
       await drawCard();
+      console.log('  ✅ drawCard() completed');
       success("Card drawn", "You drew a card");
     } catch (error: any) {
+      console.error('  ❌ Error in drawCard():', error);
       showError("Error", error.message || "Could not draw card");
     }
+    console.log('✅ =================================================');
   };
 
+  // RF32: Call ONE!
   const handleCallOne = async () => {
     try {
       await callUno();
@@ -105,8 +155,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
+  // Handle close game results modal
   const handleCloseGameResults = () => {
+    console.log('🔙 Closing game results modal and returning to previous page');
     clearGameResults();
+    // Use onBack callback if available, otherwise go home
     if (onBack) {
       onBack();
     } else {
@@ -114,18 +167,60 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
+  // Available emojis
+  const availableEmojis = ['😀', '😂', '😎', '🔥', '👍', '❤️', '😮', '😤', '🎉', '💪', '🤔', '👏'];
+
+  // Handle send emote
+  const handleSendEmote = (emoji: string) => {
+    sendEmote(emoji);
+    setShowEmojiPicker(false);
+
+    // Show emoji on player for 3 seconds
+    if (currentPlayer?.id) {
+      setPlayerEmojis(prev => ({ ...prev, [currentPlayer.id]: emoji }));
+      setTimeout(() => {
+        setPlayerEmojis(prev => {
+          const newEmojis = { ...prev };
+          delete newEmojis[currentPlayer.id];
+          return newEmojis;
+        });
+      }, 3000);
+    }
+  };
+
+  // Listen to emotes from other players
+  useEffect(() => {
+    const latestMessage = chatMessages[chatMessages.length - 1];
+    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.playerId !== currentPlayer?.id) {
+      // Show emoji on that player
+      if (latestMessage.playerId) {
+        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
+        setTimeout(() => {
+          setPlayerEmojis(prev => {
+            const newEmojis = { ...prev };
+            delete newEmojis[latestMessage.playerId];
+            return newEmojis;
+          });
+        }, 3000);
+      }
+    }
+  }, [chatMessages, currentPlayer?.id]);
+
+  // Get card color class
   const getCardColorClass = (color: string) => {
     switch (color) {
-      case 'RED': return 'red';
-      case 'YELLOW': return 'yellow';
-      case 'GREEN': return 'green';
-      case 'BLUE': return 'blue';
-      case 'WILD': return 'wild';
+      case 'RED': return 'card-red';
+      case 'YELLOW': return 'card-yellow';
+      case 'GREEN': return 'card-green';
+      case 'BLUE': return 'card-blue';
+      case 'WILD': return 'card-wild';
       default: return '';
     }
   };
 
+  // Get card symbol based on type (fixed to use type instead of value)
   const getCardSymbol = (card: Card) => {
+    // For special cards, use type to determine symbol
     switch (card.type) {
       case 'SKIP':
         return '⊘';
@@ -134,7 +229,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       case 'DRAW_TWO':
         return '+2';
       case 'WILD':
-        return 'W';
+        return '🎨';
       case 'WILD_DRAW_FOUR':
         return '+4';
       case 'NUMBER':
@@ -144,23 +239,28 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
+  // Helper to check if card can be played
   const canPlayCard = (card: Card) => {
-    if (!gameState?.topCard) return true;
+    if (!gameState?.topCard) return true; // First card can be anything
 
     const topCard = gameState.topCard;
 
+    // Wild cards can always be played
     if (card.color === 'WILD' || card.type === 'WILD') {
       return true;
     }
 
+    // Match color
     if (card.color === topCard.color) {
       return true;
     }
 
+    // Match value
     if (card.value === topCard.value) {
       return true;
     }
 
+    // Match type (for action cards)
     if (card.type === topCard.type && card.type !== 'NUMBER') {
       return true;
     }
@@ -168,37 +268,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     return false;
   };
 
-  // Render UNO-style card
-  const renderCard = (card: Card, isPlayable: boolean = false) => {
-    const colorClass = getCardColorClass(card.color);
-    const typeClass = card.type === 'NUMBER' ? `num-${card.value}` : card.type.toLowerCase().replace('_', '');
-
-    return (
-      <div
-        className={`uno-card ${colorClass} ${typeClass} ${isPlayable ? 'playable' : ''} ${selectedCardId === card.id ? 'selected' : ''}`}
-        onClick={() => isPlayable && isMyTurn ? handlePlayCard(card.id) : null}
-      >
-        <span className="inner">
-          <span className="mark">
-            {card.type === 'NUMBER' && card.value}
-            {card.type === 'DRAW_TWO' && <img src="https://i.imgur.com/cTuf7k2.png" width="35" alt="+2" />}
-            {card.type === 'WILD_DRAW_FOUR' && <img src="https://i.imgur.com/TRL52hU.png" width="62" alt="+4" />}
-            {card.type === 'SKIP' && <img src="https://i.imgur.com/xgledxW.png" width="69" alt="Skip" />}
-            {card.type === 'REVERSE' && <img src="https://i.imgur.com/nGLZ5hB.png" width="48" alt="Reverse" />}
-            {card.type === 'WILD' && (
-              <div className="squareContainer">
-                <div className="square"></div>
-                <div className="square"></div>
-                <div className="square"></div>
-                <div className="square"></div>
-              </div>
-            )}
-          </span>
-        </span>
-      </div>
-    );
-  };
-
+  // Loading state
   if (!gameState) {
     return (
       <div className="game-loading">
@@ -228,9 +298,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
               ? "🎯 Your Turn!"
               : isBotTurn
                 ? `🤖 ${currentTurnPlayer?.nickname} thinking...`
-                : `Waiting for ${currentTurnPlayer?.nickname || "player"}...`
+                : `Waiting for ${gameState.currentPlayer?.nickname || "player"}...`
             }
           </p>
+        </div>
+
+        <div className="game-actions">
+          {/* RF50: Emoji button */}
+          <Button
+            onClick={() => setShowEmojiPicker(true)}
+            className="emoji-btn"
+            variant="outline"
+          >
+            <Smile className="mr-2" size={18} />
+            Emojis
+          </Button>
         </div>
       </div>
 
@@ -293,7 +375,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         <div className="other-players">
           {gameState.players
             ?.filter(p => p.id !== currentPlayer?.id)
-            .map((player) => (
+            .map((player, idx) => (
               <div key={player.id} className="player-card">
                 <div className="player-info">
                   <span className="player-name">{player.nickname}</span>
@@ -301,6 +383,10 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 </div>
                 {gameState.currentTurnPlayerId === player.id && (
                   <div className="turn-indicator">🎯</div>
+                )}
+                {/* RF50: Show emoji on player profile */}
+                {playerEmojis[player.id] && (
+                  <div className="player-emoji">{playerEmojis[player.id]}</div>
                 )}
               </div>
             ))}
@@ -317,7 +403,12 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           </div>
 
           <div className="discard-pile">
-            {gameState.topCard && renderCard(gameState.topCard, false)}
+            {gameState.topCard && (
+              <div className={`pile-card ${getCardColorClass(gameState.topCard.color)}`}>
+                <div className="card-value">{getCardSymbol(gameState.topCard)}</div>
+                <div className="card-color">{gameState.topCard.color}</div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -326,10 +417,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <div className="hand-title">Your Hand ({currentPlayer?.hand.length || 0} cards)</div>
           <div className="hand-cards">
             {currentPlayer?.hand.map((card) => {
+              // FIXED: Use local canPlayCard function instead of playableCardIds
               const canPlay = canPlayCard(card);
+
               return (
-                <div key={card.id} className="hand-card-wrapper">
-                  {renderCard(card, canPlay && isMyTurn)}
+                <div
+                  key={card.id}
+                  className={`hand-card ${getCardColorClass(card.color)} ${
+                    canPlay && isMyTurn ? 'playable' : 'disabled'
+                  } ${selectedCardId === card.id ? 'selected' : ''}`}
+                  onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
+                >
+                  <div className="card-value-small">{getCardSymbol(card)}</div>
+                  <div className="card-symbol">
+                    {getCardSymbol(card)}
+                  </div>
                 </div>
               );
             })}
@@ -349,7 +451,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
       </div>
 
-      {/* Color Picker Modal */}
+      {/* Color Picker Modal (RF26) */}
       {showColorPicker && (
         <div className="color-picker-modal">
           <div className="modal-content">
@@ -378,9 +480,33 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </div>
       )}
 
-      <style jsx>{`
-        @import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:900);
+      {/* Emoji Picker Modal (RF50) */}
+      {showEmojiPicker && (
+        <div className="emoji-picker-modal">
+          <div className="modal-content emoji-modal">
+            <h3>Send an Emoji</h3>
+            <div className="emoji-grid">
+              {availableEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  className="emoji-option"
+                  onClick={() => handleSendEmote(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowEmojiPicker(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
+      <style jsx>{`
         .one-game-3d {
           position: fixed;
           inset: 0;
@@ -429,162 +555,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           }
         }
 
-        /* ========== UNO CARD STYLES ========== */
-        .uno-card {
-          width: 80px;
-          height: 120px;
-          background: #fff;
-          border-radius: 5px;
-          display: table;
-          box-sizing: border-box;
-          padding: 4px;
-          font-family: "Source Sans Pro", sans-serif;
-          font-size: 68px;
-          text-shadow: 1px 1px 0 #000000, -1px -1px 0 #000000, -1px 1px 0 #000000,
-            1px -1px 0 #000000, 1px 0 0 #000000, -1px 0 0 #000000, 0 -1px 0 #000000,
-            0 1px 0 #000000, 3px 3px 0 #000000;
-          box-shadow: 0 0 7px #aaaaaa;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
-          color: #fff;
-          transition: all 0.3s;
-          cursor: pointer;
-        }
-
-        .uno-card .inner {
-          display: table-cell;
-          vertical-align: middle;
-          border-radius: 5px;
-          overflow: hidden;
-        }
-
-        .uno-card .mark {
-          display: inline-block;
-          vertical-align: middle;
-          margin: auto;
-          padding: 0 18px;
-          border-radius: 70px 42px / 84px 42px;
-          line-height: 1.4;
-          position: relative;
-          height: 85%;
-          width: 51%;
-          overflow: hidden;
-          border: solid 5px #fff;
-          left: -4%;
-        }
-
-        .uno-card .mark img {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        }
-
-        .uno-card:before,
-        .uno-card:after {
-          display: inline-block;
-          position: absolute;
-          line-height: 0;
-          font-size: 14px;
-          color: #ffffff;
-          text-shadow: 1px 1px 0 #000000, -1px -1px 0 #000000, -1px 1px 0 #000000,
-            1px -1px 0 #000000, 1px 0 0 #000000, -1px 0 0 #000000, 0 -1px 0 #000000,
-            0 1px 0 #000000, 1px 1px 0 #000000;
-        }
-
-        .uno-card:before {
-          top: 10px;
-          left: 7px;
-        }
-
-        .uno-card:after {
-          bottom: 10px;
-          right: 7px;
-          transform: rotate(180deg);
-        }
-
-        .uno-card.num-0:before, .uno-card.num-0:after { content: "0"; }
-        .uno-card.num-1:before, .uno-card.num-1:after { content: "1"; }
-        .uno-card.num-2:before, .uno-card.num-2:after { content: "2"; }
-        .uno-card.num-3:before, .uno-card.num-3:after { content: "3"; }
-        .uno-card.num-4:before, .uno-card.num-4:after { content: "4"; }
-        .uno-card.num-5:before, .uno-card.num-5:after { content: "5"; }
-        .uno-card.num-6:before, .uno-card.num-6:after { content: "6"; }
-        .uno-card.num-7:before, .uno-card.num-7:after { content: "7"; }
-        .uno-card.num-8:before, .uno-card.num-8:after { content: "8"; }
-        .uno-card.num-9:before, .uno-card.num-9:after { content: "9"; }
-        .uno-card.drawtwo:before, .uno-card.drawtwo:after { content: "+2"; }
-        .uno-card.wilddrawfour:before, .uno-card.wilddrawfour:after { content: "+4"; }
-
-        .uno-card.num-6 .mark:after,
-        .uno-card.num-9 .mark:after {
-          display: block;
-          content: "";
-          position: relative;
-          top: -17px;
-          left: 3px;
-          width: 80%;
-          border: 1px solid #000000;
-          height: 3px;
-          box-shadow: 1px 1px 0 #000000;
-        }
-
-        .uno-card.num-6.blue .mark:after,
-        .uno-card.num-9.blue .mark:after { background: #0063b3; }
-        .uno-card.num-6.green .mark:after,
-        .uno-card.num-9.green .mark:after { background: #18a849; }
-        .uno-card.num-6.red .mark:after,
-        .uno-card.num-9.red .mark:after { background: #c72a18; }
-        .uno-card.num-6.yellow .mark:after,
-        .uno-card.num-9.yellow .mark:after { background: #e6ca1e; }
-
-        .squareContainer {
-          display: flex;
-          height: calc(100% - 20px);
-          width: calc(100% - 20px);
-          position: absolute;
-          left: 10px;
-          top: 10px;
-          flex-wrap: wrap;
-          transform: skewX(-13deg);
-          border-radius: 50px 60px;
-          overflow: hidden;
-        }
-
-        .square {
-          width: 50%;
-          height: 50%;
-        }
-
-        .square:nth-child(1) { background-color: #18A849; }
-        .square:nth-child(2) { background-color: #E6CA1E; }
-        .square:nth-child(3) { background-color: #0063B3; }
-        .square:nth-child(4) { background-color: #C72A18; }
-
-        /* Card colors */
-        .uno-card.blue .inner { background-color: #0063B3; }
-        .uno-card.red .inner { background-color: #C72A18; }
-        .uno-card.green .inner { background-color: #18A849; }
-        .uno-card.yellow .inner { background-color: #E6CA1E; }
-        .uno-card.wild .inner { background-color: #201917; }
-
-        .uno-card.playable {
-          transform: translateY(-10px);
-          box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
-        }
-
-        .uno-card.playable:hover {
-          transform: translateY(-15px) scale(1.05);
-          box-shadow: 0 0 30px rgba(76, 175, 80, 1);
-        }
-
-        .uno-card.selected {
-          transform: translateY(-20px) scale(1.1);
-          box-shadow: 0 0 30px rgba(33, 150, 243, 1);
-        }
-
-        /* ========== LEFT SIDEBAR ========== */
+        /* LEFT SIDEBAR: Chat + Player Stats */
         .left-sidebar {
           position: fixed;
           left: 0;
@@ -674,7 +645,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           overflow: hidden;
         }
 
-        /* ========== RIGHT SIDEBAR ========== */
+        /* RIGHT SIDEBAR: UNO Button */
         .right-sidebar {
           position: fixed;
           right: 20px;
@@ -768,7 +739,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           text-align: center;
         }
 
-        /* ========== GAME BOARD ========== */
         .game-board {
           position: absolute;
           left: 320px;
@@ -839,6 +809,23 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           }
         }
 
+        .player-emoji {
+          position: absolute;
+          bottom: -10px;
+          right: -10px;
+          font-size: 2rem;
+          animation: emoji-bounce 0.5s;
+        }
+
+        @keyframes emoji-bounce {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.3);
+          }
+        }
+
         .center-area {
           display: flex;
           gap: 3rem;
@@ -905,9 +892,43 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           white-space: nowrap;
         }
 
+        .card-value, .card-color {
+          font-weight: 800;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-value {
+          font-size: 3rem;
+        }
+
+        .card-color {
+          font-size: 0.9rem;
+          opacity: 0.8;
+        }
+
+        .card-red {
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        .card-yellow {
+          background: linear-gradient(135deg, #feca57 0%, #ee5a6f 100%);
+        }
+
+        .card-green {
+          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .card-blue {
+          background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+
+        .card-wild {
+          background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+        }
+
         .player-hand {
           width: 100%;
-          max-width: 900px;
+          max-width: 800px;
         }
 
         .hand-title {
@@ -924,8 +945,54 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           flex-wrap: wrap;
         }
 
-        .hand-card-wrapper {
+        .hand-card {
+          width: 80px;
+          height: 120px;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
           transition: all 0.3s;
+          border: 2px solid white;
+          cursor: pointer;
+          position: relative;
+        }
+
+        .hand-card.playable {
+          transform: translateY(-10px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(76, 175, 80, 0.6);
+          border-color: #4CAF50;
+        }
+
+        .hand-card.playable:hover {
+          transform: translateY(-15px) scale(1.05);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(76, 175, 80, 0.8);
+        }
+
+        .hand-card.disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .hand-card.selected {
+          transform: translateY(-20px) scale(1.1);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 30px rgba(33, 150, 243, 0.8);
+          border-color: #2196F3;
+        }
+
+        .card-value-small {
+          font-size: 0.8rem;
+          font-weight: 700;
+          position: absolute;
+          top: 5px;
+          left: 5px;
+        }
+
+        .card-symbol {
+          font-size: 2rem;
+          font-weight: 800;
         }
 
         .game-stats {
@@ -954,8 +1021,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           font-size: 1.1rem;
         }
 
-        /* ========== MODALS ========== */
-        .color-picker-modal {
+        .color-picker-modal, .emoji-picker-modal {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.8);
@@ -1001,12 +1067,44 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           transform: scale(1.05);
         }
 
-        .color-btn-red { background: #C72A18; }
-        .color-btn-yellow { background: #E6CA1E; }
-        .color-btn-green { background: #18A849; }
-        .color-btn-blue { background: #0063B3; }
+        .color-btn-red {
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
 
-        /* ========== LOADING ========== */
+        .color-btn-yellow {
+          background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%);
+        }
+
+        .color-btn-green {
+          background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .color-btn-blue {
+          background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+
+        .emoji-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .emoji-option {
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          padding: 0.75rem;
+          font-size: 1.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .emoji-option:hover {
+          transform: scale(1.1);
+          background: rgba(255, 255, 255, 0.2);
+        }
+
         .game-loading {
           display: flex;
           flex-direction: column;
@@ -1024,7 +1122,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           border-top-color: white;
           border-radius: 50%;
           animation: spin 1s linear infinite;
-          margin-bottom: 1em;
+          margin-bottom: 1rem;
         }
 
         @keyframes spin {
