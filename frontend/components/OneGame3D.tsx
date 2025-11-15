@@ -428,11 +428,12 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                     const canPlay = canPlayCard(card);
                     const totalCards = currentPlayer.hand.length;
                     const center = (totalCards - 1) / 2;
-                    const offset = (index - center) * 80; // Mayor separación
+                    const offset = (index - center) * 60; // Separación reducida
                     const rotation = (index - center) * 3;
-                    // Z-index: las cartas del centro tienen el MAYOR z-index
+                    // Z-index INVERTIDO: las cartas del centro tienen el MAYOR z-index
+                    // Calculamos distancia del centro y damos mayor prioridad a las cercanas
                     const distanceFromCenter = Math.abs(index - center);
-                    const baseZIndex = 50 - Math.floor(distanceFromCenter * 2);
+                    const baseZIndex = 100 - distanceFromCenter * 5;
 
                     return (
                       <div
@@ -442,12 +443,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                         } ${selectedCardId === card.id ? 'card-selected' : ''}`}
                         style={{
                           transform: `translateX(${offset}px) rotate(${rotation}deg)`,
-                          zIndex: selectedCardId === card.id ? 100 : baseZIndex,
-                          ['--card-x' as any]: `${offset}px`,
-                          ['--card-rotation' as any]: `${rotation}deg`,
-                          pointerEvents: 'auto'
+                          zIndex: selectedCardId === card.id ? 200 : baseZIndex,
                         }}
-                        onClick={() => canPlay && isMyTurn ? handlePlayCard(card.id) : null}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canPlay && isMyTurn) {
+                            handlePlayCard(card.id);
+                          }
+                        }}
                       >
                         <div className="card-border-white">
                           <div className="card-inner-color">
@@ -1111,20 +1114,25 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .your-cards-row {
           position: relative;
           height: 8em;
-          min-width: 30em;
+          min-width: 25em;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
+        .card-playable {
+          cursor: pointer;
+          pointer-events: all !important;
+        }
+
         .card-playable:hover {
-          transform: translateX(var(--card-x, 0)) translateY(-2em) rotate(var(--card-rotation, 0)) scale(1.05) !important;
+          transform: translateY(-2em) scale(1.05) !important;
           z-index: 1000 !important;
           filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7));
         }
 
         .card-selected {
-          transform: translateX(var(--card-x, 0)) translateY(-2.5em) rotate(var(--card-rotation, 0)) scale(1.08) !important;
+          transform: translateY(-2.5em) scale(1.08) !important;
           filter: drop-shadow(0 8px 18px rgba(59, 130, 246, 0.8));
           z-index: 999 !important;
         }
@@ -1136,12 +1144,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .card-disabled {
           opacity: 0.6;
           cursor: not-allowed;
-          pointer-events: auto;
-        }
-
-        .card-playable {
-          cursor: pointer;
-          pointer-events: auto;
+          pointer-events: none !important;
         }
 
         /* Modal */
