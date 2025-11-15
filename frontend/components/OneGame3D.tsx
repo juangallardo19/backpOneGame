@@ -181,10 +181,10 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         <span className="inner">
           <span className="mark">
             {card.type === 'NUMBER' && card.value}
-            {card.type === 'DRAW_TWO' && <img src="https://i.imgur.com/cTuf7k2.png" width="50" alt="+2" />}
-            {card.type === 'WILD_DRAW_FOUR' && <img src="https://i.imgur.com/TRL52hU.png" width="90" alt="+4" />}
-            {card.type === 'SKIP' && <img src="https://i.imgur.com/xgledxW.png" width="100" alt="Skip" />}
-            {card.type === 'REVERSE' && <img src="https://i.imgur.com/nGLZ5hB.png" width="70" alt="Reverse" />}
+            {card.type === 'DRAW_TWO' && <img src="https://i.imgur.com/cTuf7k2.png" width="35" alt="+2" />}
+            {card.type === 'WILD_DRAW_FOUR' && <img src="https://i.imgur.com/TRL52hU.png" width="62" alt="+4" />}
+            {card.type === 'SKIP' && <img src="https://i.imgur.com/xgledxW.png" width="69" alt="Skip" />}
+            {card.type === 'REVERSE' && <img src="https://i.imgur.com/nGLZ5hB.png" width="48" alt="Reverse" />}
             {card.type === 'WILD' && (
               <div className="squareContainer">
                 <div className="square"></div>
@@ -431,19 +431,19 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         /* ========== UNO CARD STYLES ========== */
         .uno-card {
-          width: 116px;
-          height: 178px;
+          width: 80px;
+          height: 120px;
           background: #fff;
           border-radius: 5px;
           display: table;
           box-sizing: border-box;
-          padding: 5px;
+          padding: 4px;
           font-family: "Source Sans Pro", sans-serif;
-          font-size: 100px;
+          font-size: 68px;
           text-shadow: 1px 1px 0 #000000, -1px -1px 0 #000000, -1px 1px 0 #000000,
             1px -1px 0 #000000, 1px 0 0 #000000, -1px 0 0 #000000, 0 -1px 0 #000000,
-            0 1px 0 #000000, 4px 4px 0 #000000;
-          box-shadow: 0 0 10px #aaaaaa;
+            0 1px 0 #000000, 3px 3px 0 #000000;
+          box-shadow: 0 0 7px #aaaaaa;
           text-align: center;
           position: relative;
           overflow: hidden;
@@ -463,14 +463,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           display: inline-block;
           vertical-align: middle;
           margin: auto;
-          padding: 0 26px;
-          border-radius: 100px 60px / 120px 60px;
+          padding: 0 18px;
+          border-radius: 70px 42px / 84px 42px;
           line-height: 1.4;
           position: relative;
           height: 85%;
           width: 51%;
           overflow: hidden;
-          border: solid 7px #fff;
+          border: solid 5px #fff;
           left: -4%;
         }
 
@@ -486,21 +486,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           display: inline-block;
           position: absolute;
           line-height: 0;
-          font-size: 20px;
+          font-size: 14px;
           color: #ffffff;
           text-shadow: 1px 1px 0 #000000, -1px -1px 0 #000000, -1px 1px 0 #000000,
             1px -1px 0 #000000, 1px 0 0 #000000, -1px 0 0 #000000, 0 -1px 0 #000000,
-            0 1px 0 #000000, 2px 2px 0 #000000;
+            0 1px 0 #000000, 1px 1px 0 #000000;
         }
 
         .uno-card:before {
-          top: 15px;
-          left: 10px;
+          top: 10px;
+          left: 7px;
         }
 
         .uno-card:after {
-          bottom: 15px;
-          right: 10px;
+          bottom: 10px;
+          right: 7px;
           transform: rotate(180deg);
         }
 
@@ -522,11 +522,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           display: block;
           content: "";
           position: relative;
-          top: -25px;
-          left: 5px;
+          top: -17px;
+          left: 3px;
           width: 80%;
           border: 1px solid #000000;
-          height: 4px;
+          height: 3px;
           box-shadow: 1px 1px 0 #000000;
         }
 
