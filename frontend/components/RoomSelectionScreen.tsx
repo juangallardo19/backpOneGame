@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Plus, LogIn, Users, Lock, RefreshCw } from "lucide-react"
+import { ArrowLeft, Plus, LogIn, Users, Lock, RefreshCw, Unlock } from "lucide-react"
 import Image from "next/image"
-import OneCardsBackground from "@/components/OneCardsBackground"
+import GalaxySpiral from "@/components/GalaxySpiral"
 import { roomService } from "@/services/room.service"
 import { useNotification } from "@/contexts/NotificationContext"
 import { useGame } from "@/contexts/GameContext"
@@ -20,11 +20,19 @@ interface RoomSelectionScreenProps {
 
 export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, onBack }: RoomSelectionScreenProps) {
   const [showJoinRoom, setShowJoinRoom] = useState(false)
+  const [showCreateRoomForm, setShowCreateRoomForm] = useState(false)
   const [showPrivateCodeInput, setShowPrivateCodeInput] = useState(false)
   const [roomCode, setRoomCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [publicRooms, setPublicRooms] = useState<Room[]>([])
   const [isLoadingRooms, setIsLoadingRooms] = useState(false)
+
+  // Room creation form state
+  const [roomName, setRoomName] = useState("")
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [maxPlayers, setMaxPlayers] = useState(4)
+  const [turnTimeLimit, setTurnTimeLimit] = useState(60)
+
   const { success, error: showError } = useNotification()
   const { connectToGame } = useGame()
   const { user } = useAuth()
@@ -36,7 +44,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
       showPrivateCodeInput,
       shouldLoadRooms: showJoinRoom && !showPrivateCodeInput
     })
-    
+
     if (showJoinRoom && !showPrivateCodeInput) {
       console.log("🔄 Ejecutando loadPublicRooms automáticamente...")
       loadPublicRooms()
@@ -105,12 +113,13 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
     try {
       console.log("🏠 Creando nueva sala...")
 
-      // Crear sala en el backend
+      // Crear sala en el backend con los parámetros del formulario
       const newRoom = await roomService.createRoom({
-        isPrivate: false,
-        maxPlayers: 4,
+        name: roomName.trim() || undefined,
+        isPrivate: isPrivate,
+        maxPlayers: maxPlayers,
         initialHandSize: 7,
-        turnTimeLimit: 60,
+        turnTimeLimit: turnTimeLimit,
         allowStackingCards: true,
         pointsToWin: 500,
         allowBots: true,
@@ -231,9 +240,11 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
   return (
     <>
-      {/* Animated Cards Background - Outside container for proper layering */}
-      <OneCardsBackground />
-      
+      {/* Galaxy Spiral Background */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <GalaxySpiral />
+      </div>
+
       <div className="glass-room-selection-container">
         <span className="shine shine-top"></span>
         <span className="shine shine-bottom"></span>
@@ -255,21 +266,20 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           <h1 className="welcome-title">¡A JUGAR!</h1>
         </div>
 
-        {!showJoinRoom ? (
+        {/* Main Menu */}
+        {!showJoinRoom && !showCreateRoomForm ? (
           <>
             {/* Main Buttons */}
             <div className="room-options-container">
               <Button
                 size="lg"
                 className="room-option-button create-room-button glass-button group"
-                onClick={handleCreateRoom}
+                onClick={() => setShowCreateRoomForm(true)}
                 disabled={isLoading}
               >
                 <Plus className="mr-3 h-8 w-8 transition-transform group-hover:scale-110" />
                 <div className="flex flex-col items-start">
-                  <span className="text-2xl font-bold">
-                    {isLoading ? "CREANDO..." : "CREAR SALA"}
-                  </span>
+                  <span className="text-2xl font-bold">CREAR SALA</span>
                   <span className="text-sm font-normal opacity-90">Inicia un nuevo juego</span>
                 </div>
               </Button>
@@ -289,13 +299,109 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
             {/* Back Button */}
             <div className="absolute top-6 left-6 z-10">
-              <button 
+              <button
                 onClick={onBack}
                 className="glass-back-button flex items-center gap-3 px-6 py-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 <ArrowLeft className="w-6 h-6" />
                 <span className="text-xl font-semibold">VOLVER</span>
               </button>
+            </div>
+          </>
+        ) : showCreateRoomForm ? (
+          <>
+            {/* Create Room Form */}
+            <div className="create-room-form fade-in-up">
+              <h2 className="section-title">Crear Nueva Sala</h2>
+
+              <div className="form-group">
+                <label className="form-label">Nombre de la Sala (Opcional)</label>
+                <Input
+                  type="text"
+                  placeholder="Mi sala de ONE"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  maxLength={30}
+                  className="glass-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Privacidad</label>
+                <div className="privacy-toggle">
+                  <button
+                    className={`privacy-option ${!isPrivate ? 'active' : ''}`}
+                    onClick={() => setIsPrivate(false)}
+                    type="button"
+                  >
+                    <Unlock className="w-5 h-5" />
+                    <span>Pública</span>
+                  </button>
+                  <button
+                    className={`privacy-option ${isPrivate ? 'active' : ''}`}
+                    onClick={() => setIsPrivate(true)}
+                    type="button"
+                  >
+                    <Lock className="w-5 h-5" />
+                    <span>Privada</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Jugadores Máx.</label>
+                  <select
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                    className="glass-select"
+                  >
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Tiempo por Turno</label>
+                  <select
+                    value={turnTimeLimit}
+                    onChange={(e) => setTurnTimeLimit(Number(e.target.value))}
+                    className="glass-select"
+                  >
+                    <option value={30}>30s</option>
+                    <option value={60}>60s</option>
+                    <option value={90}>90s</option>
+                    <option value={120}>120s</option>
+                  </select>
+                </div>
+              </div>
+
+              <Button
+                size="lg"
+                className="create-submit-button glass-button bg-green-600 hover:bg-green-700 w-full"
+                onClick={handleCreateRoom}
+                disabled={isLoading}
+              >
+                <span className="text-2xl font-bold">
+                  {isLoading ? "CREANDO..." : "CREAR SALA"}
+                </span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="back-from-create-button glass-button bg-transparent text-white w-full mt-3"
+                onClick={() => {
+                  setShowCreateRoomForm(false)
+                  setRoomName("")
+                  setIsPrivate(false)
+                  setMaxPlayers(4)
+                  setTurnTimeLimit(60)
+                }}
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                VOLVER
+              </Button>
             </div>
           </>
         ) : !showPrivateCodeInput ? (
@@ -449,10 +555,10 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           --ease: cubic-bezier(0.5, 1, 0.89, 1);
 
           position: relative;
-          width: 90vw;
+          width: 90%;
           max-width: 600px;
-          min-height: 500px;
-          max-height: 90vh;
+          min-height: 60%;
+          max-height: 90%;
           display: flex;
           flex-direction: column;
           border-radius: var(--radius);
@@ -474,6 +580,22 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
             hsl(var(--hue2) 50% 4%) 0px 20px 36px -14px;
           overflow-y: auto;
           overflow-x: hidden;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .glass-room-selection-container {
+            width: 95%;
+            min-height: 70%;
+            max-height: 95%;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .glass-room-selection-container {
+            width: 98%;
+            min-height: 80%;
+          }
         }
 
         /* Custom scrollbar for main container */
@@ -681,28 +803,42 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           z-index: 10;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 5%;
           min-height: 100%;
-          padding-bottom: 1rem;
+          padding: 2% 0;
         }
 
         .logo-section {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 1rem;
+          gap: 2%;
           text-align: center;
-          margin-top: -6rem;
-          margin-bottom: 0rem;
+          margin-top: -10%;
+          margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+          .logo-section {
+            margin-top: -5%;
+          }
         }
 
         .uno-logo {
           object-fit: contain;
           filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+          width: 50%;
+          height: auto;
+        }
+
+        @media (max-width: 768px) {
+          .uno-logo {
+            width: 60%;
+          }
         }
 
         .welcome-title {
-          font-size: 1.5rem;
+          font-size: clamp(1.2rem, 4vw, 1.5rem);
           font-weight: 700;
           color: white;
           letter-spacing: 0.1em;
@@ -722,7 +858,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           align-items: center !important;
           justify-content: flex-start !important;
           width: 100%;
-          padding: 1rem;
+          padding: 4%;
           border-radius: 12px;
           background: rgba(0, 0, 0, 0.3) !important;
           color: white;
@@ -760,10 +896,131 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           border-color: rgba(59, 130, 246, 0.7) !important;
         }
 
-        .back-button {
-          padding: 0.75rem 2rem;
+        /* Create Room Form Styles */
+        .create-room-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          animation: fadeInUp 0.5s ease-in-out forwards;
+          flex: 1;
+          min-height: 0;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .form-label {
+          color: white;
           font-weight: 600;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
+          letter-spacing: 0.05em;
+        }
+
+        .privacy-toggle {
+          display: flex;
+          gap: 1rem;
+          width: 100%;
+        }
+
+        .privacy-option {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 3%;
+          background: rgba(0, 0, 0, 0.3);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.7);
+          font-weight: 600;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .privacy-option:hover {
+          background: rgba(0, 0, 0, 0.5);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .privacy-option.active {
+          background: rgba(59, 130, 246, 0.4);
+          border-color: rgba(59, 130, 246, 0.7);
+          color: white;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+
+        @media (max-width: 480px) {
+          .form-row {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .glass-select {
+          width: 100%;
+          padding: 3%;
+          font-size: clamp(0.9rem, 2.5vw, 1rem);
+          text-align: center;
+          font-weight: 600;
+          background: linear-gradient(to bottom, hsl(45 20% 20% / 0.2) 50%, hsl(45 50% 50% / 0.1) 180%);
+          border: 1px solid hsl(0 13% 18.5% / 0.5);
+          border-radius: 10px;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .glass-select:focus {
+          outline: none;
+          border-color: rgba(59, 130, 246, 0.7);
+          box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+          background: linear-gradient(to bottom, hsl(45 20% 25% / 0.3) 50%, hsl(45 50% 50% / 0.15) 180%);
+        }
+
+        .glass-select option {
+          background: hsl(220deg 25% 10%);
+          color: white;
+        }
+
+        .create-submit-button {
+          width: 100%;
+          padding: 4%;
+          font-size: clamp(1rem, 3vw, 1.125rem);
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .create-submit-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(16, 185, 129, 0.4);
+        }
+
+        .create-submit-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .back-from-create-button {
+          padding: 3%;
+          font-weight: 600;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
+        }
+
+        .back-button {
+          padding: 3%;
+          font-weight: 600;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
           width: 100%;
         }
 
@@ -778,7 +1035,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         .section-title {
-          font-size: 1.125rem;
+          font-size: clamp(1rem, 3vw, 1.125rem);
           font-weight: 600;
           color: white;
           text-align: center;
@@ -790,12 +1047,11 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           display: flex;
           flex-direction: column;
           gap: 1rem;
-          min-height: 300px;
-          max-height: 400px;
+          min-height: 40%;
+          max-height: 50%;
           overflow-y: auto;
           overflow-x: hidden;
-          padding: 1rem;
-          padding-right: 1.5rem;
+          padding: 3%;
           background: rgba(0, 0, 0, 0.2);
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -826,7 +1082,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           align-items: center;
           justify-content: center;
           gap: 0.75rem;
-          padding: 2rem 1rem;
+          padding: 10% 3%;
           color: rgba(255, 255, 255, 0.6);
           text-align: center;
           min-height: 200px;
@@ -834,14 +1090,14 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
         .empty-state p {
           margin: 0;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
         }
 
         .room-card {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1.25rem;
+          padding: 4%;
           background: rgba(0, 0, 0, 0.4) !important;
           border: 1px solid rgba(255, 255, 255, 0.2) !important;
           border-radius: 12px;
@@ -868,14 +1124,14 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         .room-name {
-          font-size: 1rem;
+          font-size: clamp(0.9rem, 2.5vw, 1rem);
           font-weight: 600;
           color: white;
           margin: 0;
         }
 
         .room-code {
-          font-size: 0.75rem;
+          font-size: clamp(0.7rem, 2vw, 0.75rem);
           font-weight: 700;
           color: rgba(59, 130, 246, 1);
           background: rgba(59, 130, 246, 0.2);
@@ -888,7 +1144,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           display: flex;
           align-items: center;
           gap: 1rem;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2vw, 0.875rem);
           color: rgba(255, 255, 255, 0.7);
         }
 
@@ -901,7 +1157,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         .room-status {
           padding: 0.25rem 0.5rem;
           border-radius: 4px;
-          font-size: 0.75rem;
+          font-size: clamp(0.7rem, 1.8vw, 0.75rem);
           font-weight: 600;
         }
 
@@ -921,8 +1177,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         .join-room-btn {
-          padding: 0.5rem 1.5rem;
-          font-size: 0.875rem;
+          padding: 2% 5%;
+          font-size: clamp(0.8rem, 2vw, 0.875rem);
           font-weight: 600;
           background: rgba(59, 130, 246, 0.3) !important;
           border-color: rgba(59, 130, 246, 0.5) !important;
@@ -948,7 +1204,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           align-items: center !important;
           justify-content: flex-start !important;
           width: 100%;
-          padding: 1rem;
+          padding: 3%;
           border-radius: 10px;
           background: rgba(139, 92, 246, 0.2) !important;
           border: 1px solid rgba(139, 92, 246, 0.4) !important;
@@ -962,20 +1218,7 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           transform: translateY(-2px);
         }
 
-        /* Form Styles */
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .form-label {
-          color: white;
-          font-weight: 600;
-          font-size: 0.875rem;
-          letter-spacing: 0.05em;
-        }
-
+        /* Code Input Styles */
         .code-input-group {
           position: relative;
           width: 100%;
@@ -983,8 +1226,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
         .code-input {
           width: 100%;
-          padding: 1rem;
-          font-size: 1.25rem;
+          padding: 4%;
+          font-size: clamp(1.1rem, 3vw, 1.25rem);
           text-align: center;
           letter-spacing: 0.15em;
           font-weight: 700;
@@ -1010,14 +1253,14 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           position: absolute;
           bottom: 0.5rem;
           right: 1rem;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2vw, 0.875rem);
           color: rgba(255, 255, 255, 0.6);
           font-weight: 600;
         }
 
         .code-info {
           text-align: center;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2vw, 0.875rem);
           color: rgba(255, 255, 255, 0.7);
         }
 
@@ -1027,8 +1270,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
         .join-submit-button {
           width: 100%;
-          padding: 1.25rem;
-          font-size: 1.125rem;
+          padding: 4%;
+          font-size: clamp(1rem, 3vw, 1.125rem);
           font-weight: 700;
           letter-spacing: 0.08em;
           border-radius: 10px;
@@ -1046,9 +1289,9 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         .back-from-join-button {
-          padding: 0.75rem 2rem;
+          padding: 3%;
           font-weight: 600;
-          font-size: 0.875rem;
+          font-size: clamp(0.8rem, 2.5vw, 0.875rem);
         }
 
         /* Animations */
