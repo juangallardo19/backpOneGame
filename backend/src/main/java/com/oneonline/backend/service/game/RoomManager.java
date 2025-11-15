@@ -183,8 +183,8 @@ public class RoomManager {
      * Leave a room
      *
      * If leader leaves:
-     * - Transfer leadership to another player
-     * - Or close room if no players left
+     * - Transfer leadership to another HUMAN player (not bots)
+     * - Or close room if no human players left
      *
      * @param roomCode Room code
      * @param player Player leaving
@@ -193,7 +193,11 @@ public class RoomManager {
     public Room leaveRoom(String roomCode, Player player) {
         Room room = gameManager.getRoom(roomCode);
 
-        // Remove player
+        // Capture old leader BEFORE removing player
+        Player oldLeader = room.getLeader();
+        boolean wasLeader = oldLeader != null && oldLeader.getPlayerId().equals(player.getPlayerId());
+
+        // Remove player (this will automatically call transferLeadership() if player was leader)
         room.removePlayerById(player.getPlayerId());
 
         // CRITICAL: Untrack user from room mapping
@@ -204,19 +208,28 @@ public class RoomManager {
         // NOTIFY: Player left room via WebSocket
         webSocketObserver.onPlayerLeft(player, room);
 
-        // If room empty, remove it
+        // If room empty (no human players left), remove it
         if (room.getPlayers().isEmpty()) {
             gameManager.removeRoom(roomCode);
             webSocketObserver.onRoomDeleted(room);
-            log.info("Room {} closed (no players)", roomCode);
+            log.info("Room {} closed (no human players left)", roomCode);
             return null;
         }
 
-        // If leader left, transfer leadership
-        if (room.getLeader().getPlayerId().equals(player.getPlayerId())) {
-            Player newLeader = room.getPlayers().get(0);
-            room.setLeader(newLeader);
-            log.info("Leadership transferred to {} in room {}", newLeader.getNickname(), roomCode);
+        // If leader left, notify the leadership transfer
+        // Note: transferLeadership() was already called in Room.removePlayer()
+        if (wasLeader) {
+            Player newLeader = room.getLeader();
+            if (newLeader != null) {
+                log.info("Leadership transferred from {} to {} in room {}",
+                        player.getNickname(), newLeader.getNickname(), roomCode);
+
+                // NOTIFY: Leadership transferred via WebSocket
+                webSocketObserver.onLeadershipTransferred(room, oldLeader, newLeader);
+            } else {
+                log.warn("No leader assigned after {} left room {} (only bots remaining?)",
+                        player.getNickname(), roomCode);
+            }
         }
 
         return room;

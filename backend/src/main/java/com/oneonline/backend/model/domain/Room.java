@@ -251,17 +251,24 @@ public class Room {
     }
 
     /**
-     * Transfer room leadership to the next player
+     * Transfer room leadership to the next HUMAN player
+     *
+     * Leadership is ONLY transferred to human players, NEVER to bots.
+     * If no human players remain, roomLeader is set to null.
+     *
+     * This method is automatically called when the current leader leaves the room.
      */
     public void transferLeadership() {
         if (roomLeader != null) {
             roomLeader.setRoomLeader(false);
         }
 
+        // Only transfer to HUMAN players (players list), never to bots
         if (!players.isEmpty()) {
             roomLeader = players.get(0);
             roomLeader.setRoomLeader(true);
         } else {
+            // No human players left, room will be closed by RoomManager
             roomLeader = null;
         }
     }
