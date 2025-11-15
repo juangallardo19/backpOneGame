@@ -25,7 +25,15 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   const { user } = useAuth();
 
   // Verificar si el usuario actual es el ganador
-  const isCurrentUserWinner = user && results.winnerId === user.id;
+  // Convertir ambos valores a string para comparación (maneja tanto number como string)
+  const isCurrentUserWinner = user && results.winnerId !== null &&
+    String(results.winnerId) === String(user.id);
+
+  // Debug log para verificar la comparación
+  console.log('🏆 Victory Animation Debug:');
+  console.log('   - User ID:', user?.id, '(type:', typeof user?.id, ')');
+  console.log('   - Winner ID:', results.winnerId, '(type:', typeof results.winnerId, ')');
+  console.log('   - Is Current User Winner:', isCurrentUserWinner);
 
   const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
 
