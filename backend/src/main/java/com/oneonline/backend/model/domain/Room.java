@@ -410,6 +410,8 @@ public class Room {
     /**
      * Remove player by ID (alias method for compatibility)
      *
+     * This method handles leadership transfer if the removed player was the leader.
+     *
      * @param playerId Player ID to remove
      * @return true if removed
      */
@@ -422,10 +424,11 @@ public class Room {
             return false;
         }
 
+        // Use the appropriate remove method which handles leadership transfer
         if (player instanceof BotPlayer) {
-            return bots.remove(player);
+            return removeBot((BotPlayer) player);
         }
-        return players.remove(player);
+        return removePlayer(player);
     }
 
     @Override
