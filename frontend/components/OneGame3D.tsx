@@ -1117,15 +1117,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           justify-content: center;
         }
 
+        .card-playable {
+          cursor: pointer;
+          pointer-events: all !important;
+          filter: brightness(1.2);
+        }
+
         .card-playable:hover {
           transform: translateX(var(--card-x, 0)) translateY(-2em) rotate(var(--card-rotation, 0)) scale(1.05) !important;
           z-index: 1000 !important;
-          filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7));
+          filter: drop-shadow(0 6px 15px rgba(76, 175, 80, 0.7)) brightness(1.3);
         }
 
         .card-selected {
           transform: translateX(var(--card-x, 0)) translateY(-2.5em) rotate(var(--card-rotation, 0)) scale(1.08) !important;
-          filter: drop-shadow(0 8px 18px rgba(59, 130, 246, 0.8));
+          filter: drop-shadow(0 8px 18px rgba(59, 130, 246, 0.8)) brightness(1.2);
           z-index: 999 !important;
         }
 
@@ -1134,14 +1140,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         .card-disabled {
-          opacity: 0.6;
+          filter: brightness(0.5);
           cursor: not-allowed;
-          pointer-events: auto;
-        }
-
-        .card-playable {
-          cursor: pointer;
-          pointer-events: auto;
+          pointer-events: none !important;
         }
 
         /* Modal */
