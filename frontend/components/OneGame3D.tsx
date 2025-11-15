@@ -14,13 +14,12 @@
  * - Chat integration (LEFT)
  * - Player stats table (LEFT)
  * - ONE button (RIGHT)
- * - Emotes support
  */
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Hand, MessageCircle, Smile } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -34,21 +33,18 @@ interface OneGame3DProps {
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
   const router = useRouter();
-  const { gameState, playCard, drawCard, callUno, chatMessages, sendEmote, isMyTurn: isMyTurnFn, gameResults, clearGameResults, room } = useGame();
+  const { gameState, playCard, drawCard, callUno, gameResults, clearGameResults } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(true);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [playerEmojis, setPlayerEmojis] = useState<Record<string, string>>({});
 
   // Get current player from gameState
   const currentPlayer: CurrentPlayer | null | undefined = gameState?.currentPlayer;
-  // FIXED: Use the isMyTurn function from context instead of comparing user.id
-  // user.id is the database user ID (e.g., "9"), but we need to compare player IDs (UUID)
-  const isMyTurn = isMyTurnFn();
+  // Use the isMyTurn function from context
+  const isMyTurn = useGame().isMyTurn();
 
   // Check if current turn player is a bot
   const currentTurnPlayer = gameState?.players?.find(p => p.id === gameState?.currentTurnPlayerId);
@@ -56,26 +52,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Check if player should call ONE
   const shouldCallUno = currentPlayer && currentPlayer.hand.length === 1 && !currentPlayer.calledOne;
-
-  // Log gameState changes
-  useEffect(() => {
-    console.log('🎮 ========== ONE GAME 3D - GAMESTATE UPDATED ==========');
-    console.log('  📊 gameState:', gameState);
-    console.log('  👤 user:', user);
-    console.log('  🎴 currentPlayer:', currentPlayer);
-    console.log('  🃏 currentPlayer.hand:', currentPlayer?.hand);
-    console.log('  📏 hand size:', currentPlayer?.hand?.length);
-    console.log('  🎯 isMyTurn:', isMyTurn);
-    console.log('  🎲 currentTurnPlayerId:', gameState?.currentTurnPlayerId);
-    console.log('  🆔 currentPlayer.id:', currentPlayer?.id);
-    if (currentPlayer?.hand) {
-      console.log('  🎴 Cards in hand:');
-      for (const card of currentPlayer.hand) {
-        console.log(`    - ${card.color} ${card.value} (${card.id})`);
-      }
-    }
-    console.log('✅ =================================================');
-  }, [gameState, currentPlayer, isMyTurn, user]);
 
   // RF24-RF39: Handle card play
   const handlePlayCard = async (cardId: string) => {
@@ -122,27 +98,17 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // RF24-RF39: Handle draw card
   const handleDrawCard = async () => {
-    console.log('📥 ========== HANDLE DRAW CARD ==========');
-    console.log('  🎯 isMyTurn:', isMyTurn);
-    console.log('  👤 user:', user);
-    console.log('  🎮 gameState:', gameState);
-
     if (!isMyTurn) {
-      console.log('  ❌ Not your turn');
       showError("Not your turn", "Wait for your turn to draw");
       return;
     }
 
     try {
-      console.log('  📤 Calling drawCard()...');
       await drawCard();
-      console.log('  ✅ drawCard() completed');
       success("Card drawn", "You drew a card");
     } catch (error: any) {
-      console.error('  ❌ Error in drawCard():', error);
       showError("Error", error.message || "Could not draw card");
     }
-    console.log('✅ =================================================');
   };
 
   // RF32: Call ONE!
@@ -157,7 +123,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Handle close game results modal
   const handleCloseGameResults = () => {
-    console.log('🔙 Closing game results modal and returning to previous page');
     clearGameResults();
     // Use onBack callback if available, otherwise go home
     if (onBack) {
@@ -166,45 +131,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       router.push('/');
     }
   };
-
-  // Available emojis
-  const availableEmojis = ['😀', '😂', '😎', '🔥', '👍', '❤️', '😮', '😤', '🎉', '💪', '🤔', '👏'];
-
-  // Handle send emote
-  const handleSendEmote = (emoji: string) => {
-    sendEmote(emoji);
-    setShowEmojiPicker(false);
-
-    // Show emoji on player for 3 seconds
-    if (currentPlayer?.id) {
-      setPlayerEmojis(prev => ({ ...prev, [currentPlayer.id]: emoji }));
-      setTimeout(() => {
-        setPlayerEmojis(prev => {
-          const newEmojis = { ...prev };
-          delete newEmojis[currentPlayer.id];
-          return newEmojis;
-        });
-      }, 3000);
-    }
-  };
-
-  // Listen to emotes from other players
-  useEffect(() => {
-    const latestMessage = chatMessages[chatMessages.length - 1];
-    if (latestMessage && latestMessage.type === 'EMOTE' && latestMessage.playerId !== currentPlayer?.id) {
-      // Show emoji on that player
-      if (latestMessage.playerId) {
-        setPlayerEmojis(prev => ({ ...prev, [latestMessage.playerId]: latestMessage.message }));
-        setTimeout(() => {
-          setPlayerEmojis(prev => {
-            const newEmojis = { ...prev };
-            delete newEmojis[latestMessage.playerId];
-            return newEmojis;
-          });
-        }, 3000);
-      }
-    }
-  }, [chatMessages, currentPlayer?.id]);
 
   // Get card color class
   const getCardColorClass = (color: string) => {
@@ -218,18 +144,17 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
   };
 
-  // Get card symbol based on type (fixed to use type instead of value)
+  // Get card symbol based on type
   const getCardSymbol = (card: Card) => {
-    // For special cards, use type to determine symbol
     switch (card.type) {
       case 'SKIP':
-        return '⊘';
+        return 'SKIP';
       case 'REVERSE':
-        return '⟲';
+        return 'REV';
       case 'DRAW_TWO':
         return '+2';
       case 'WILD':
-        return '🎨';
+        return 'WILD';
       case 'WILD_DRAW_FOUR':
         return '+4';
       case 'NUMBER':
@@ -241,26 +166,22 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   // Helper to check if card can be played
   const canPlayCard = (card: Card) => {
-    if (!gameState?.topCard) return true; // First card can be anything
+    if (!gameState?.topCard) return true;
 
     const topCard = gameState.topCard;
 
-    // Wild cards can always be played
     if (card.color === 'WILD' || card.type === 'WILD') {
       return true;
     }
 
-    // Match color
     if (card.color === topCard.color) {
       return true;
     }
 
-    // Match value
     if (card.value === topCard.value) {
       return true;
     }
 
-    // Match type (for action cards)
     if (card.type === topCard.type && card.type !== 'NUMBER') {
       return true;
     }
@@ -292,27 +213,15 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </Button>
 
         <div className="game-info">
-          <h2 className="game-title">🎴 ONE GAME 🎴</h2>
+          <h2 className="game-title">ONE GAME</h2>
           <p className={`game-status ${isBotTurn ? 'bot-thinking' : ''}`}>
             {isMyTurn
-              ? "🎯 Your Turn!"
+              ? "Your Turn!"
               : isBotTurn
-                ? `🤖 ${currentTurnPlayer?.nickname} thinking...`
+                ? `${currentTurnPlayer?.nickname} thinking...`
                 : `Waiting for ${gameState.currentPlayer?.nickname || "player"}...`
             }
           </p>
-        </div>
-
-        <div className="game-actions">
-          {/* RF50: Emoji button */}
-          <Button
-            onClick={() => setShowEmojiPicker(true)}
-            className="emoji-btn"
-            variant="outline"
-          >
-            <Smile className="mr-2" size={18} />
-            Emojis
-          </Button>
         </div>
       </div>
 
@@ -320,7 +229,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       <div className="left-sidebar">
         {/* Player Stats Table */}
         <div className="player-stats-panel">
-          <h3 className="panel-title">👥 Players</h3>
+          <h3 className="panel-title">Players</h3>
           <div className="player-stats-list">
             {gameState.players?.map((player) => (
               <div
@@ -335,8 +244,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                     {player.id === currentPlayer?.id && ' (You)'}
                   </span>
                   <span className="player-stat-cards">
-                    🃏 {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
-                    {player.calledOne && ' 🎯'}
+                    {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
+                    {player.calledOne && ' [ONE!]'}
                   </span>
                 </div>
                 {gameState.currentTurnPlayerId === player.id && (
@@ -357,7 +266,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       <div className="right-sidebar">
         {shouldCallUno && (
           <div className="uno-button-container">
-            <div className="uno-warning">⚠️ Call ONE!</div>
+            <div className="uno-warning">Call ONE!</div>
             <button onClick={handleCallOne} className="uno-button pulsing">
               <div className="uno-logo">
                 <div className="uno-text">ONE</div>
@@ -375,18 +284,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         <div className="other-players">
           {gameState.players
             ?.filter(p => p.id !== currentPlayer?.id)
-            .map((player, idx) => (
+            .map((player) => (
               <div key={player.id} className="player-card">
                 <div className="player-info">
                   <span className="player-name">{player.nickname}</span>
                   <span className="player-cards">{player.cardCount} cards</span>
                 </div>
                 {gameState.currentTurnPlayerId === player.id && (
-                  <div className="turn-indicator">🎯</div>
-                )}
-                {/* RF50: Show emoji on player profile */}
-                {playerEmojis[player.id] && (
-                  <div className="player-emoji">{playerEmojis[player.id]}</div>
+                  <div className="turn-indicator">▶</div>
                 )}
               </div>
             ))}
@@ -417,7 +322,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <div className="hand-title">Your Hand ({currentPlayer?.hand.length || 0} cards)</div>
           <div className="hand-cards">
             {currentPlayer?.hand.map((card) => {
-              // FIXED: Use local canPlayCard function instead of playableCardIds
               const canPlay = canPlayCard(card);
 
               return (
@@ -442,7 +346,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         <div className="game-stats">
           <div className="stat">
             <span className="stat-label">Direction:</span>
-            <span className="stat-value">{gameState.direction === 'CLOCKWISE' ? '🔄' : '🔃'}</span>
+            <span className="stat-value">{gameState.direction === 'CLOCKWISE' ? 'Clockwise' : 'Counter-Clockwise'}</span>
           </div>
           <div className="stat">
             <span className="stat-label">Cards Left:</span>
@@ -473,32 +377,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 setShowColorPicker(false);
                 setSelectedCardId(null);
               }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Emoji Picker Modal (RF50) */}
-      {showEmojiPicker && (
-        <div className="emoji-picker-modal">
-          <div className="modal-content emoji-modal">
-            <h3>Send an Emoji</h3>
-            <div className="emoji-grid">
-              {availableEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  className="emoji-option"
-                  onClick={() => handleSendEmote(emoji)}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowEmojiPicker(false)}
             >
               Cancel
             </Button>
@@ -809,23 +687,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           }
         }
 
-        .player-emoji {
-          position: absolute;
-          bottom: -10px;
-          right: -10px;
-          font-size: 2rem;
-          animation: emoji-bounce 0.5s;
-        }
-
-        @keyframes emoji-bounce {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.3);
-          }
-        }
-
         .center-area {
           display: flex;
           gap: 3rem;
@@ -1021,7 +882,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           font-size: 1.1rem;
         }
 
-        .color-picker-modal, .emoji-picker-modal {
+        .color-picker-modal {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.8);
@@ -1081,28 +942,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         .color-btn-blue {
           background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-        }
-
-        .emoji-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .emoji-option {
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          padding: 0.75rem;
-          font-size: 1.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .emoji-option:hover {
-          transform: scale(1.1);
-          background: rgba(255, 255, 255, 0.2);
         }
 
         .game-loading {
