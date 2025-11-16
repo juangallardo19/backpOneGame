@@ -165,12 +165,13 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
           background: linear-gradient(
             135deg,
             rgba(17, 17, 17, 0.98) 0%,
-            rgba(25, 25, 25, 0.95) 100%
+            rgba(30, 25, 10, 0.95) 100%
           );
           border-radius: 20px;
-          border: 2px solid rgba(220, 38, 38, 0.3);
+          border: 2px solid rgba(251, 189, 17, 0.4);
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
-                      0 0 0 1px rgba(220, 38, 38, 0.1);
+                      0 0 0 1px rgba(251, 189, 17, 0.2),
+                      0 0 30px rgba(251, 189, 17, 0.15);
           overflow: hidden;
           animation: slideIn 0.4s ease-out;
         }
@@ -178,22 +179,25 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
         .results-header {
           background: linear-gradient(
             135deg,
-            rgba(220, 38, 38, 0.9) 0%,
-            rgba(153, 27, 27, 0.9) 100%
+            rgba(251, 189, 17, 0.9) 0%,
+            rgba(249, 195, 22, 0.8) 50%,
+            rgba(248, 184, 25, 0.9) 100%
           );
           padding: clamp(1.5rem, 4vw, 2rem);
           text-align: center;
-          border-bottom: 2px solid rgba(220, 38, 38, 0.5);
+          border-bottom: 2px solid rgba(251, 189, 17, 0.6);
+          box-shadow: 0 4px 20px rgba(251, 189, 17, 0.3);
         }
 
         .results-title {
           font-size: clamp(1.5rem, 5vw, 2rem);
           font-weight: 700;
-          color: #ffffff;
+          color: #1a1a1a;
           text-transform: uppercase;
           letter-spacing: 0.1em;
           margin: 0;
-          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+          text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3),
+                       0 0 10px rgba(253, 237, 7, 0.5);
         }
 
         .results-table {
@@ -216,28 +220,34 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
 
         .player-row:hover {
           background: rgba(40, 40, 40, 0.7);
-          border-color: rgba(220, 38, 38, 0.3);
+          border-color: rgba(251, 189, 17, 0.3);
           transform: translateX(5px);
         }
 
         .winner-row {
           background: linear-gradient(
             135deg,
-            rgba(220, 38, 38, 0.25) 0%,
-            rgba(153, 27, 27, 0.15) 100%
+            rgba(251, 189, 17, 0.25) 0%,
+            rgba(249, 195, 22, 0.15) 50%,
+            rgba(248, 184, 25, 0.2) 100%
           );
-          border: 2px solid rgba(220, 38, 38, 0.6);
-          box-shadow: 0 0 20px rgba(220, 38, 38, 0.2);
+          border: 2px solid rgba(251, 189, 17, 0.6);
+          box-shadow: 0 0 20px rgba(251, 189, 17, 0.3),
+                      0 0 40px rgba(251, 189, 17, 0.1);
+          animation: goldenGlow 2s ease-in-out infinite;
         }
 
         .winner-row:hover {
           background: linear-gradient(
             135deg,
-            rgba(220, 38, 38, 0.35) 0%,
-            rgba(153, 27, 27, 0.25) 100%
+            rgba(251, 189, 17, 0.35) 0%,
+            rgba(249, 195, 22, 0.25) 50%,
+            rgba(248, 184, 25, 0.3) 100%
           );
-          border-color: rgba(220, 38, 38, 0.8);
+          border-color: rgba(251, 189, 17, 0.9);
           transform: translateX(5px) scale(1.02);
+          box-shadow: 0 0 25px rgba(251, 189, 17, 0.4),
+                      0 0 50px rgba(251, 189, 17, 0.2);
         }
 
         .position-badge {
@@ -247,19 +257,33 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
           align-items: center;
           justify-content: center;
           background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
-          border: 2px solid rgba(220, 38, 38, 0.4);
+          border: 2px solid rgba(100, 100, 100, 0.4);
           border-radius: 10px;
           font-size: clamp(1.25rem, 4vw, 1.75rem);
           font-weight: 700;
-          color: #dc2626;
-          text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+          color: #a0a0a0;
+          text-shadow: 0 0 10px rgba(160, 160, 160, 0.3);
         }
 
         .winner-row .position-badge {
-          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-          border-color: #fca5a5;
-          color: #ffffff;
-          box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);
+          background: linear-gradient(135deg, #FBD111 0%, #F9C316 50%, #F8B819 100%);
+          border-color: #FDED07;
+          color: #1a1a1a;
+          box-shadow: 0 0 15px rgba(251, 189, 17, 0.6),
+                      0 0 30px rgba(253, 237, 7, 0.4);
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          font-weight: 800;
+        }
+
+        @keyframes goldenGlow {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(251, 189, 17, 0.3),
+                        0 0 40px rgba(251, 189, 17, 0.1);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(251, 189, 17, 0.5),
+                        0 0 60px rgba(251, 189, 17, 0.2);
+          }
         }
 
         .player-info {
@@ -277,8 +301,10 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
         }
 
         .winner-row .player-name {
-          color: #fca5a5;
+          color: #FBD111;
           font-weight: 700;
+          text-shadow: 0 0 10px rgba(251, 189, 17, 0.6),
+                       0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         .bot-label {
@@ -309,6 +335,10 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
           letter-spacing: 0.05em;
         }
 
+        .winner-row .stat-label {
+          color: #F9C316;
+        }
+
         .stat-value {
           font-size: clamp(1rem, 3vw, 1.25rem);
           font-weight: 700;
@@ -316,44 +346,50 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
         }
 
         .points-earned {
-          color: #dc2626;
+          color: #a0a0a0;
         }
 
         .winner-row .points-earned {
-          color: #fca5a5;
-          text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+          color: #FDED07;
+          text-shadow: 0 0 10px rgba(253, 237, 7, 0.6),
+                       0 0 20px rgba(251, 189, 17, 0.4);
+          font-weight: 800;
         }
 
         .results-footer {
           padding: clamp(1rem, 3vw, 1.5rem);
-          border-top: 1px solid rgba(60, 60, 60, 0.5);
+          border-top: 1px solid rgba(251, 189, 17, 0.3);
           display: flex;
           justify-content: center;
         }
 
         .back-button {
           padding: clamp(0.75rem, 2.5vw, 1rem) clamp(2rem, 6vw, 3rem);
-          background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+          background: linear-gradient(135deg, #FBD111 0%, #F9C316 50%, #F8B819 100%);
           border: none;
           border-radius: 12px;
-          color: #ffffff;
+          color: #1a1a1a;
           font-size: clamp(1rem, 3vw, 1.15rem);
-          font-weight: 600;
+          font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+          box-shadow: 0 4px 15px rgba(251, 189, 17, 0.5),
+                      0 0 20px rgba(251, 189, 17, 0.2);
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         .back-button:hover {
-          background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+          background: linear-gradient(135deg, #FDED07 0%, #FBD111 50%, #F9C316 100%);
           transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+          box-shadow: 0 6px 20px rgba(251, 189, 17, 0.6),
+                      0 0 30px rgba(253, 237, 7, 0.3);
         }
 
         .back-button:active {
           transform: translateY(0);
+          box-shadow: 0 2px 10px rgba(251, 189, 17, 0.4);
         }
 
         @keyframes slideIn {
