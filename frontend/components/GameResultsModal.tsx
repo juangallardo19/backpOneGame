@@ -28,11 +28,31 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   // Buscar en playerRankings al ganador (position === 1) y comparar con el usuario actual
   const winnerResult = results.playerRankings.find(p => p.position === 1);
 
+  // Obtener userId: primero intentar de user.id, sino de localStorage
+  const getUserId = () => {
+    if (user?.id) return user.id;
+
+    // Fallback: obtener de localStorage
+    try {
+      const storedUser = localStorage.getItem('uno_user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        return parsedUser.userId || parsedUser.id;
+      }
+    } catch (error) {
+      console.error('Error obteniendo userId de localStorage:', error);
+    }
+
+    return null;
+  };
+
+  const currentUserId = getUserId();
+
   // IMPORTANTE: Para usuarios autenticados, solo comparar por userId
-  // El nickname del Player en backend es el EMAIL, no el nickname del User
   const isCurrentUserWinner = user && winnerResult &&
     winnerResult.userId !== null &&
-    String(winnerResult.userId) === String(user.id);
+    currentUserId !== null &&
+    String(winnerResult.userId) === String(currentUserId);
 
   // Debug log para verificar la comparación
   console.log('🏆 Victory Animation Debug:');
@@ -43,13 +63,14 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
     nickname: user?.nickname,
     email: user?.email
   });
+  console.log('   🆔 Current User ID (obtenido):', currentUserId, 'type:', typeof currentUserId);
   console.log('   🏆 Winner from rankings:', winnerResult);
   console.log('   🔍 Detailed comparison:');
   console.log('      - winnerResult.userId:', winnerResult?.userId, 'type:', typeof winnerResult?.userId);
-  console.log('      - user.id:', user?.id, 'type:', typeof user?.id);
+  console.log('      - currentUserId:', currentUserId, 'type:', typeof currentUserId);
   console.log('      - String(winnerResult.userId):', String(winnerResult?.userId));
-  console.log('      - String(user.id):', String(user?.id));
-  console.log('      - Are they equal?:', String(winnerResult?.userId) === String(user?.id));
+  console.log('      - String(currentUserId):', String(currentUserId));
+  console.log('      - Are they equal?:', String(winnerResult?.userId) === String(currentUserId));
   console.log('   ✅ Is Current User Winner:', isCurrentUserWinner);
 
   // Inicializar estado en false
