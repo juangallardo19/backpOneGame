@@ -23,33 +23,53 @@ public class AuthResponse {
     private String token;
 
     /**
+     * JWT refresh token for obtaining new access tokens.
+     */
+    private String refreshToken;
+
+    /**
      * Token type (typically "Bearer").
      */
     @Builder.Default
     private String tokenType = "Bearer";
 
     /**
-     * User ID.
+     * User information.
      */
-    private String userId;
-
-    /**
-     * User email.
-     */
-    private String email;
-
-    /**
-     * User nickname/display name.
-     */
-    private String nickname;
-
-    /**
-     * User roles/authorities.
-     */
-    private String[] roles;
+    private UserProfileResponse user;
 
     /**
      * Token expiration time in milliseconds.
      */
     private Long expiresAt;
+
+    /**
+     * Expiration duration in milliseconds (for frontend compatibility).
+     */
+    private Long expiresIn;
+
+    // Legacy fields for backward compatibility (deprecated)
+    /**
+     * @deprecated Use user.id instead
+     */
+    @Deprecated
+    private String userId;
+
+    /**
+     * @deprecated Use user.email instead
+     */
+    @Deprecated
+    private String email;
+
+    /**
+     * @deprecated Use user.nickname instead
+     */
+    @Deprecated
+    private String nickname;
+
+    /**
+     * @deprecated Use user.roles instead
+     */
+    @Deprecated
+    private String[] roles;
 }

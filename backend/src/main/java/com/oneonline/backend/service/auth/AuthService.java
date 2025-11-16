@@ -133,18 +133,37 @@ public class AuthService {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
         Long expiresAt = System.currentTimeMillis() + jwtTokenProvider.getAccessTokenExpirationMs();
+        Long expiresIn = jwtTokenProvider.getAccessTokenExpirationMs();
 
         log.info("JWT tokens generated for user: {}", user.getEmail());
+
+        // Build user profile response (simplified for auth)
+        UserProfileResponse userProfile = UserProfileResponse.builder()
+                .id(user.getId().toString())
+                .userId(user.getId().toString())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getProfilePicture())
+                .authProvider(user.getAuthProvider().name())
+                .createdAt(user.getCreatedAt() != null ?
+                    user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .lastLoginAt(user.getLastLogin() != null ?
+                    user.getLastLogin().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .build();
 
         // Build and return response
         return AuthResponse.builder()
                 .token(accessToken)
+                .refreshToken(refreshToken)
                 .tokenType("Bearer")
+                .user(userProfile)
+                .expiresAt(expiresAt)
+                .expiresIn(expiresIn)
+                // Legacy fields for backward compatibility
                 .userId(user.getId().toString())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .roles(new String[]{user.getRole().name()})
-                .expiresAt(expiresAt)
                 .build();
     }
 
@@ -202,18 +221,37 @@ public class AuthService {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
         Long expiresAt = System.currentTimeMillis() + jwtTokenProvider.getAccessTokenExpirationMs();
+        Long expiresIn = jwtTokenProvider.getAccessTokenExpirationMs();
 
         log.info("User logged in successfully: {}", user.getEmail());
+
+        // Build user profile response (simplified for auth)
+        UserProfileResponse userProfile = UserProfileResponse.builder()
+                .id(user.getId().toString())
+                .userId(user.getId().toString())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getProfilePicture())
+                .authProvider(user.getAuthProvider().name())
+                .createdAt(user.getCreatedAt() != null ?
+                    user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .lastLoginAt(user.getLastLogin() != null ?
+                    user.getLastLogin().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .build();
 
         // Build and return response
         return AuthResponse.builder()
                 .token(accessToken)
+                .refreshToken(refreshToken)
                 .tokenType("Bearer")
+                .user(userProfile)
+                .expiresAt(expiresAt)
+                .expiresIn(expiresIn)
+                // Legacy fields for backward compatibility
                 .userId(user.getId().toString())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .roles(new String[]{user.getRole().name()})
-                .expiresAt(expiresAt)
                 .build();
     }
 
@@ -262,18 +300,37 @@ public class AuthService {
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
         Long expiresAt = System.currentTimeMillis() + jwtTokenProvider.getAccessTokenExpirationMs();
+        Long expiresIn = jwtTokenProvider.getAccessTokenExpirationMs();
 
         log.info("Token refreshed successfully for user: {}", email);
+
+        // Build user profile response (simplified for auth)
+        UserProfileResponse userProfile = UserProfileResponse.builder()
+                .id(user.getId().toString())
+                .userId(user.getId().toString())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .avatarUrl(user.getProfilePicture())
+                .authProvider(user.getAuthProvider().name())
+                .createdAt(user.getCreatedAt() != null ?
+                    user.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .lastLoginAt(user.getLastLogin() != null ?
+                    user.getLastLogin().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                .build();
 
         // Build and return response
         return AuthResponse.builder()
                 .token(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
+                .user(userProfile)
+                .expiresAt(expiresAt)
+                .expiresIn(expiresIn)
+                // Legacy fields for backward compatibility
                 .userId(user.getId().toString())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .roles(new String[]{user.getRole().name()})
-                .expiresAt(expiresAt)
                 .build();
     }
 
