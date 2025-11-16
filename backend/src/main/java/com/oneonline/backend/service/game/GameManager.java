@@ -194,13 +194,14 @@ public class GameManager {
     }
 
     /**
-     * Get all public rooms (not private)
+     * Get all public rooms (not private and not finished)
      *
-     * @return List of public rooms
+     * @return List of public rooms that are not finished
      */
     public List<Room> getPublicRooms() {
         return activeRooms.values().stream()
             .filter(room -> !room.isPrivate())
+            .filter(room -> room.getStatus() != com.oneonline.backend.model.enums.RoomStatus.FINISHED)
             .toList();
     }
 
@@ -214,10 +215,11 @@ public class GameManager {
     }
 
     /**
-     * Remove inactive rooms (empty or timed out)
+     * Remove inactive rooms (empty, finished, or timed out)
      *
      * Cleans up rooms that:
      * - Have no players
+     * - Have finished status (game ended)
      * - Have been inactive for more than timeout period
      *
      * @param inactiveMinutes Minutes of inactivity before removal
@@ -232,11 +234,15 @@ public class GameManager {
             Map.Entry<String, Room> entry = iterator.next();
             Room room = entry.getValue();
 
-            // Remove if empty or inactive
+            // Remove if empty or finished
             if (room.getPlayers().isEmpty()) {
                 iterator.remove();
                 removed++;
                 log.info("Removed empty room: {}", entry.getKey());
+            } else if (room.getStatus() == com.oneonline.backend.model.enums.RoomStatus.FINISHED) {
+                iterator.remove();
+                removed++;
+                log.info("Removed finished room: {}", entry.getKey());
             }
         }
 
