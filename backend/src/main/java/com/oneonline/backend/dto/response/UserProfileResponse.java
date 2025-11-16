@@ -41,6 +41,16 @@ public class UserProfileResponse {
     private String avatarUrl;
 
     /**
+     * Authentication provider (LOCAL, GOOGLE, GITHUB).
+     */
+    private String authProvider;
+
+    /**
+     * User ID (alias for userId for frontend compatibility).
+     */
+    private String id;
+
+    /**
      * User level/tier.
      */
     private String tier;

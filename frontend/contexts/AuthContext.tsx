@@ -128,12 +128,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const authData = response.data;
 
+      // Map user data - createdAt might come as timestamp, convert to string
+      const user = {
+        ...authData.user,
+        createdAt: typeof authData.user.createdAt === 'number'
+          ? new Date(authData.user.createdAt).toISOString()
+          : authData.user.createdAt || new Date().toISOString()
+      };
+
       // Guardar en estado
-      setUser(authData.user);
+      setUser(user);
       setToken(authData.token);
 
       // Guardar en localStorage
-      saveToStorage(authData);
+      saveToStorage({ ...authData, user });
 
       console.log('✅ Sesión iniciada correctamente');
     } catch (error: any) {
@@ -161,12 +169,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const authData = response.data;
 
+      // Map user data - createdAt might come as timestamp, convert to string
+      const user = {
+        ...authData.user,
+        createdAt: typeof authData.user.createdAt === 'number'
+          ? new Date(authData.user.createdAt).toISOString()
+          : authData.user.createdAt || new Date().toISOString()
+      };
+
       // Guardar en estado
-      setUser(authData.user);
+      setUser(user);
       setToken(authData.token);
 
       // Guardar en localStorage
-      saveToStorage(authData);
+      saveToStorage({ ...authData, user });
 
       console.log('✅ Usuario registrado correctamente');
     } catch (error: any) {
