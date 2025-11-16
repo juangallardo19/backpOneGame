@@ -1,6 +1,7 @@
 package com.oneonline.backend.controller;
 
 import com.oneonline.backend.dto.request.LoginRequest;
+import com.oneonline.backend.dto.request.RefreshTokenRequest;
 import com.oneonline.backend.dto.request.RegisterRequest;
 import com.oneonline.backend.dto.response.AuthResponse;
 import com.oneonline.backend.dto.response.UserProfileResponse;
@@ -172,14 +173,14 @@ public class AuthController {
      *
      * Response: New JWT token
      *
-     * @param refreshToken Refresh token
+     * @param request Refresh token request containing the refresh token
      * @return New AuthResponse with new token
      */
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refreshToken(@RequestBody String refreshToken) {
+    public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         log.debug("Token refresh requested");
 
-        AuthResponse response = authService.refreshToken(refreshToken);
+        AuthResponse response = authService.refreshToken(request.getRefreshToken());
 
         return ResponseEntity.ok(response);
     }
