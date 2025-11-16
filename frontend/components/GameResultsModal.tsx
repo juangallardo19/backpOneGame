@@ -28,23 +28,28 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   // Buscar en playerRankings al ganador (position === 1) y comparar con el usuario actual
   const winnerResult = results.playerRankings.find(p => p.position === 1);
 
-  const isCurrentUserWinner = user && winnerResult && (
-    // Opción 1: Comparar por userId (usuarios autenticados)
-    (winnerResult.userId !== null && user.id !== null &&
-     String(winnerResult.userId) === String(user.id)) ||
-    // Opción 2: Comparar por nickname (invitados sin userId)
-    (winnerResult.nickname === user.nickname)
-  );
+  // IMPORTANTE: Para usuarios autenticados, solo comparar por userId
+  // El nickname del Player en backend es el EMAIL, no el nickname del User
+  const isCurrentUserWinner = user && winnerResult &&
+    winnerResult.userId !== null &&
+    String(winnerResult.userId) === String(user.id);
 
   // Debug log para verificar la comparación
   console.log('🏆 Victory Animation Debug:');
   console.log('   📋 Game Results:', results);
   console.log('   👤 Current User:', {
     id: user?.id,
+    idType: typeof user?.id,
     nickname: user?.nickname,
     email: user?.email
   });
   console.log('   🏆 Winner from rankings:', winnerResult);
+  console.log('   🔍 Detailed comparison:');
+  console.log('      - winnerResult.userId:', winnerResult?.userId, 'type:', typeof winnerResult?.userId);
+  console.log('      - user.id:', user?.id, 'type:', typeof user?.id);
+  console.log('      - String(winnerResult.userId):', String(winnerResult?.userId));
+  console.log('      - String(user.id):', String(user?.id));
+  console.log('      - Are they equal?:', String(winnerResult?.userId) === String(user?.id));
   console.log('   ✅ Is Current User Winner:', isCurrentUserWinner);
 
   const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
