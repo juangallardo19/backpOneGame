@@ -133,14 +133,35 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
     if (e) {
       animateButton(e)
     }
+
+    // Validar campos vacíos
     if (!loginEmail.trim() || !loginPassword.trim()) {
       showError("Error", "Por favor completa todos los campos")
       return
     }
 
+    // Validar formato de email
+    const emailError = validateEmail(loginEmail.trim())
+    if (emailError) {
+      showError("Error de validación", emailError)
+      return
+    }
+
+    // Validar contraseña (debe tener al menos 8 caracteres)
+    if (loginPassword.length < 8) {
+      showError("Error de validación", "La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+
+    // Validar que no haya espacios
+    if (loginPassword.includes(' ')) {
+      showError("Error de validación", "La contraseña no debe contener espacios")
+      return
+    }
+
     setIsLoading(true)
     try {
-      await login(loginEmail, loginPassword)
+      await login(loginEmail.trim(), loginPassword)
       success("¡Bienvenido!", "Sesión iniciada correctamente")
       onLoginSuccess()
     } catch (error: any) {
@@ -165,7 +186,7 @@ export default function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps
     setIsLoading(true)
     try {
       await registerUser(registerEmail.trim(), registerUsername.trim(), registerPassword.trim())
-      success("¡Registro exitoso!", "Tu cuenta ha sido creada")
+      success("¡Registro exitoso!", "Tu cuenta ha sido creada e iniciaste sesión automáticamente")
       // Limpiar el formulario
       setRegisterEmail("")
       setRegisterUsername("")
