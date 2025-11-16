@@ -52,18 +52,31 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({ results, onClose })
   console.log('      - Are they equal?:', String(winnerResult?.userId) === String(user?.id));
   console.log('   ✅ Is Current User Winner:', isCurrentUserWinner);
 
-  const [showAnimation, setShowAnimation] = useState(isCurrentUserWinner);
+  // Inicializar estado en false
+  const [showAnimation, setShowAnimation] = useState(false);
 
   useEffect(() => {
-    // Solo ejecutar el timer si el usuario actual es el ganador
-    if (!isCurrentUserWinner) return;
+    console.log('🎬 useEffect ejecutado - isCurrentUserWinner:', isCurrentUserWinner);
 
-    // Después de 5 segundos, ocultar la animación y mostrar la tabla
-    const timer = setTimeout(() => {
+    // Si el usuario es el ganador, mostrar animación
+    if (isCurrentUserWinner) {
+      console.log('✅ Usuario es ganador - mostrando animación');
+      setShowAnimation(true);
+
+      // Después de 5 segundos, ocultar la animación y mostrar la tabla
+      const timer = setTimeout(() => {
+        console.log('⏰ 5 segundos pasados - ocultando animación');
+        setShowAnimation(false);
+      }, 5000);
+
+      return () => {
+        console.log('🧹 Limpiando timer');
+        clearTimeout(timer);
+      };
+    } else {
+      console.log('❌ Usuario NO es ganador - sin animación');
       setShowAnimation(false);
-    }, 5000);
-
-    return () => clearTimeout(timer);
+    }
   }, [isCurrentUserWinner]);
 
   // Si se está mostrando la animación, renderizar solo la animación
