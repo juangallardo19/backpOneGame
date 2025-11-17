@@ -1138,8 +1138,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1000;
+          z-index: 9999 !important;
           backdrop-filter: blur(5px);
+          pointer-events: auto !important;
         }
 
         .modal-content {
@@ -1149,6 +1150,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
           border: 2px solid rgba(255, 255, 255, 0.2);
           min-width: 320px;
+          position: relative;
+          z-index: 10000 !important;
         }
 
         .modal-content h3 {
@@ -1174,6 +1177,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           transition: all 0.2s;
           color: white;
           text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+          pointer-events: auto !important;
+          position: relative;
+          z-index: 10001;
         }
 
         .color-button:hover {
@@ -1207,6 +1213,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           color: white;
           cursor: pointer;
           transition: all 0.2s;
+          pointer-events: auto !important;
+          position: relative;
+          z-index: 10001;
         }
 
         .cancel-button:hover {
