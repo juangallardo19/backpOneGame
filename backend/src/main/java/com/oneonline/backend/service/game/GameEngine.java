@@ -220,6 +220,7 @@ public class GameEngine {
      * - Player has the card
      * - Card can be played on top card
      * - Wild Draw Four legality (if applicable)
+     * - Pending draw effects (if stacking enabled, only +2/+4 allowed)
      *
      * @param player Player making move
      * @param card Card to play
@@ -234,6 +235,23 @@ public class GameEngine {
         }
 
         Card topCard = session.getTopCard();
+
+        // CRITICAL FIX: Check if there are pending draw effects (stacking)
+        // When pendingDrawCount > 0, player can ONLY play +2 or +4 cards (to stack)
+        // or must draw the pending cards and lose turn
+        if (session.getPendingDrawCount() > 0) {
+            boolean isStackableCard = (card.getType() == CardType.DRAW_TWO ||
+                                      card.getType() == CardType.WILD_DRAW_FOUR);
+
+            if (!isStackableCard) {
+                log.warn("Player {} tried to play {} but must stack or draw {} pending cards",
+                    player.getNickname(), card, session.getPendingDrawCount());
+                return false;
+            }
+
+            log.info("✅ Player {} is stacking with {} (pending: {})",
+                player.getNickname(), card.getType(), session.getPendingDrawCount());
+        }
 
         // Validate with CardValidator
         if (!cardValidator.isValidMove(card, topCard)) {

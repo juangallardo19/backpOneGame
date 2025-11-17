@@ -49,12 +49,13 @@ public class BotStrategy {
      * Choose the best card to play based on game state
      *
      * Algorithm Priority:
-     * 1. If hand has 2 cards, prefer special cards to win faster
-     * 2. Prefer Wild Draw Four when opponents have few cards
-     * 3. Prefer action cards (Skip, Reverse, Draw Two)
-     * 4. Prefer cards matching current color
-     * 5. Play number cards
-     * 6. Play Wild cards as last resort
+     * 1. If pending draw effects exist, ONLY choose +2 or +4 cards (stacking)
+     * 2. If hand has 2 cards, prefer special cards to win faster
+     * 3. Prefer Wild Draw Four when opponents have few cards
+     * 4. Prefer action cards (Skip, Reverse, Draw Two)
+     * 5. Prefer cards matching current color
+     * 6. Play number cards
+     * 7. Play Wild cards as last resort
      *
      * @param bot Bot player choosing card
      * @param topCard Current card on discard pile
@@ -67,6 +68,29 @@ public class BotStrategy {
         if (validCards.isEmpty()) {
             log.debug("Bot {} has no valid cards", bot.getNickname());
             return null;
+        }
+
+        // CRITICAL FIX: If there are pending draw effects, bot can ONLY play +2 or +4 to stack
+        // Otherwise bot must draw the pending cards (return null)
+        int pendingDrawCount = session.getPendingDrawCount();
+        if (pendingDrawCount > 0) {
+            log.info("🎯 Bot {} must stack or draw {} pending cards", bot.getNickname(), pendingDrawCount);
+
+            // Filter only stackable cards (+2 or +4)
+            List<Card> stackableCards = validCards.stream()
+                    .filter(card -> card.getType().name().equals("DRAW_TWO") ||
+                                   card.getType().name().equals("WILD_DRAW_FOUR"))
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (stackableCards.isEmpty()) {
+                log.info("❌ Bot {} has no stackable cards, must draw {} pending cards",
+                    bot.getNickname(), pendingDrawCount);
+                return null; // Bot cannot stack, must draw
+            }
+
+            // Bot can stack! Choose the best stackable card
+            log.info("✅ Bot {} can stack! Has {} stackable cards", bot.getNickname(), stackableCards.size());
+            return stackableCards.get(random.nextInt(stackableCards.size()));
         }
 
         // Strategy 1: If bot has 2 cards, prioritize winning
