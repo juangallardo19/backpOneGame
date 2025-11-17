@@ -6,7 +6,6 @@ import com.oneonline.backend.model.domain.Player;
 import com.oneonline.backend.model.domain.Room;
 import com.oneonline.backend.model.enums.RoomStatus;
 import com.oneonline.backend.pattern.behavioral.observer.GameObserver;
-import com.oneonline.backend.service.game.TurnManager;
 import com.oneonline.backend.pattern.creational.builder.RoomBuilder;
 import com.oneonline.backend.util.CodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 /**
  * RoomManager Service
@@ -185,8 +185,8 @@ public class RoomManager {
      * Leave a room
      *
      * SPECIAL HANDLING FOR ACTIVE GAMES:
-     * - If game is IN_PROGRESS and 3+ total players remain: Replace leaving player with bot
-     * - If game is IN_PROGRESS and only 2 players (leaving + 1 other): End game, declare other as winner
+     * - If game is IN_PROGRESS and 2+ players remain: Replace leaving player with bot
+     * - If game is IN_PROGRESS and only 1 player remains: Close room
      * - If game not started (WAITING/STARTING): Remove player normally
      *
      * If leader leaves (when game not in progress):
@@ -212,51 +212,39 @@ public class RoomManager {
             log.info("📊 Remaining players after {} leaves: {}", player.getNickname(), remainingPlayers);
 
             if (remainingPlayers == 1) {
-                // Only 1 player will remain: End game with remaining player as winner
-                Player winner = room.getAllPlayers().stream()
-                        .filter(p -> !p.getPlayerId().equals(player.getPlayerId()))
-                        .findFirst()
-                        .orElse(null);
+                // Only 1 player will remain: Close the room
+                log.info("🚪 Only 1 player remains, closing room {}", roomCode);
 
-                if (winner != null) {
-                    log.info("🏆 Only 1 player remains, ending game. Winner: {}", winner.getNickname());
+                // Remove the leaving player
+                room.removePlayerById(player.getPlayerId());
+                gameManager.untrackUser(player.getUserEmail());
 
-                    // End the game
-                    room.getGameSession().endGame(winner);
-                    room.setStatus(RoomStatus.FINISHED);
+                // Notify player left
+                webSocketObserver.onPlayerLeft(player, room);
 
-                    // Remove the leaving player normally
-                    room.removePlayerById(player.getPlayerId());
-                    gameManager.untrackUser(player.getUserEmail());
+                // Close the room
+                gameManager.removeRoom(roomCode);
+                webSocketObserver.onRoomDeleted(room);
 
-                    // Notify game ended
-                    webSocketObserver.onGameEnded(room.getGameSession());
+                log.info("✅ Room {} closed due to insufficient players", roomCode);
 
-                    log.info("✅ Game ended in room {} due to player abandonment", roomCode);
-
-                    // Clean up room
-                    gameManager.removeRoom(roomCode);
-                    webSocketObserver.onRoomDeleted(room);
-
-                    return null;
-                }
+                return null;
             } else if (remainingPlayers >= 2) {
                 // 2+ players remain: Replace leaving player with bot
                 log.info("🤖 Replacing leaving player {} with bot", player.getNickname());
 
                 // Check if it's the leaving player's turn
-                boolean wasPlayersTurn = false;
                 TurnManager turnManager = room.getGameSession().getTurnManager();
+                boolean wasPlayersTurn = false;
                 if (turnManager != null && turnManager.getCurrentPlayer() != null) {
                     wasPlayersTurn = turnManager.getCurrentPlayer().getPlayerId().equals(player.getPlayerId());
                     log.info("Was player's turn: {}", wasPlayersTurn);
                 }
 
                 // Create a bot to replace the leaving player
-                // Use a direct bot creation to bypass room capacity checks during active game
                 BotPlayer replacementBot = BotPlayer.builder()
                         .playerId(java.util.UUID.randomUUID().toString())
-                        .nickname("Bot_" + new java.util.Random().nextInt(1000))
+                        .nickname("Bot_" + new Random().nextInt(1000))
                         .isBot(true)
                         .build();
 
