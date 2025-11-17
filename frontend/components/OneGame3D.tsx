@@ -26,7 +26,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
 import GameResultsModal from './GameResultsModal';
 import HalftoneWaves from './halftone-waves';
-import { Card, Player, CurrentPlayer } from '@/types/game.types';
+import { Card, Player, CurrentPlayer, isWildCard } from '@/types/game.types';
 
 interface OneGame3DProps {
   onBack?: () => void;
@@ -66,7 +66,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     if (!card) return;
 
     // If it's a wild card (RF26: Choose color after wild)
-    if (card.color === 'WILD') {
+    // This includes both WILD and WILD_DRAW_FOUR (+4)
+    if (isWildCard(card)) {
+      console.log('Wild card detected, showing color picker:', card);
       setSelectedCardId(cardId);
       setShowColorPicker(true);
       return;
