@@ -195,7 +195,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     return (
       <div className="game-loading">
         <div className="spinner"></div>
-        <p>Loading game...</p>
+        <p>Cargando juego...</p>
       </div>
     );
   }
@@ -208,6 +208,14 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   return (
     <div className="game-container">
+      {/* Top Bar - Leave Game Button */}
+      <div className="top-bar">
+        <button className="leave-game-button" onClick={onBack}>
+          <ArrowLeft size={20} />
+          <span>Abandonar Juego</span>
+        </button>
+      </div>
+
       <div className="game-layout">
         {/* Left Sidebar */}
         <aside className="left-sidebar">
@@ -215,7 +223,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <div className="panel players-panel">
             <div className="panel-header">
               <Users size={18} />
-              <h3>Players</h3>
+              <h3>Jugadores</h3>
             </div>
             <div className="players-list">
               {gameState.players?.map((player) => (
@@ -226,11 +234,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                   <div className="player-info">
                     <span className="player-name">
                       {player.nickname}
-                      {player.id === currentPlayer?.id && ' (You)'}
+                      {player.id === currentPlayer?.id && ' (Tú)'}
                     </span>
                     <span className="player-cards">
-                      {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
-                      {player.calledOne && ' [ONE!]'}
+                      {player.cardCount} {player.cardCount === 1 ? 'carta' : 'cartas'}
+                      {player.calledOne && ' [¡UNO!]'}
                     </span>
                   </div>
                   {gameState.currentTurnPlayerId === player.id && (
@@ -354,7 +362,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                       </div>
                     </div>
                   </div>
-                  <p className="pile-text">Draw</p>
+                  <p className="pile-text">Robar</p>
                 </div>
 
                 {/* Discard Pile */}
@@ -377,7 +385,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                       </>
                     )}
                   </div>
-                  <p className="pile-text">Discard</p>
+                  <p className="pile-text">Descartar</p>
                 </div>
 
               </div>
@@ -386,7 +394,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
             {/* Bottom Player (You) */}
             <div className="table-section section-bottom">
               <div className="your-hand-area">
-                <p className="player-label-small">Your Hand ({currentPlayer?.hand.length || 0})</p>
+                <p className="player-label-small">Tu Mano ({currentPlayer?.hand.length || 0})</p>
                 <div className="your-cards-row">
                   {currentPlayer?.hand.map((card, index) => {
                     const canPlay = canPlayCard(card);
@@ -440,13 +448,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         <aside className="right-sidebar">
           {shouldCallUno && (
             <div className="uno-container">
-              <div className="uno-alert">Call ONE!</div>
+              <div className="uno-alert">¡Llama UNO!</div>
               <button className="uno-button-wrapper" onClick={handleCallOne}>
                 <div className="uno-fallback">
-                  <div className="uno-text">ONE</div>
+                  <div className="uno-text">UNO</div>
                 </div>
               </button>
-              <div className="uno-hint">You have 1 card left!</div>
+              <div className="uno-hint">¡Te queda 1 carta!</div>
             </div>
           )}
         </aside>
@@ -461,15 +469,20 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       {showColorPicker && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>Choose a color</h3>
+            <h3>Elige un color</h3>
             <div className="color-options">
-              {['RED', 'YELLOW', 'GREEN', 'BLUE'].map((color) => (
+              {[
+                { key: 'RED', label: 'Rojo' },
+                { key: 'YELLOW', label: 'Amarillo' },
+                { key: 'GREEN', label: 'Verde' },
+                { key: 'BLUE', label: 'Azul' }
+              ].map((color) => (
                 <button
-                  key={color}
-                  className={`color-button color-${color.toLowerCase()}`}
-                  onClick={() => handleChooseColor(color as any)}
+                  key={color.key}
+                  className={`color-button color-${color.key.toLowerCase()}`}
+                  onClick={() => handleChooseColor(color.key as any)}
                 >
-                  {color}
+                  {color.label}
                 </button>
               ))}
             </div>
@@ -480,7 +493,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 setSelectedCardId(null);
               }}
             >
-              Cancel
+              Cancelar
             </button>
           </div>
         </div>
@@ -494,17 +507,53 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .game-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
           overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          background: rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+          border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .leave-game-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 1.2rem;
+          background: rgba(255, 255, 255, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 10px;
+          color: white;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .leave-game-button:hover {
+          background: rgba(255, 255, 255, 0.25);
+          border-color: rgba(255, 255, 255, 0.5);
+          transform: translateX(-3px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
         /* Layout */
         .game-layout {
           display: grid;
           grid-template-columns: 280px 1fr 200px;
-          height: 100vh;
+          height: calc(100vh - 70px);
           gap: 1rem;
           padding: 1rem;
         }
@@ -602,24 +651,33 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         /* Independent Chat Container - Better visibility at bottom left */
         .independent-chat-container {
-          position: fixed;
-          bottom: 20px;
-          left: 20px;
-          width: 380px;
-          max-height: 500px;
-          z-index: 150;
-          background: rgba(0, 0, 0, 0.85);
-          border-radius: 16px;
-          border: 2px solid rgba(74, 222, 128, 0.4);
-          backdrop-filter: blur(15px);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 222, 128, 0.2);
-          overflow: hidden;
-          transition: all 0.3s ease;
+          position: fixed !important;
+          bottom: 20px !important;
+          left: 20px !important;
+          right: auto !important;
+          width: 380px !important;
+          max-height: 500px !important;
+          z-index: 150 !important;
         }
 
-        .independent-chat-container:hover {
-          border-color: rgba(74, 222, 128, 0.6);
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(74, 222, 128, 0.3);
+        /* Override GameChat internal styles */
+        .independent-chat-container :global(.game-chat) {
+          position: relative !important;
+          bottom: auto !important;
+          left: auto !important;
+          right: auto !important;
+          width: 100% !important;
+          max-height: 100% !important;
+          background: rgba(0, 0, 0, 0.9) !important;
+          border-radius: 16px !important;
+          border: 2px solid rgba(74, 222, 128, 0.5) !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 25px rgba(74, 222, 128, 0.3) !important;
+          backdrop-filter: blur(15px) !important;
+        }
+
+        .independent-chat-container:hover :global(.game-chat) {
+          border-color: rgba(74, 222, 128, 0.7) !important;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 35px rgba(74, 222, 128, 0.4) !important;
           transform: translateY(-2px);
         }
 
@@ -1140,7 +1198,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           align-items: center;
           justify-content: center;
           height: 100vh;
-          background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
         }
 
