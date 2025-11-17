@@ -14,7 +14,7 @@ import GamePlay from "@/components/GamePlay"
 export default function GamePage() {
   const router = useRouter()
   const { isAuthenticated, user } = useAuth()
-  const { room, gameState } = useGame()
+  const { room, gameState, leaveRoomAndDisconnect } = useGame()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -29,6 +29,21 @@ export default function GamePage() {
       router.push('/')
     }
   }, [isAuthenticated, room, gameState, router])
+
+  // Handle leaving the game
+  const handleLeaveGame = async () => {
+    try {
+      // Disconnect from game and clean up
+      await leaveRoomAndDisconnect()
+
+      // Redirect to room selection
+      router.push('/rooms')
+    } catch (error) {
+      console.error('Error leaving game:', error)
+      // Still redirect even if there's an error
+      router.push('/rooms')
+    }
+  }
 
   if (!isAuthenticated || !user) {
     return (
@@ -47,6 +62,6 @@ export default function GamePage() {
   }
 
   return (
-    <GamePlay onBack={() => router.push('/room')} />
+    <GamePlay onBack={handleLeaveGame} />
   )
 }
