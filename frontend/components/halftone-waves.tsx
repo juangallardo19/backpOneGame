@@ -50,7 +50,7 @@ export default function HalftoneWaves({ animate = true, className = "" }: Halfto
       }
     }
 
-    const animateFrame = () => {
+    const draw = () => {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
       gradient.addColorStop(0, "rgba(220, 85, 40, 0.1)")
       gradient.addColorStop(1, "rgba(200, 60, 30, 0.1)")
@@ -58,28 +58,34 @@ export default function HalftoneWaves({ animate = true, className = "" }: Halfto
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
       drawHalftoneWave()
+    }
 
-      // Only increment time if animation is enabled
+    const animateFrame = () => {
+      draw()
+
+      // Only increment time and continue animation if enabled
       if (animate) {
         time += 0.015
         animationFrameId = requestAnimationFrame(animateFrame)
       }
     }
 
-    resizeCanvas()
-    window.addEventListener("resize", resizeCanvas)
-
-    // Start animation
-    animateFrame()
-
-    // If animate prop changes, restart or stop animation
-    if (animate) {
-      animationFrameId = requestAnimationFrame(animateFrame)
+    const handleResize = () => {
+      resizeCanvas()
+      draw() // Redraw after resize
     }
 
+    resizeCanvas()
+    window.addEventListener("resize", handleResize)
+
+    // Start animation loop
+    animateFrame()
+
     return () => {
-      cancelAnimationFrame(animationFrameId)
-      window.removeEventListener("resize", resizeCanvas)
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+      }
+      window.removeEventListener("resize", handleResize)
     }
   }, [animate])
 
