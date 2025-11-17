@@ -1,0 +1,18 @@
+# Ignore backend directory (Spring Boot/Gradle)
+backend/
+
+# Ignore documentation and analysis files
+*.md
+!frontend/**/*.md
+
+# Ignore Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Ignore shell scripts
+*.sh
+
+# Ignore root package.json (if it's just for backend/monorepo management)
+package.json
+!frontend/package.json
