@@ -4,6 +4,7 @@ import com.oneonline.backend.model.domain.BotPlayer;
 import com.oneonline.backend.model.domain.GameConfiguration;
 import com.oneonline.backend.model.domain.Player;
 import com.oneonline.backend.model.domain.Room;
+import com.oneonline.backend.model.enums.RoomStatus;
 import com.oneonline.backend.pattern.behavioral.observer.GameObserver;
 import com.oneonline.backend.pattern.creational.builder.RoomBuilder;
 import com.oneonline.backend.util.CodeGenerator;
@@ -182,7 +183,12 @@ public class RoomManager {
     /**
      * Leave a room
      *
-     * If leader leaves:
+     * SPECIAL HANDLING FOR ACTIVE GAMES:
+     * - If game is IN_PROGRESS and 3+ total players remain: Replace leaving player with bot
+     * - If game is IN_PROGRESS and only 2 players (leaving + 1 other): End game, declare other as winner
+     * - If game not started (WAITING/STARTING): Remove player normally
+     *
+     * If leader leaves (when game not in progress):
      * - Transfer leadership to another HUMAN player (not bots)
      * - Or close room if no human players left
      *
@@ -192,6 +198,90 @@ public class RoomManager {
      */
     public Room leaveRoom(String roomCode, Player player) {
         Room room = gameManager.getRoom(roomCode);
+
+        // Check if game is in progress
+        boolean gameInProgress = room.getStatus() == RoomStatus.IN_PROGRESS && room.getGameSession() != null;
+
+        if (gameInProgress) {
+            log.info("🎮 Player {} leaving ACTIVE game in room {}", player.getNickname(), roomCode);
+
+            // Count total remaining players (excluding the one leaving)
+            int remainingPlayers = room.getAllPlayers().size() - 1;
+
+            log.info("📊 Remaining players after {} leaves: {}", player.getNickname(), remainingPlayers);
+
+            if (remainingPlayers == 1) {
+                // Only 1 player will remain: End game with remaining player as winner
+                Player winner = room.getAllPlayers().stream()
+                        .filter(p -> !p.getPlayerId().equals(player.getPlayerId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (winner != null) {
+                    log.info("🏆 Only 1 player remains, ending game. Winner: {}", winner.getNickname());
+
+                    // End the game
+                    room.getGameSession().endGame(winner);
+                    room.setStatus(RoomStatus.FINISHED);
+
+                    // Remove the leaving player normally
+                    room.removePlayerById(player.getPlayerId());
+                    gameManager.untrackUser(player.getUserEmail());
+
+                    // Notify game ended
+                    webSocketObserver.onGameEnded(room.getGameSession());
+
+                    log.info("✅ Game ended in room {} due to player abandonment", roomCode);
+
+                    // Clean up room
+                    gameManager.removeRoom(roomCode);
+                    webSocketObserver.onRoomDeleted(room);
+
+                    return null;
+                }
+            } else if (remainingPlayers >= 2) {
+                // 2+ players remain: Replace leaving player with bot
+                log.info("🤖 Replacing leaving player {} with bot", player.getNickname());
+
+                // First, add a bot to replace the leaving player
+                BotPlayer replacementBot = room.addBot();
+
+                if (replacementBot != null) {
+                    log.info("✅ Replacement bot {} added to room {}", replacementBot.getNickname(), roomCode);
+
+                    // Transfer the leaving player's cards to the bot
+                    replacementBot.getHand().clear();
+                    replacementBot.getHand().addAll(player.getHand());
+
+                    log.info("🃏 Transferred {} cards from {} to bot {}",
+                            player.getHand().size(), player.getNickname(), replacementBot.getNickname());
+
+                    // If it was the leaving player's turn, transfer turn to bot
+                    if (room.getGameSession().getCurrentPlayer() != null &&
+                        room.getGameSession().getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
+                        room.getGameSession().setCurrentPlayer(replacementBot);
+                        log.info("🔄 Transferred turn from {} to bot {}", player.getNickname(), replacementBot.getNickname());
+                    }
+
+                    // Notify bot joined
+                    webSocketObserver.onPlayerJoined(replacementBot, room);
+                }
+
+                // Now remove the leaving player
+                room.removePlayerById(player.getPlayerId());
+                gameManager.untrackUser(player.getUserEmail());
+
+                log.info("✅ Player {} replaced by bot in active game", player.getNickname());
+
+                // Notify player left
+                webSocketObserver.onPlayerLeft(player, room);
+
+                return room;
+            }
+        }
+
+        // NORMAL LEAVE LOGIC (game not in progress or edge cases)
+        log.info("👋 Player {} leaving room {} (game not in progress)", player.getNickname(), roomCode);
 
         // Capture old leader BEFORE removing player
         Player oldLeader = room.getLeader();
