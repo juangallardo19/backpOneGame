@@ -6,6 +6,7 @@ import com.oneonline.backend.model.domain.Player;
 import com.oneonline.backend.model.domain.Room;
 import com.oneonline.backend.model.enums.RoomStatus;
 import com.oneonline.backend.pattern.behavioral.observer.GameObserver;
+import com.oneonline.backend.service.game.TurnManager;
 import com.oneonline.backend.pattern.creational.builder.RoomBuilder;
 import com.oneonline.backend.util.CodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -243,35 +244,55 @@ public class RoomManager {
                 // 2+ players remain: Replace leaving player with bot
                 log.info("🤖 Replacing leaving player {} with bot", player.getNickname());
 
-                // First, add a bot to replace the leaving player
-                BotPlayer replacementBot = room.addBot();
-
-                if (replacementBot != null) {
-                    log.info("✅ Replacement bot {} added to room {}", replacementBot.getNickname(), roomCode);
-
-                    // Transfer the leaving player's cards to the bot
-                    replacementBot.getHand().clear();
-                    replacementBot.getHand().addAll(player.getHand());
-
-                    log.info("🃏 Transferred {} cards from {} to bot {}",
-                            player.getHand().size(), player.getNickname(), replacementBot.getNickname());
-
-                    // If it was the leaving player's turn, transfer turn to bot
-                    if (room.getGameSession().getCurrentPlayer() != null &&
-                        room.getGameSession().getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
-                        room.getGameSession().setCurrentPlayer(replacementBot);
-                        log.info("🔄 Transferred turn from {} to bot {}", player.getNickname(), replacementBot.getNickname());
-                    }
-
-                    // Notify bot joined
-                    webSocketObserver.onPlayerJoined(replacementBot, room);
+                // Check if it's the leaving player's turn
+                boolean wasPlayersTurn = false;
+                TurnManager turnManager = room.getGameSession().getTurnManager();
+                if (turnManager != null && turnManager.getCurrentPlayer() != null) {
+                    wasPlayersTurn = turnManager.getCurrentPlayer().getPlayerId().equals(player.getPlayerId());
+                    log.info("Was player's turn: {}", wasPlayersTurn);
                 }
 
-                // Now remove the leaving player
+                // Create a bot to replace the leaving player
+                // Use a direct bot creation to bypass room capacity checks during active game
+                BotPlayer replacementBot = BotPlayer.builder()
+                        .playerId(java.util.UUID.randomUUID().toString())
+                        .nickname("Bot_" + new java.util.Random().nextInt(1000))
+                        .isBot(true)
+                        .build();
+
+                // Transfer the leaving player's cards to the bot
+                replacementBot.getHand().clear();
+                replacementBot.getHand().addAll(player.getHand());
+
+                log.info("✅ Replacement bot {} created with {} cards",
+                        replacementBot.getNickname(), replacementBot.getHand().size());
+
+                // Add bot to room's players and bots lists
+                room.getPlayers().add(replacementBot);
+                room.getBots().add(replacementBot);
+
+                // Add bot to TurnManager BEFORE removing the leaving player
+                if (turnManager != null) {
+                    turnManager.addPlayer(replacementBot);
+                    log.info("✅ Bot {} added to turn order", replacementBot.getNickname());
+                }
+
+                // Now remove the leaving player from TurnManager
+                // This will automatically advance turn if it was their turn
+                if (turnManager != null) {
+                    turnManager.removePlayer(player.getPlayerId());
+                    log.info("✅ Player {} removed from turn order", player.getNickname());
+                }
+
+                // Remove the leaving player from room
                 room.removePlayerById(player.getPlayerId());
                 gameManager.untrackUser(player.getUserEmail());
 
-                log.info("✅ Player {} replaced by bot in active game", player.getNickname());
+                log.info("✅ Player {} replaced by bot {} in active game",
+                        player.getNickname(), replacementBot.getNickname());
+
+                // Notify bot joined
+                webSocketObserver.onPlayerJoined(replacementBot, room);
 
                 // Notify player left
                 webSocketObserver.onPlayerLeft(player, room);
