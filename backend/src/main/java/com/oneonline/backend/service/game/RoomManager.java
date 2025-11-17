@@ -245,7 +245,6 @@ public class RoomManager {
                 BotPlayer replacementBot = BotPlayer.builder()
                         .playerId(java.util.UUID.randomUUID().toString())
                         .nickname("Bot_" + new Random().nextInt(1000))
-                        .isBot(true)
                         .build();
 
                 // Transfer the leaving player's cards to the bot
