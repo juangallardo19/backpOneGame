@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
 import GameResultsModal from './GameResultsModal';
+import HalftoneWaves from './halftone-waves';
 import { Card, Player, CurrentPlayer } from '@/types/game.types';
 
 interface OneGame3DProps {
@@ -194,6 +195,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   if (!gameState) {
     return (
       <div className="game-loading">
+        <div className="halftone-background">
+          <HalftoneWaves animate={false} />
+        </div>
         <div className="spinner"></div>
         <p>Cargando juego...</p>
       </div>
@@ -208,6 +212,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   return (
     <div className="game-container">
+      {/* Halftone Waves Background - Animated when it's your turn */}
+      <div className="halftone-background">
+        <HalftoneWaves animate={isMyTurn} />
+      </div>
+
       {/* Top Bar - Leave Game Button */}
       <div className="top-bar">
         <button className="leave-game-button" onClick={onBack}>
@@ -507,10 +516,23 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .game-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
           overflow: hidden;
+        }
+
+        /* Halftone Waves Background */
+        .halftone-background {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        /* Ensure all children are above the halftone background */
+        .game-container > *:not(.halftone-background) {
+          position: relative;
+          z-index: 1;
         }
 
         /* Top Bar */
@@ -1193,13 +1215,19 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         /* Loading State */
         .game-loading {
+          position: fixed;
+          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 100vh;
-          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
+          overflow: hidden;
+        }
+
+        .game-loading > *:not(.halftone-background) {
+          position: relative;
+          z-index: 1;
         }
 
         .spinner {
