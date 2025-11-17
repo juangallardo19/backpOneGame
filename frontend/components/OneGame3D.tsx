@@ -208,35 +208,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   return (
     <div className="game-container">
-      {/* Header */}
-      <header className="game-header">
-        <button className="back-button" onClick={onBack}>
-          <ArrowLeft size={20} />
-          <span>Leave Game</span>
-        </button>
-
-        <div className="game-info">
-          <h1 className="game-title">ONE GAME</h1>
-          <p className={`game-status ${isBotTurn ? 'bot-thinking' : ''}`}>
-            {isMyTurn
-              ? "Your Turn!"
-              : isBotTurn
-                ? `${currentTurnPlayer?.nickname} thinking...`
-                : `Waiting for ${currentTurnPlayer?.nickname || "player"}...`
-            }
-          </p>
-        </div>
-
-        <div className="header-controls">
-          <button className="control-btn" onClick={() => setPerspective(!perspective)}>
-            {perspective ? '3D' : '2D'}
-          </button>
-          <button className="control-btn" onClick={() => setShowChat(!showChat)}>
-            <MessageSquare size={18} />
-          </button>
-        </div>
-      </header>
-
       <div className="game-layout">
         {/* Left Sidebar */}
         <aside className="left-sidebar">
@@ -267,13 +238,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Chat Panel */}
-          <div className="panel chat-panel">
-            <div className="chat-container-wrapper">
-              <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
             </div>
           </div>
         </aside>
@@ -488,6 +452,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         </aside>
       </div>
 
+      {/* Independent Game Chat - Bottom Left */}
+      <div className="independent-chat-container">
+        <GameChat isMinimized={!showChat} onToggleMinimize={() => setShowChat(!showChat)} />
+      </div>
+
       {/* Color Picker Modal (RF26) */}
       {showColorPicker && (
         <div className="modal-overlay">
@@ -531,104 +500,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           overflow: hidden;
         }
 
-        /* Header */
-        .game-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 2rem;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(10px);
-          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-          z-index: 100;
-        }
-
-        .back-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .back-button:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: translateX(-3px);
-        }
-
-        .game-info {
-          text-align: center;
-        }
-
-        .game-title {
-          margin: 0;
-          font-size: 1.8rem;
-          font-weight: 900;
-          letter-spacing: 2px;
-          background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
-          background-size: 300% 300%;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: gradient-shift 3s ease infinite;
-        }
-
-        @keyframes gradient-shift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-
-        .game-status {
-          margin: 0.25rem 0 0 0;
-          font-size: 0.9rem;
-          color: #4ade80;
-          font-weight: 600;
-        }
-
-        .game-status.bot-thinking {
-          color: #a78bfa;
-          animation: bot-pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes bot-pulse {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.02);
-          }
-        }
-
-        .header-controls {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .control-btn {
-          padding: 0.5rem 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          color: white;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .control-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-
         /* Layout */
         .game-layout {
           display: grid;
           grid-template-columns: 280px 1fr 200px;
-          height: calc(100vh - 80px);
+          height: 100vh;
           gap: 1rem;
           padding: 1rem;
         }
@@ -724,16 +600,27 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           50% { opacity: 0.6; transform: scale(1.3); }
         }
 
-        .chat-panel {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          min-height: 0;
+        /* Independent Chat Container - Better visibility at bottom left */
+        .independent-chat-container {
+          position: fixed;
+          bottom: 20px;
+          left: 20px;
+          width: 380px;
+          max-height: 500px;
+          z-index: 150;
+          background: rgba(0, 0, 0, 0.85);
+          border-radius: 16px;
+          border: 2px solid rgba(74, 222, 128, 0.4);
+          backdrop-filter: blur(15px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 222, 128, 0.2);
+          overflow: hidden;
+          transition: all 0.3s ease;
         }
 
-        .chat-container-wrapper {
-          flex: 1;
-          overflow: hidden;
+        .independent-chat-container:hover {
+          border-color: rgba(74, 222, 128, 0.6);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(74, 222, 128, 0.3);
+          transform: translateY(-2px);
         }
 
         /* Right Sidebar - UNO Button */
