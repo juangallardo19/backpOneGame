@@ -2,7 +2,12 @@
 
 import { useEffect, useRef } from "react"
 
-export default function Component() {
+interface HalftoneWavesProps {
+  animate?: boolean;
+  className?: string;
+}
+
+export default function HalftoneWaves({ animate = true, className = "" }: HalftoneWavesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -45,7 +50,7 @@ export default function Component() {
       }
     }
 
-    const animate = () => {
+    const animateFrame = () => {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
       gradient.addColorStop(0, "rgba(220, 85, 40, 0.1)")
       gradient.addColorStop(1, "rgba(200, 60, 30, 0.1)")
@@ -54,25 +59,34 @@ export default function Component() {
 
       drawHalftoneWave()
 
-      time += 0.015
-      animationFrameId = requestAnimationFrame(animate)
+      // Only increment time if animation is enabled
+      if (animate) {
+        time += 0.015
+        animationFrameId = requestAnimationFrame(animateFrame)
+      }
     }
 
     resizeCanvas()
     window.addEventListener("resize", resizeCanvas)
 
-    animate()
+    // Start animation
+    animateFrame()
+
+    // If animate prop changes, restart or stop animation
+    if (animate) {
+      animationFrameId = requestAnimationFrame(animateFrame)
+    }
 
     return () => {
       cancelAnimationFrame(animationFrameId)
       window.removeEventListener("resize", resizeCanvas)
     }
-  }, [])
+  }, [animate])
 
   return (
     <canvas
       ref={canvasRef}
-      className="w-full h-screen"
+      className={className || "w-full h-screen"}
       style={{ background: "linear-gradient(135deg, #DC5528 0%, #C83C1E 100%)" }}
     />
   )

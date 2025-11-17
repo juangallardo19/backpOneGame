@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
 import GameResultsModal from './GameResultsModal';
+import HalftoneWaves from './halftone-waves';
 import { Card, Player, CurrentPlayer } from '@/types/game.types';
 
 interface OneGame3DProps {
@@ -194,6 +195,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   if (!gameState) {
     return (
       <div className="game-loading">
+        <div className="halftone-background">
+          <HalftoneWaves animate={false} />
+        </div>
         <div className="spinner"></div>
         <p>Cargando juego...</p>
       </div>
@@ -207,7 +211,12 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const rightPlayer = otherPlayers[2];
 
   return (
-    <div className={`game-container ${isMyTurn ? 'my-turn' : ''}`}>
+    <div className="game-container">
+      {/* Halftone Waves Background - Animated when it's your turn */}
+      <div className="halftone-background">
+        <HalftoneWaves animate={isMyTurn} />
+      </div>
+
       {/* Top Bar - Leave Game Button */}
       <div className="top-bar">
         <button className="leave-game-button" onClick={onBack}>
@@ -507,52 +516,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .game-container {
           position: fixed;
           inset: 0;
-          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
           overflow: hidden;
         }
 
-        /* Halftone waves overlay */
-        .game-container::before {
-          content: '';
+        /* Halftone Waves Background */
+        .halftone-background {
           position: absolute;
           inset: 0;
-          background-image:
-            radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.08) 2px, transparent 2px),
-            radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.08) 2px, transparent 2px),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06) 3px, transparent 3px);
-          background-size: 60px 60px, 60px 60px, 40px 40px;
-          background-position: 0 0, 30px 30px, 15px 15px;
-          opacity: 0.4;
-          pointer-events: none;
           z-index: 0;
-          transition: opacity 0.5s ease;
+          pointer-events: none;
         }
 
-        /* Animate waves when it's player's turn */
-        .game-container.my-turn::before {
-          animation: wave-motion 4s ease-in-out infinite;
-          opacity: 0.6;
-        }
-
-        @keyframes wave-motion {
-          0%, 100% {
-            background-position: 0 0, 30px 30px, 15px 15px;
-          }
-          25% {
-            background-position: 20px -10px, 50px 20px, 35px 5px;
-          }
-          50% {
-            background-position: 40px 0, 70px 30px, 55px 15px;
-          }
-          75% {
-            background-position: 20px 10px, 50px 40px, 35px 25px;
-          }
-        }
-
-        /* Ensure all children are above the halftone overlay */
-        .game-container > * {
+        /* Ensure all children are above the halftone background */
+        .game-container > *:not(.halftone-background) {
           position: relative;
           z-index: 1;
         }
@@ -1237,34 +1215,17 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
         /* Loading State */
         .game-loading {
-          position: relative;
+          position: fixed;
+          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 100vh;
-          background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF6347 100%);
           color: white;
           overflow: hidden;
         }
 
-        /* Halftone overlay for loading screen (static) */
-        .game-loading::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background-image:
-            radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.08) 2px, transparent 2px),
-            radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.08) 2px, transparent 2px),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06) 3px, transparent 3px);
-          background-size: 60px 60px, 60px 60px, 40px 40px;
-          background-position: 0 0, 30px 30px, 15px 15px;
-          opacity: 0.4;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .game-loading > * {
+        .game-loading > *:not(.halftone-background) {
           position: relative;
           z-index: 1;
         }
