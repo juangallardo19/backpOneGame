@@ -34,15 +34,9 @@ public class TurnManager {
 
     /**
      * Circular turn queue using custom data structure
+     * Direction is managed internally by CircularDoublyLinkedList
      */
     private final CircularDoublyLinkedList<Player> playerQueue;
-
-    /**
-     * Turn direction
-     * - true: Clockwise (normal direction)
-     * - false: Counter-clockwise (after Reverse card)
-     */
-    private boolean isClockwise;
 
     /**
      * Constructor
@@ -55,7 +49,6 @@ public class TurnManager {
         }
 
         this.playerQueue = new CircularDoublyLinkedList<>();
-        this.isClockwise = true;
 
         // Add all players to circular queue
         for (Player player : players) {
@@ -77,31 +70,24 @@ public class TurnManager {
     /**
      * Get next player without advancing turn
      *
+     * Direction is handled internally by CircularDoublyLinkedList
+     *
      * @return Next player in turn order
      */
     public Player peekNextPlayer() {
-        if (isClockwise) {
-            return playerQueue.peekNext();  // Use peekNext() instead of getNext() to avoid moving pointer
-        } else {
-            return playerQueue.peekPrevious();  // Use peekPrevious() instead of getPrevious()
-        }
+        return playerQueue.peekNext();
     }
 
     /**
      * Advance to next player's turn
      *
+     * Direction is handled internally by CircularDoublyLinkedList
+     *
      * @return New current player
      */
     public Player nextTurn() {
-        Player nextPlayer;
-
-        if (isClockwise) {
-            playerQueue.moveNext();
-            nextPlayer = playerQueue.getCurrent();
-        } else {
-            playerQueue.movePrevious();
-            nextPlayer = playerQueue.getCurrent();
-        }
+        playerQueue.moveNext();
+        Player nextPlayer = playerQueue.getCurrent();
 
         log.debug("Turn advanced to: {}", nextPlayer.getNickname());
         return nextPlayer;
@@ -113,14 +99,17 @@ public class TurnManager {
      * Changes direction from clockwise to counter-clockwise or vice versa.
      * Does NOT advance turn - next turn will be in opposite direction.
      *
+     * CRITICAL FIX: Only reverse once in CircularDoublyLinkedList
+     * (Previously was reversing twice, canceling the effect)
+     *
      * @return New direction (true = clockwise, false = counter-clockwise)
      */
     public boolean reverseTurnOrder() {
-        isClockwise = !isClockwise;
         playerQueue.reverse();
+        boolean newDirection = playerQueue.isClockwise();
 
-        log.info("Turn order reversed. Direction: {}", isClockwise ? "Clockwise" : "Counter-clockwise");
-        return isClockwise;
+        log.info("Turn order reversed. Direction: {}", newDirection ? "Clockwise" : "Counter-clockwise");
+        return newDirection;
     }
 
     /**
@@ -199,23 +188,14 @@ public class TurnManager {
         Player current = peekNextPlayer();
         while (!current.getPlayerId().equals(start.getPlayerId())) {
             order.add(current);
-            // Temporarily move to get next
-            if (isClockwise) {
-                playerQueue.moveNext();
-                current = playerQueue.getCurrent();
-            } else {
-                playerQueue.movePrevious();
-                current = playerQueue.getCurrent();
-            }
+            // Temporarily move to get next (direction handled by CircularDoublyLinkedList)
+            playerQueue.moveNext();
+            current = playerQueue.getCurrent();
         }
 
         // Reset to original position
         while (!getCurrentPlayer().getPlayerId().equals(start.getPlayerId())) {
-            if (isClockwise) {
-                playerQueue.movePrevious();
-            } else {
-                playerQueue.moveNext();
-            }
+            playerQueue.movePrevious();
         }
 
         return order;
@@ -250,6 +230,17 @@ public class TurnManager {
     }
 
     /**
+     * Get current turn direction
+     *
+     * Delegates to CircularDoublyLinkedList to get actual direction.
+     *
+     * @return true if clockwise, false if counter-clockwise
+     */
+    public boolean isClockwise() {
+        return playerQueue.isClockwise();
+    }
+
+    /**
      * Check if player is in turn order
      *
      * @param playerId Player ID
@@ -272,7 +263,8 @@ public class TurnManager {
             playerQueue.movePrevious();
         }
 
-        isClockwise = true;
+        // Reset direction to clockwise
+        playerQueue.setClockwise(true);
         log.info("Turn order reset to start: {}", first.getNickname());
     }
 
