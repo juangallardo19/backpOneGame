@@ -532,7 +532,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         /* Ensure all children are above the halftone background */
-        .game-container > *:not(.halftone-background) {
+        .game-container > *:not(.halftone-background):not(.modal-overlay) {
           position: relative;
           z-index: 1;
         }
