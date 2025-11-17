@@ -230,7 +230,7 @@ public class RoomManager {
                     gameManager.untrackUser(player.getUserEmail());
 
                     // Notify game ended
-                    webSocketObserver.onGameEnded(room.getGameSession());
+                    webSocketObserver.onGameEnded(winner, room.getGameSession());
 
                     log.info("✅ Game ended in room {} due to player abandonment", roomCode);
 
@@ -257,7 +257,6 @@ public class RoomManager {
                 BotPlayer replacementBot = BotPlayer.builder()
                         .playerId(java.util.UUID.randomUUID().toString())
                         .nickname("Bot_" + new java.util.Random().nextInt(1000))
-                        .isBot(true)
                         .build();
 
                 // Transfer the leaving player's cards to the bot
