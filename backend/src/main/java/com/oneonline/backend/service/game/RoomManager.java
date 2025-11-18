@@ -310,15 +310,60 @@ public class RoomManager {
                     log.info("✅ Player {} removed from turn order", player.getNickname());
                 }
 
+                // CRITICAL FIX: Transfer leadership if leaving player is the leader
+                // This must be done BEFORE removing the player from the list
+                boolean wasLeader = room.getLeader() != null &&
+                                  room.getLeader().getPlayerId().equals(player.getPlayerId());
+
+                if (wasLeader) {
+                    log.info("👑 Leaving player {} is the leader, transferring leadership...",
+                            player.getNickname());
+
+                    // Find next human player to become leader (not the bot we just added)
+                    Player newLeader = room.getPlayers().stream()
+                            .filter(p -> !p.getPlayerId().equals(player.getPlayerId()))
+                            .filter(p -> !(p instanceof BotPlayer))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (newLeader != null) {
+                        room.transferLeadership(newLeader);
+                        log.info("✅ Leadership transferred to {}", newLeader.getNickname());
+
+                        // Notify all players about leadership change
+                        webSocketObserver.onLeadershipTransferred(room, player, newLeader);
+                    } else {
+                        log.warn("⚠️ No human players available to transfer leadership");
+                    }
+                }
+
                 // CRITICAL FIX: Remove the leaving player from room manually
                 // We can't use removePlayerById() because it checks if status == IN_PROGRESS and blocks removal
                 // So we remove directly from the players list
+                log.info("🔍 Attempting to remove player {} (ID: {}) from room.players list",
+                        player.getNickname(), player.getPlayerId());
+                log.info("📋 Players before removal: {}",
+                        room.getPlayers().stream()
+                                .map(p -> p.getNickname() + " (" + p.getPlayerId() + ")")
+                                .collect(java.util.stream.Collectors.joining(", ")));
+
                 boolean removed = room.getPlayers().removeIf(p -> p.getPlayerId().equals(player.getPlayerId()));
+
+                log.info("📋 Players after removal: {}",
+                        room.getPlayers().stream()
+                                .map(p -> p.getNickname() + " (" + p.getPlayerId() + ")")
+                                .collect(java.util.stream.Collectors.joining(", ")));
+
                 if (removed) {
                     log.info("✅ Player {} removed from room.players list (remaining humans: {})",
                             player.getNickname(), room.getPlayers().size());
                 } else {
-                    log.warn("⚠️ Failed to remove player {} from room.players list", player.getNickname());
+                    log.error("❌ FAILED to remove player {} from room.players list", player.getNickname());
+                    log.error("❌ Player ID to remove: {}", player.getPlayerId());
+                    log.error("❌ IDs in room.players: {}",
+                            room.getPlayers().stream()
+                                    .map(Player::getPlayerId)
+                                    .collect(java.util.stream.Collectors.joining(", ")));
                 }
 
                 gameManager.untrackUser(player.getUserEmail());
