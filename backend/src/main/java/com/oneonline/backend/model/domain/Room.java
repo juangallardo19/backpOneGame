@@ -350,6 +350,11 @@ public class Room {
         for (Player player : getAllPlayers()) {
             player.resetHand();
         }
+
+        // CRITICAL: Remove all replacement bots from previous game
+        // Bots are only for mid-game replacements when players leave
+        // They should NOT persist in the lobby after game ends
+        bots.clear();
     }
 
     /**
