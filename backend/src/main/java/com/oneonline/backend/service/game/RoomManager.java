@@ -8,8 +8,8 @@ import com.oneonline.backend.model.enums.RoomStatus;
 import com.oneonline.backend.pattern.behavioral.observer.GameObserver;
 import com.oneonline.backend.pattern.creational.builder.RoomBuilder;
 import com.oneonline.backend.util.CodeGenerator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,11 +37,20 @@ import java.util.Random;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RoomManager {
 
     private final GameManager gameManager = GameManager.getInstance();
-    private final GameObserver webSocketObserver; // ⬅️ ESTE ES EL CAMBIO CLAVE
+    private final GameObserver webSocketObserver;
+    private final GameEngine gameEngine;
+
+    // Constructor con @Lazy para evitar dependencias circulares
+    public RoomManager(
+            GameObserver webSocketObserver,
+            @Lazy GameEngine gameEngine
+    ) {
+        this.webSocketObserver = webSocketObserver;
+        this.gameEngine = gameEngine;
+    }
 
     /**
      * Create a new game room
@@ -290,6 +299,16 @@ public class RoomManager {
 
                 // Notify player left
                 webSocketObserver.onPlayerLeft(player, room);
+
+                // CRITICAL: Process bot turns if it's now a bot's turn
+                // This ensures the game continues smoothly after player leaves
+                try {
+                    log.info("🎮 Checking if bot needs to play...");
+                    gameEngine.processBotTurns(room.getGameSession());
+                    log.info("✅ Bot turns processed successfully");
+                } catch (Exception e) {
+                    log.error("❌ Error processing bot turns after player replacement: {}", e.getMessage(), e);
+                }
 
                 return room;
             }
