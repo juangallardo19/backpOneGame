@@ -128,12 +128,11 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // Handle close game results modal
   const handleCloseGameResults = () => {
     clearGameResults();
-    // Use onBack callback if available, otherwise go home
-    if (onBack) {
-      onBack();
-    } else {
-      router.push('/');
-    }
+    // IMPORTANT: Don't call onBack() here - that would disconnect and leave the room
+    // When game ends, backend resets room to WAITING state
+    // Player should stay in the room to play again
+    // Navigate back to room lobby to start a new game
+    router.push('/room');
   };
 
   // Get card color class
