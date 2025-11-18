@@ -287,9 +287,12 @@ public class RoomManager {
                 log.info("✅ Replacement bot {} created with {} cards",
                         replacementBot.getNickname(), replacementBot.getHand().size());
 
-                // Add bot to room's players and bots lists
-                room.getPlayers().add(replacementBot);
+                // CRITICAL FIX: Only add bot to bots list, NOT to players list
+                // players list is for humans only, bots list is for bots only
+                // room.getAllPlayers() combines both lists automatically
                 room.getBots().add(replacementBot);
+                log.info("✅ Bot {} added to room.bots list (total bots: {})",
+                        replacementBot.getNickname(), room.getBots().size());
 
                 // Add bot to TurnManager BEFORE removing the leaving player
                 if (turnManager != null) {
@@ -304,8 +307,17 @@ public class RoomManager {
                     log.info("✅ Player {} removed from turn order", player.getNickname());
                 }
 
-                // Remove the leaving player from room
-                room.removePlayerById(player.getPlayerId());
+                // CRITICAL FIX: Remove the leaving player from room manually
+                // We can't use removePlayerById() because it checks if status == IN_PROGRESS and blocks removal
+                // So we remove directly from the players list
+                boolean removed = room.getPlayers().removeIf(p -> p.getPlayerId().equals(player.getPlayerId()));
+                if (removed) {
+                    log.info("✅ Player {} removed from room.players list (remaining humans: {})",
+                            player.getNickname(), room.getPlayers().size());
+                } else {
+                    log.warn("⚠️ Failed to remove player {} from room.players list", player.getNickname());
+                }
+
                 gameManager.untrackUser(player.getUserEmail());
 
                 log.info("✅ Player {} replaced by bot {} in active game",
