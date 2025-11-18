@@ -206,14 +206,20 @@ public class RoomManager {
         if (gameInProgress) {
             log.info("🎮 Player {} leaving ACTIVE game in room {}", player.getNickname(), roomCode);
 
-            // Count total remaining players (excluding the one leaving)
-            int remainingPlayers = room.getAllPlayers().size() - 1;
+            // CRITICAL: Count ONLY HUMAN players remaining (excluding the one leaving and bots)
+            long remainingHumans = room.getAllPlayers().stream()
+                    .filter(p -> !p.getPlayerId().equals(player.getPlayerId())) // Exclude leaving player
+                    .filter(p -> !(p instanceof BotPlayer)) // Exclude bots
+                    .count();
 
-            log.info("📊 Remaining players after {} leaves: {}", player.getNickname(), remainingPlayers);
+            int totalRemaining = room.getAllPlayers().size() - 1;
 
-            if (remainingPlayers == 1) {
-                // Only 1 player will remain: Close the room
-                log.info("🚪 Only 1 player remains, closing room {}", roomCode);
+            log.info("📊 After {} leaves: {} humans, {} total players",
+                    player.getNickname(), remainingHumans, totalRemaining);
+
+            if (remainingHumans == 0) {
+                // NO HUMANS LEFT: Close the room
+                log.info("🚪 No human players remain, closing room {}", roomCode);
 
                 // Remove the leaving player
                 room.removePlayerById(player.getPlayerId());
@@ -222,16 +228,17 @@ public class RoomManager {
                 // Notify player left
                 webSocketObserver.onPlayerLeft(player, room);
 
-                // Close the room
+                // Close the room immediately
                 gameManager.removeRoom(roomCode);
                 webSocketObserver.onRoomDeleted(room);
 
-                log.info("✅ Room {} closed due to insufficient players", roomCode);
+                log.info("✅ Room {} closed - no human players left", roomCode);
 
                 return null;
-            } else if (remainingPlayers >= 2) {
-                // 2+ players remain: Replace leaving player with bot
-                log.info("🤖 Replacing leaving player {} with bot", player.getNickname());
+            } else {
+                // AT LEAST 1 HUMAN REMAINS: Replace leaving player with bot
+                log.info("🤖 Replacing leaving player {} with bot ({} humans will remain)",
+                        player.getNickname(), remainingHumans);
 
                 // Check if it's the leaving player's turn
                 TurnManager turnManager = room.getGameSession().getTurnManager();
