@@ -37,17 +37,50 @@ export default function GameRoomMenu({ onBack, onStartGame }: GameRoomMenuProps)
 
   // Estado de la sala
   const [room, setRoom] = useState<Room | null>(null)
+  const [isRefreshingRoom, setIsRefreshingRoom] = useState(false)
 
-  // Sincronizar con room del WebSocket
+  // CRITICAL: Fetch fresh room info when returning from finished game
+  // This ensures player list is up-to-date after players leave during game
   useEffect(() => {
-    if (wsRoom) {
+    const fetchUpdatedRoomInfo = async () => {
+      // Only fetch if game just finished and we haven't refreshed yet
+      if (wsRoom && gameState?.status === 'GAME_OVER' && !isRefreshingRoom) {
+        console.log('🔄 [GameRoomMenu] Game finished detected, fetching fresh room info...')
+        console.log('   📋 wsRoom players:', wsRoom.players.map(p => p.nickname).join(', '))
+
+        setIsRefreshingRoom(true)
+
+        try {
+          const updatedRoom = await roomService.getRoomByCode(wsRoom.code)
+          console.log('✅ [GameRoomMenu] Fetched fresh room info from backend')
+          console.log('   📋 Updated players:', updatedRoom.players.map(p => p.nickname).join(', '))
+          console.log('   👑 Leader:', updatedRoom.leaderId)
+
+          // Update with fresh data from backend
+          setRoom(updatedRoom)
+        } catch (error) {
+          console.error('❌ [GameRoomMenu] Error fetching room info:', error)
+          // Fallback to wsRoom
+          setRoom(wsRoom)
+        } finally {
+          setIsRefreshingRoom(false)
+        }
+      }
+    }
+
+    fetchUpdatedRoomInfo()
+  }, [wsRoom, gameState?.status, isRefreshingRoom])
+
+  // Sincronizar con room del WebSocket (solo cuando no es GAME_OVER)
+  useEffect(() => {
+    if (wsRoom && gameState?.status !== 'GAME_OVER') {
       console.log('📡 Sincronizando con sala del WebSocket:', wsRoom)
       console.log('👥 Jugadores en wsRoom:', wsRoom.players)
       console.log('🔑 Room code:', wsRoom.code)
       console.log('👑 Leader ID:', wsRoom.leaderId)
       setRoom(wsRoom)
     }
-  }, [wsRoom])
+  }, [wsRoom, gameState?.status])
 
   // Timeout para redirigir si no se carga la sala en 5 segundos
   useEffect(() => {
