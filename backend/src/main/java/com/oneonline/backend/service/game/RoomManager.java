@@ -43,6 +43,10 @@ public class RoomManager {
     private final GameObserver webSocketObserver;
     private final GameEngine gameEngine;
 
+    // CRITICAL: Track players currently in the process of leaving to prevent duplicate leave requests
+    // This prevents multiple bots from being created when user clicks "leave" multiple times
+    private final java.util.Set<String> playersCurrentlyLeaving = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
     // Constructor con @Lazy para evitar dependencias circulares
     public RoomManager(
             GameObserver webSocketObserver,
@@ -207,7 +211,20 @@ public class RoomManager {
      * @return Updated room, or null if room closed
      */
     public Room leaveRoom(String roomCode, Player player) {
-        Room room = gameManager.getRoom(roomCode);
+        // CRITICAL: Check if this player is already in the process of leaving
+        // This prevents duplicate bot creation when user clicks "leave" multiple times
+        String playerKey = roomCode + ":" + player.getPlayerId();
+        if (playersCurrentlyLeaving.contains(playerKey)) {
+            log.warn("⚠️ Player {} is already leaving room {}, ignoring duplicate request",
+                    player.getNickname(), roomCode);
+            return gameManager.getRoom(roomCode);
+        }
+
+        // Mark player as currently leaving
+        playersCurrentlyLeaving.add(playerKey);
+
+        try {
+            Room room = gameManager.getRoom(roomCode);
 
         // Check if game is in progress
         boolean gameInProgress = room.getStatus() == RoomStatus.IN_PROGRESS && room.getGameSession() != null;
@@ -294,11 +311,20 @@ public class RoomManager {
                 log.info("✅ Player {} replaced by bot {} in active game",
                         player.getNickname(), replacementBot.getNickname());
 
-                // Notify bot joined
-                webSocketObserver.onPlayerJoined(replacementBot, room);
-
-                // Notify player left
+                // CRITICAL: Send events in correct order:
+                // 1. First notify that player left (so frontend removes them)
+                // 2. Then notify that bot joined (so frontend adds bot)
+                // This prevents showing both player and bot at the same time
                 webSocketObserver.onPlayerLeft(player, room);
+
+                // Brief delay to ensure frontend processes PLAYER_LEFT before PLAYER_JOINED
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                webSocketObserver.onPlayerJoined(replacementBot, room);
 
                 // CRITICAL: Process bot turns if it's now a bot's turn
                 // This ensures the game continues smoothly after player leaves
@@ -357,6 +383,11 @@ public class RoomManager {
         }
 
         return room;
+        } finally {
+            // CRITICAL: Always remove player from "currently leaving" set when done
+            playersCurrentlyLeaving.remove(playerKey);
+            log.debug("✅ Player {} removed from 'currently leaving' set", player.getNickname());
+        }
     }
 
     /**

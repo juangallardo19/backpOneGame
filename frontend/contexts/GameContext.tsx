@@ -91,6 +91,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   // Referencia al servicio WebSocket
   const wsServiceRef = useRef<WebSocketService | null>(null);
 
+  // CRITICAL: Flag to prevent multiple simultaneous leave requests
+  const isLeavingRef = useRef<boolean>(false);
+
   // ============================================
   // TRANSFORM BACKEND DATA
   // ============================================
@@ -292,6 +295,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   const handlePlayerJoined = useCallback((payload: any) => {
     console.log('👤 Jugador se unió:', payload);
 
+    const newPlayer: Player = {
+      id: payload.playerId,
+      nickname: payload.nickname,
+      userEmail: payload.userEmail || '',
+      isBot: payload.isBot || false,
+      status: PlayerStatus.ACTIVE,
+      cardCount: payload.cardCount || 0,
+      hasCalledUno: false,
+      calledOne: false,
+    };
+
     // CRITICAL: Update room state with new player
     setRoom(prevRoom => {
       if (!prevRoom) return prevRoom;
@@ -303,23 +317,30 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
         return prevRoom;
       }
 
-      // Add new player to room
-      const newPlayer: Player = {
-        id: payload.playerId,
-        nickname: payload.nickname,
-        userEmail: payload.userEmail || '',
-        isBot: payload.isBot || false,
-        status: PlayerStatus.ACTIVE,
-        cardCount: 0,
-        hasCalledUno: false,
-        calledOne: false,
-      };
-
       console.log('✅ Adding player to room:', newPlayer);
 
       return {
         ...prevRoom,
         players: [...prevRoom.players, newPlayer],
+      };
+    });
+
+    // CRITICAL: Also update gameState.players if game is in progress
+    setGameState(prevState => {
+      if (!prevState) return prevState;
+
+      // Check if player already exists in game state
+      const existingInGame = prevState.players.find(p => p.id === payload.playerId);
+      if (existingInGame) {
+        console.log('⚠️ Player already in game state, skipping');
+        return prevState;
+      }
+
+      console.log('✅ Adding player to game state:', newPlayer);
+
+      return {
+        ...prevState,
+        players: [...prevState.players, newPlayer],
       };
     });
   }, []);
@@ -341,9 +362,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     setRoom(prevRoom => {
       if (!prevRoom) return prevRoom;
 
+      console.log('🔄 Removing player from room:', payload.nickname);
+
       return {
         ...prevRoom,
         players: prevRoom.players.filter(p => p.id !== payload.playerId),
+      };
+    });
+
+    // CRITICAL: Also update gameState.players if game is in progress
+    setGameState(prevState => {
+      if (!prevState) return prevState;
+
+      console.log('🔄 Removing player from game state:', payload.nickname);
+
+      return {
+        ...prevState,
+        players: prevState.players.filter(p => p.id !== payload.playerId),
       };
     });
   }, [onPlayerKicked]);
@@ -1047,12 +1082,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
    * Use disconnectFromGame() for those cases instead.
    */
   const leaveRoomAndDisconnect = useCallback(async () => {
+    // CRITICAL: Prevent multiple simultaneous leave requests
+    if (isLeavingRef.current) {
+      console.log('⚠️ [leaveRoomAndDisconnect] Already leaving, ignoring duplicate request');
+      return;
+    }
+
     if (!room) {
       console.log('⚠️ No hay sala de la cual salir');
       disconnectFromGame();
       return;
     }
 
+    // Set flag to prevent duplicate requests
+    isLeavingRef.current = true;
     console.log('🚪 [leaveRoomAndDisconnect] Saliendo de la sala:', room.code);
 
     try {
@@ -1063,6 +1106,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     } catch (error) {
       console.error('❌ [leaveRoomAndDisconnect] Error leaving room:', error);
       // Continue with disconnect even if API call fails
+    } finally {
+      // Reset flag after operation completes
+      isLeavingRef.current = false;
     }
 
     // Then disconnect from WebSocket and cleanup

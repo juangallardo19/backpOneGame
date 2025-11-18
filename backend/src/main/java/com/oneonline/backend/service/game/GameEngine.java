@@ -532,11 +532,26 @@ public class GameEngine {
      */
     public void processBotTurns(GameSession session) {
         TurnManager turnManager = session.getTurnManager();
+        int maxConsecutiveBotTurns = 20; // Safety limit to prevent infinite loops
+        int consecutiveBotTurns = 0;
 
         // Process bot turns until we reach a human player
         while (turnManager.getCurrentPlayer() instanceof BotPlayer && session.getStatus() == GameStatus.PLAYING) {
             BotPlayer bot = (BotPlayer) turnManager.getCurrentPlayer();
-            log.info("🤖 Bot {} turn - processing automatically", bot.getNickname());
+            String botIdBeforeMove = bot.getPlayerId();
+
+            // CRITICAL: Safety check to prevent infinite loops
+            consecutiveBotTurns++;
+            if (consecutiveBotTurns > maxConsecutiveBotTurns) {
+                log.error("⚠️ INFINITE LOOP DETECTED: Bot has played {} consecutive turns! Breaking loop.", consecutiveBotTurns);
+                log.error("   Current player: {} ({})", bot.getNickname(), bot.getPlayerId());
+                log.error("   Player count: {}", turnManager.getPlayerCount());
+                log.error("   Game status: {}", session.getStatus());
+                break;
+            }
+
+            log.info("🤖 Bot {} turn - processing automatically (turn #{}/{})",
+                    bot.getNickname(), consecutiveBotTurns, maxConsecutiveBotTurns);
 
             // IMPORTANTE: Enviar estado completo ANTES del delay para que el frontend muestre "Bot thinking..."
             webSocketGameController.broadcastGameStateAfterBot(session);
@@ -571,6 +586,17 @@ public class GameEngine {
                     if (bot.getHandSize() == 1 && botStrategy.shouldCallOne(bot)) {
                         oneManager.callOne(bot, session);
                         log.info("🔔 Bot {} called ONE!", bot.getNickname());
+                    }
+
+                    // CRITICAL FIX: Check if it's still the same bot's turn after playing
+                    // This can happen in 2-player games with REVERSE cards
+                    Player currentPlayerAfterMove = turnManager.getCurrentPlayer();
+                    if (currentPlayerAfterMove instanceof BotPlayer &&
+                        currentPlayerAfterMove.getPlayerId().equals(botIdBeforeMove)) {
+                        log.warn("⚠️ Bot {} still has turn after playing (likely REVERSE in 2-player game)",
+                                bot.getNickname());
+                        log.info("   Continuing to process bot's next move...");
+                        // Continue the loop - bot will play again
                     }
 
                 } else {
