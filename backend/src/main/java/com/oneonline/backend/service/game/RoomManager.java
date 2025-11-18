@@ -42,6 +42,7 @@ public class RoomManager {
     private final GameManager gameManager = GameManager.getInstance();
     private final GameObserver webSocketObserver;
     private final GameEngine gameEngine;
+    private final com.oneonline.backend.controller.WebSocketGameController webSocketGameController;
 
     // CRITICAL: Track players currently in the process of leaving to prevent duplicate leave requests
     // This prevents multiple bots from being created when user clicks "leave" multiple times
@@ -50,10 +51,12 @@ public class RoomManager {
     // Constructor con @Lazy para evitar dependencias circulares
     public RoomManager(
             GameObserver webSocketObserver,
-            @Lazy GameEngine gameEngine
+            @Lazy GameEngine gameEngine,
+            @Lazy com.oneonline.backend.controller.WebSocketGameController webSocketGameController
     ) {
         this.webSocketObserver = webSocketObserver;
         this.gameEngine = gameEngine;
+        this.webSocketGameController = webSocketGameController;
     }
 
     /**
@@ -344,6 +347,11 @@ public class RoomManager {
                     log.info("🎮 Checking if bot needs to play...");
                     gameEngine.processBotTurns(room.getGameSession());
                     log.info("✅ Bot turns processed successfully");
+
+                    // CRITICAL FIX: Send final game state to frontend after bot finishes playing
+                    // Without this, frontend doesn't see the bot's move and UI appears frozen
+                    webSocketGameController.broadcastGameState(room.getGameSession());
+                    log.info("✅ Final game state broadcasted after bot replacement");
                 } catch (Exception e) {
                     log.error("❌ Error processing bot turns after player replacement: {}", e.getMessage(), e);
                 }
