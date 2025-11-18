@@ -350,7 +350,7 @@ public class RoomManager {
 
                     // CRITICAL FIX: Send final game state to frontend after bot finishes playing
                     // Without this, frontend doesn't see the bot's move and UI appears frozen
-                    webSocketGameController.broadcastGameState(room.getGameSession());
+                    webSocketGameController.broadcastGameStateAfterBot(room.getGameSession());
                     log.info("✅ Final game state broadcasted after bot replacement");
                 } catch (Exception e) {
                     log.error("❌ Error processing bot turns after player replacement: {}", e.getMessage(), e);
