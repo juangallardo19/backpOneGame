@@ -212,8 +212,27 @@ public class RoomManager {
             log.info("📊 Remaining players after {} leaves: {}", player.getNickname(), remainingPlayers);
 
             if (remainingPlayers == 1) {
-                // Only 1 player will remain: Close the room
-                log.info("🚪 Only 1 player remains, closing room {}", roomCode);
+                // Only 1 player will remain: Declare them winner and end game
+                log.info("🏆 Only 1 player remains, declaring winner and ending game in room {}", roomCode);
+
+                // Find the remaining player (the winner)
+                Player winner = room.getAllPlayers().stream()
+                        .filter(p -> !p.getPlayerId().equals(player.getPlayerId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (winner != null) {
+                    log.info("🎊 Winner: {} (won by default - other player left)", winner.getNickname());
+
+                    // End the game formally
+                    room.getGameSession().endGame(winner);
+                    room.setStatus(RoomStatus.FINISHED);
+
+                    // CRITICAL: Notify game ended BEFORE removing player
+                    webSocketObserver.onGameEnded(winner, room.getGameSession());
+
+                    log.info("✅ Game ended notification sent");
+                }
 
                 // Remove the leaving player
                 room.removePlayerById(player.getPlayerId());
