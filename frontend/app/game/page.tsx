@@ -33,36 +33,73 @@ export default function GamePage() {
   // CRITICAL: Handle page close/reload - leave room automatically
   // This ensures player is removed and replaced with bot if game is active
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only trigger when page becomes hidden (user leaving/closing)
-      if (document.visibilityState === 'hidden' && room) {
-        console.log('🚪 [visibilitychange] Page hidden, leaving room...')
+    const sendLeaveRequest = () => {
+      if (!room) return false
 
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${room.code}/leave`
-        const token = localStorage.getItem('uno_token')
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${room.code}/leave`
+      const token = localStorage.getItem('uno_token')
 
-        // Use fetch with keepalive - works even when page is closing
+      console.log('🚪 [Page Close] Sending leave room request...')
+
+      // Try sendBeacon first (most reliable for page unload)
+      if (navigator.sendBeacon) {
+        // sendBeacon requires a Blob with proper content type
+        const blob = new Blob([''], { type: 'application/json' })
+        const success = navigator.sendBeacon(
+          `${apiUrl}?token=${encodeURIComponent(token || '')}`,
+          blob
+        )
+
+        if (success) {
+          console.log('✅ [sendBeacon] Leave room request sent successfully')
+          return true
+        }
+        console.warn('⚠️ [sendBeacon] Failed, trying fetch keepalive...')
+      }
+
+      // Fallback to fetch with keepalive
+      try {
         fetch(apiUrl, {
-          method: 'DELETE',
+          method: 'POST', // Use POST for sendBeacon endpoint
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json',
           },
-          keepalive: true, // CRITICAL: Ensures request completes even if page closes
-        }).catch(err => {
-          console.error('❌ [visibilitychange] Error leaving room:', err)
+          keepalive: true,
         })
-
-        console.log('✅ [visibilitychange] Leave room request sent')
+        console.log('✅ [fetch keepalive] Leave room request sent')
+        return true
+      } catch (err) {
+        console.error('❌ [fetch keepalive] Error:', err)
+        return false
       }
     }
 
-    // Listen for page visibility changes
+    // Multiple event listeners for maximum compatibility
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sendLeaveRequest()
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      sendLeaveRequest()
+    }
+
+    const handlePageHide = () => {
+      sendLeaveRequest()
+    }
+
+    // Register all event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
 
     // Cleanup
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('pagehide', handlePageHide)
     }
   }, [room])
 

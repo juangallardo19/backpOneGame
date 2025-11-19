@@ -266,6 +266,49 @@ public class RoomController {
     }
 
     /**
+     * Leave a room (POST version for sendBeacon compatibility)
+     *
+     * POST /api/rooms/{code}/leave
+     *
+     * This is identical to the DELETE endpoint but uses POST method
+     * to be compatible with navigator.sendBeacon() which only supports POST.
+     * This is used when the page is closing/reloading to ensure the request completes.
+     *
+     * @param code Room code
+     * @param authentication Current user
+     * @return Success message or updated room
+     */
+    @PostMapping("/{code}/leave")
+    public ResponseEntity<?> leaveRoomPost(
+            @PathVariable String code,
+            Authentication authentication) {
+
+        log.info("[sendBeacon] User {} leaving room {} (POST method)", authentication.getName(), code);
+
+        // Find player in room
+        Room room = roomManager.findRoom(code)
+                .orElseThrow(() -> new IllegalArgumentException("Room not found: " + code));
+
+        Player player = room.getPlayers().stream()
+                .filter(p -> p.getNickname().equals(authentication.getName()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Player not in room"));
+
+        // Leave room
+        Room updatedRoom = roomManager.leaveRoom(code, player);
+
+        if (updatedRoom == null) {
+            // Room closed
+            log.info("[sendBeacon] Room {} closed after user {} left", code, authentication.getName());
+            return ResponseEntity.ok("Room closed");
+        }
+
+        log.info("[sendBeacon] User {} successfully left room {}", authentication.getName(), code);
+        RoomResponse response = mapToRoomResponse(updatedRoom);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Kick a player from the room (leader only)
      *
      * PUT /api/rooms/{code}/kick/{playerId}
