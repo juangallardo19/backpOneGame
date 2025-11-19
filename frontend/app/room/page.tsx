@@ -55,37 +55,36 @@ export default function RoomPage() {
   // CRITICAL: Handle page close/reload - leave room automatically
   // This ensures player is removed from room when page closes/reloads
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only leave if user is actually in a room
-      if (roomRef.current) {
-        console.log('🚪 [beforeunload] Page closing/reloading, leaving room...')
+    const handleVisibilityChange = () => {
+      // Only trigger when page becomes hidden (user leaving/closing)
+      if (document.visibilityState === 'hidden' && roomRef.current) {
+        console.log('🚪 [visibilitychange] Page hidden, leaving room...')
 
-        try {
-          // Make synchronous XHR request (only reliable method in beforeunload)
-          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${roomRef.current.code}/leave`
-          const token = localStorage.getItem('uno_token')
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${roomRef.current.code}/leave`
+        const token = localStorage.getItem('uno_token')
 
-          const xhr = new XMLHttpRequest()
-          xhr.open('DELETE', apiUrl, false) // false = synchronous
-          if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-          }
-          xhr.setRequestHeader('Content-Type', 'application/json')
-          xhr.send()
+        // Use fetch with keepalive - works even when page is closing
+        fetch(apiUrl, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json',
+          },
+          keepalive: true, // CRITICAL: Ensures request completes even if page closes
+        }).catch(err => {
+          console.error('❌ [visibilitychange] Error leaving room:', err)
+        })
 
-          console.log('✅ [beforeunload] Leave room request sent')
-        } catch (error) {
-          console.error('❌ [beforeunload] Error leaving room:', error)
-        }
+        console.log('✅ [visibilitychange] Leave room request sent')
       }
     }
 
-    // Add event listener
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    // Listen for page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     // Cleanup
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
