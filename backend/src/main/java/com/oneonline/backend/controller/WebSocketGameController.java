@@ -130,6 +130,10 @@ public class WebSocketGameController {
             if (card instanceof WildCard wildCard && chosenColor != null) {
                 wildCard.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
             }
+            // If wild draw four card and color chosen, set it
+            if (card instanceof WildDrawFourCard wildDrawFour && chosenColor != null) {
+                wildDrawFour.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
+            }
 
             log.info("🃏 [WebSocket] Playing card: {} {}", card.getColor(), card.getValue());
 

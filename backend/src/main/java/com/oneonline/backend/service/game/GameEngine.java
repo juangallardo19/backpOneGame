@@ -578,6 +578,12 @@ public class GameEngine {
                         wildCard.setChosenColor(chosenColor);
                         log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
                     }
+                    // If it's a wild draw four card, let bot choose color
+                    if (chosenCard instanceof WildDrawFourCard wildDrawFour) {
+                        CardColor chosenColor = botStrategy.chooseColor(bot);
+                        wildDrawFour.setChosenColor(chosenColor);
+                        log.info("🎨 Bot {} chose color for +4: {}", bot.getNickname(), chosenColor);
+                    }
 
                     // Process the bot's move (don't trigger more bots to avoid recursion)
                     processMove(bot, chosenCard, session, false);
@@ -631,6 +637,12 @@ public class GameEngine {
                                     CardColor chosenColor = botStrategy.chooseColor(bot);
                                     wildCard.setChosenColor(chosenColor);
                                     log.info("🎨 Bot {} chose color: {}", bot.getNickname(), chosenColor);
+                                }
+                                // If it's a wild draw four card, choose color
+                                if (drawnCard instanceof WildDrawFourCard wildDrawFour) {
+                                    CardColor chosenColor = botStrategy.chooseColor(bot);
+                                    wildDrawFour.setChosenColor(chosenColor);
+                                    log.info("🎨 Bot {} chose color for +4: {}", bot.getNickname(), chosenColor);
                                 }
 
                                 // Play the drawn card (don't trigger more bots)
