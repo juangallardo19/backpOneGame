@@ -52,6 +52,43 @@ export default function RoomPage() {
     }
   }, [isAuthenticated, router])
 
+  // CRITICAL: Handle page close/reload - leave room automatically
+  // This ensures player is removed from room when page closes/reloads
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only leave if user is actually in a room
+      if (roomRef.current) {
+        console.log('🚪 [beforeunload] Page closing/reloading, leaving room...')
+
+        try {
+          // Make synchronous XHR request (only reliable method in beforeunload)
+          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${roomRef.current.code}/leave`
+          const token = localStorage.getItem('uno_token')
+
+          const xhr = new XMLHttpRequest()
+          xhr.open('DELETE', apiUrl, false) // false = synchronous
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          }
+          xhr.setRequestHeader('Content-Type', 'application/json')
+          xhr.send()
+
+          console.log('✅ [beforeunload] Leave room request sent')
+        } catch (error) {
+          console.error('❌ [beforeunload] Error leaving room:', error)
+        }
+      }
+    }
+
+    // Add event listener
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
+
   // CRITICAL: Leave room via API and cleanup WebSocket when leaving the room page
   // This effect ONLY runs on component unmount, NOT when room state changes
   useEffect(() => {

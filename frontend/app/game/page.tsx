@@ -30,6 +30,45 @@ export default function GamePage() {
     }
   }, [isAuthenticated, room, gameState, router])
 
+  // CRITICAL: Handle page close/reload - leave room automatically
+  // This ensures player is removed and replaced with bot if game is active
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only leave if user is actually in a room
+      if (room) {
+        console.log('🚪 [beforeunload] Page closing/reloading, leaving room...')
+
+        try {
+          // Use sendBeacon for reliable fire-and-forget request
+          // This works even when page is closing
+          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${room.code}/leave`
+          const token = localStorage.getItem('uno_token')
+
+          // Make synchronous XHR request (only reliable method in beforeunload)
+          const xhr = new XMLHttpRequest()
+          xhr.open('DELETE', apiUrl, false) // false = synchronous
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          }
+          xhr.setRequestHeader('Content-Type', 'application/json')
+          xhr.send()
+
+          console.log('✅ [beforeunload] Leave room request sent')
+        } catch (error) {
+          console.error('❌ [beforeunload] Error leaving room:', error)
+        }
+      }
+    }
+
+    // Add event listener
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [room])
+
   // Handle leaving the game
   const handleLeaveGame = async () => {
     try {
