@@ -41,7 +41,7 @@ export default function GamePage() {
         return false
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${room.code}/leave`
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/rooms/${room.code}/beacon-leave`
       const token = localStorage.getItem('uno_token')
 
       console.log('🚪 [Page Close] Sending leave room request for room:', room.code)
@@ -66,10 +66,9 @@ export default function GamePage() {
       // Fallback to fetch with keepalive
       console.log('📡 [fetch keepalive] Attempting fetch with keepalive...')
       try {
-        fetch(apiUrl, {
-          method: 'POST', // Use POST for sendBeacon endpoint
+        fetch(`${apiUrl}?token=${encodeURIComponent(token || '')}`, {
+          method: 'POST', // Use POST for beacon-leave endpoint
           headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json',
           },
           keepalive: true,
