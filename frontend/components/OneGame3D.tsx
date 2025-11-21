@@ -34,7 +34,7 @@ interface OneGame3DProps {
 
 export default function OneGame3D({ onBack }: OneGame3DProps) {
   const router = useRouter();
-  const { gameState, playCard, drawCard, callUno, gameResults, clearGameResults } = useGame();
+  const { gameState, playCard, drawCard, callUno, catchUno, gameResults, clearGameResults } = useGame();
   const { user } = useAuth();
   const { success, error: showError } = useNotification();
 
@@ -125,6 +125,16 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       success("ONE!", "You called ONE!");
     } catch (error: any) {
       showError("Error", error.message || "Could not call ONE");
+    }
+  };
+
+  // Catch a player who didn't call UNO
+  const handleCatchUno = async (playerId: string, playerNickname: string) => {
+    try {
+      await catchUno(playerId);
+      success("¡Atrapado!", `¡Atrapaste a ${playerNickname}! +2 cartas para ellos`);
+    } catch (error: any) {
+      showError("Error", error.message || "Could not catch player");
     }
   };
 
@@ -270,26 +280,42 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
               <h3>Jugadores</h3>
             </div>
             <div className="players-list">
-              {gameState.players?.map((player) => (
-                <div
-                  key={player.id}
-                  className={`player-item ${gameState.currentTurnPlayerId === player.id ? 'active' : ''} ${player.id === currentPlayer?.id ? 'is-you' : ''}`}
-                >
-                  <div className="player-info">
-                    <span className="player-name">
-                      {player.nickname}
-                      {player.id === currentPlayer?.id && ' (Tú)'}
-                    </span>
-                    <span className="player-cards">
-                      {player.cardCount} {player.cardCount === 1 ? 'carta' : 'cartas'}
-                      {player.calledOne && ' [¡UNO!]'}
-                    </span>
+              {gameState.players?.map((player) => {
+                // Can catch player if: they have 1 card, didn't call UNO, and it's not you
+                const canCatchPlayer = player.cardCount === 1 && !player.calledOne && player.id !== currentPlayer?.id;
+
+                return (
+                  <div
+                    key={player.id}
+                    className={`player-item ${gameState.currentTurnPlayerId === player.id ? 'active' : ''} ${player.id === currentPlayer?.id ? 'is-you' : ''}`}
+                  >
+                    <div className="player-info">
+                      <span className="player-name">
+                        {player.nickname}
+                        {player.id === currentPlayer?.id && ' (Tú)'}
+                      </span>
+                      <span className="player-cards">
+                        {player.cardCount} {player.cardCount === 1 ? 'carta' : 'cartas'}
+                        {player.calledOne && ' [¡UNO!]'}
+                      </span>
+                    </div>
+                    <div className="player-actions">
+                      {gameState.currentTurnPlayerId === player.id && (
+                        <div className="turn-indicator">▶</div>
+                      )}
+                      {canCatchPlayer && (
+                        <button
+                          className="catch-uno-btn"
+                          onClick={() => handleCatchUno(player.id, player.nickname)}
+                          title={`${player.nickname} no gritó UNO!`}
+                        >
+                          ¡ATRAPAR!
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {gameState.currentTurnPlayerId === player.id && (
-                    <div className="turn-indicator">▶</div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </aside>
