@@ -60,12 +60,22 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   useEffect(() => {
     if (gameState && currentPlayer) {
       console.log('🎮 ========== GAME STATE UPDATE ==========');
-      console.log('   🃏 Top card:', gameState.topCard?.color, gameState.topCard?.value ?? gameState.topCard?.type);
+      console.log('   🃏 Top card:', gameState.topCard?.color, gameState.topCard?.value ?? gameState.topCard?.type, `(ID: ${gameState.topCard?.id?.substring(0, 8)}...)`);
       console.log('   👤 My turn:', isMyTurn);
       console.log('   🎯 Current player ID:', gameState.currentTurnPlayerId);
       console.log('   📊 My hand:', currentPlayer.hand.length, 'cards');
-      console.log('   ✅ Playable card IDs:', gameState.playableCardIds);
+      console.log('   🔢 My card IDs:', currentPlayer.hand.map(c => c.id.substring(0, 8) + '...'));
+      console.log('   ✅ Playable card IDs from backend:', gameState.playableCardIds?.length || 0);
+      console.log('   📝 Playable IDs:', gameState.playableCardIds?.map(id => id.substring(0, 8) + '...'));
       console.log('   📚 Stack count:', gameState.stackingCount ?? 0);
+
+      // Check each card individually
+      console.log('   🃏 Card by card analysis:');
+      currentPlayer.hand.forEach((card, index) => {
+        const isInPlayableList = gameState.playableCardIds?.includes(card.id);
+        console.log(`      ${index + 1}. ${card.color} ${card.value ?? card.type} (${card.id.substring(0, 8)}...) → ${isInPlayableList ? '✅ Playable' : '❌ Not playable'}`);
+      });
+
       console.log('========================================');
     }
   }, [gameState, currentPlayer, isMyTurn]);
@@ -190,12 +200,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const canPlayCard = (card: Card) => {
     // If backend provided playableCardIds, use it (most reliable)
     if (gameState?.playableCardIds && gameState.playableCardIds.length >= 0) {
-      const isPlayable = gameState.playableCardIds.includes(card.id);
-      console.log(`🎴 Card ${card.color} ${card.value ?? card.type} (${card.id.substring(0, 8)}...): ${isPlayable ? '✅ Playable' : '❌ Not playable'}`);
-      return isPlayable;
+      return gameState.playableCardIds.includes(card.id);
     }
-
-    console.warn('⚠️ No playableCardIds from backend, using fallback logic');
 
     // Fallback: if no playableCardIds from backend, calculate locally
     if (!gameState?.topCard) return true;
