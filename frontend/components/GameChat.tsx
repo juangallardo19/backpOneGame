@@ -42,8 +42,8 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
 
     const trimmedMessage = message.trim();
 
-    // Validate message length (max 50 characters)
-    if (!trimmedMessage || trimmedMessage.length > 50) return;
+    // Validate message length (max 150 characters)
+    if (!trimmedMessage || trimmedMessage.length > 150) return;
 
     try {
       console.log('💬 Enviando mensaje:', trimmedMessage);
@@ -127,7 +127,7 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
               placeholder="Type a message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              maxLength={50}
+              maxLength={150}
               className="chat-input"
             />
             <Button
