@@ -112,131 +112,161 @@ public class WebSocketGameController {
         try {
             GameSession session = resolveSession(sessionId);
 
-            // Find player
-            Player player = session.getPlayers().stream()
-                    .filter(p -> p.getNickname().equals(principal.getName()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Player not in game"));
+            // THREAD-SAFE: Synchronize on session to prevent concurrent modifications
+            // This prevents race conditions between human players and bot turns
+            synchronized (session) {
+                // Find player
+                Player player = session.getPlayers().stream()
+                        .filter(p -> p.getNickname().equals(principal.getName()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Player not in game"));
 
-            // Find card
-            String cardId = (String) payload.get("cardId");
-            String chosenColor = (String) payload.get("chosenColor");
+                // Validate input
+                String cardId = (String) payload.get("cardId");
+                if (cardId == null || cardId.trim().isEmpty()) {
+                    throw new IllegalArgumentException("cardId cannot be null or empty");
+                }
+                String chosenColor = (String) payload.get("chosenColor");
 
-            Card card = player.getHand().stream()
-                    .filter(c -> c.getCardId().equals(cardId) || c.toString().contains(cardId))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Card not found in hand"));
+                // Find card (with better error message if not found)
+                Card card = player.getHand().stream()
+                        .filter(c -> c.getCardId().equals(cardId) || c.toString().contains(cardId))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                            String.format("Card '%s' not found in hand. Player has %d cards.",
+                                cardId, player.getHandSize())
+                        ));
 
-            // If wild card and color chosen, set it
-            if (card instanceof WildCard wildCard && chosenColor != null) {
-                wildCard.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
-            }
-            // If wild draw four card and color chosen, set it
-            if (card instanceof WildDrawFourCard wildDrawFour && chosenColor != null) {
-                wildDrawFour.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
-            }
-
-            log.info("🃏 [WebSocket] Playing card: {} {}", card.getColor(), card.getValue());
-
-            // Process move through GameEngine (WITHOUT triggering bot turns yet)
-            log.info("⚙️ [WebSocket] Procesando jugada con GameEngine...");
-            gameEngine.processMove(player, card, session, false);
-            log.info("✅ [WebSocket] GameEngine procesó la jugada del jugador");
-
-            // Build and broadcast general game state (without hands)
-            log.info("🔨 [WebSocket] Construyendo estado general del juego...");
-            GameStateResponse generalState = buildGameStateResponse(session);
-
-            log.info("📤 [WebSocket] ========== ENVIANDO ESTADO GENERAL ==========");
-            log.info("   🎯 Destino: /topic/game/{}", sessionId);
-            log.info("   📋 SessionId: {}", generalState.getSessionId());
-            log.info("   🎮 Status: {}", generalState.getStatus());
-            log.info("   👥 Jugadores: {}", generalState.getPlayers().size());
-            for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
-                log.info("      - {} ({} cartas)", ps.getNickname(), ps.getCardCount());
-            }
-            log.info("   🎲 Turno actual: {}", generalState.getCurrentPlayerId());
-            log.info("   🃏 Carta superior: {} {}",
-                generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
-                generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
-            log.info("   📚 Cartas en mazo: {}", generalState.getDeckSize());
-            log.info("   🔄 Dirección: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
-
-            messagingTemplate.convertAndSend(
-                    "/topic/game/" + sessionId,
-                    Map.of(
-                            "eventType", "GAME_STATE_UPDATE",
-                            "timestamp", System.currentTimeMillis(),
-                            "data", generalState
-                    )
-            );
-            log.info("✅ [WebSocket] Estado general ENVIADO correctamente");
-
-            // Send each player their personal hand
-            log.info("📤 [WebSocket] ========== ENVIANDO MANOS PERSONALIZADAS ==========");
-            int playerCount = 0;
-            for (Player p : session.getPlayers()) {
-                if (!(p instanceof BotPlayer)) {
-                    playerCount++;
-                    log.info("   👤 Preparando mano para: {}", p.getNickname());
-                    GameStateResponse personalState = buildPersonalGameState(session, p);
-                    log.info("      🎯 Destino: /user/{}/queue/game-state", p.getNickname());
-                    log.info("      🃏 Cartas en mano: {}", personalState.getHand() != null ? personalState.getHand().size() : 0);
-                    if (personalState.getHand() != null && !personalState.getHand().isEmpty()) {
-                        for (GameStateResponse.CardInfo cardInfo : personalState.getHand()) {
-                            log.info("         - {} {} (id: {})", cardInfo.getColor(), cardInfo.getValue(), cardInfo.getCardId());
-                        }
+                // Validate and set color for wild cards
+                if (card instanceof WildCard wildCard && chosenColor != null) {
+                    try {
+                        wildCard.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException("Invalid color: " + chosenColor + ". Must be RED, BLUE, GREEN, or YELLOW");
                     }
-
-                    messagingTemplate.convertAndSendToUser(
-                            p.getNickname(),
-                            "/queue/game-state",
-                            personalState
-                    );
-                    log.info("   ✅ Mano ENVIADA a {}", p.getNickname());
                 }
-            }
-            log.info("✅ [WebSocket] {} manos personalizadas enviadas", playerCount);
-            log.info("✅ [WebSocket] =================================================");
-
-            // NOW process bot turns AFTER sending the state to the frontend
-            // This ensures the player sees their own move before bots play
-            log.info("🤖 [WebSocket] Procesando turnos de bots...");
-            gameEngine.processBotTurns(session);
-            log.info("✅ [WebSocket] Bots procesados");
-
-            // Send updated state after bots played
-            GameStateResponse finalState = buildGameStateResponse(session);
-            messagingTemplate.convertAndSend(
-                    "/topic/game/" + sessionId,
-                    Map.of(
-                            "eventType", "GAME_STATE_UPDATE",
-                            "timestamp", System.currentTimeMillis(),
-                            "data", finalState
-                    )
-            );
-
-            // Send updated hands to human players
-            for (Player p : session.getPlayers()) {
-                if (!(p instanceof BotPlayer)) {
-                    GameStateResponse personalFinalState = buildPersonalGameState(session, p);
-                    messagingTemplate.convertAndSendToUser(
-                            p.getNickname(),
-                            "/queue/game-state",
-                            personalFinalState
-                    );
+                // If wild draw four card and color chosen, set it
+                if (card instanceof WildDrawFourCard wildDrawFour && chosenColor != null) {
+                    try {
+                        wildDrawFour.setChosenColor(com.oneonline.backend.model.enums.CardColor.valueOf(chosenColor));
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException("Invalid color: " + chosenColor + ". Must be RED, BLUE, GREEN, or YELLOW");
+                    }
                 }
-            }
-            log.info("✅ [WebSocket] Estado final enviado después de bots");
+
+                log.info("🃏 [WebSocket] Playing card: {} {}", card.getColor(), card.getValue());
+
+                // Process move through GameEngine (WITHOUT triggering bot turns yet)
+                log.info("⚙️ [WebSocket] Procesando jugada con GameEngine...");
+                gameEngine.processMove(player, card, session, false);
+                log.info("✅ [WebSocket] GameEngine procesó la jugada del jugador");
+
+                // Build and broadcast general game state (without hands)
+                log.info("🔨 [WebSocket] Construyendo estado general del juego...");
+                GameStateResponse generalState = buildGameStateResponse(session);
+
+                log.info("📤 [WebSocket] ========== ENVIANDO ESTADO GENERAL ==========");
+                log.info("   🎯 Destino: /topic/game/{}", sessionId);
+                log.info("   📋 SessionId: {}", generalState.getSessionId());
+                log.info("   🎮 Status: {}", generalState.getStatus());
+                log.info("   👥 Jugadores: {}", generalState.getPlayers().size());
+                for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
+                    log.info("      - {} ({} cartas)", ps.getNickname(), ps.getCardCount());
+                }
+                log.info("   🎲 Turno actual: {}", generalState.getCurrentPlayerId());
+                log.info("   🃏 Carta superior: {} {}",
+                    generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
+                    generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
+                log.info("   📚 Cartas en mazo: {}", generalState.getDeckSize());
+                log.info("   🔄 Dirección: {}", Boolean.TRUE.equals(generalState.getClockwise()) ? "CLOCKWISE" : "COUNTER_CLOCKWISE");
+
+                messagingTemplate.convertAndSend(
+                        "/topic/game/" + sessionId,
+                        Map.of(
+                                "eventType", "GAME_STATE_UPDATE",
+                                "timestamp", System.currentTimeMillis(),
+                                "data", generalState
+                        )
+                );
+                log.info("✅ [WebSocket] Estado general ENVIADO correctamente");
+
+                // Send each player their personal hand
+                log.info("📤 [WebSocket] ========== ENVIANDO MANOS PERSONALIZADAS ==========");
+                int playerCount = 0;
+                for (Player p : session.getPlayers()) {
+                    if (!(p instanceof BotPlayer)) {
+                        playerCount++;
+                        log.info("   👤 Preparando mano para: {}", p.getNickname());
+                        GameStateResponse personalState = buildPersonalGameState(session, p);
+                        log.info("      🎯 Destino: /user/{}/queue/game-state", p.getNickname());
+                        log.info("      🃏 Cartas en mano: {}", personalState.getHand() != null ? personalState.getHand().size() : 0);
+                        if (personalState.getHand() != null && !personalState.getHand().isEmpty()) {
+                            for (GameStateResponse.CardInfo cardInfo : personalState.getHand()) {
+                                log.info("         - {} {} (id: {})", cardInfo.getColor(), cardInfo.getValue(), cardInfo.getCardId());
+                            }
+                        }
+
+                        messagingTemplate.convertAndSendToUser(
+                                p.getNickname(),
+                                "/queue/game-state",
+                                personalState
+                        );
+                        log.info("   ✅ Mano ENVIADA a {}", p.getNickname());
+                    }
+                }
+                log.info("✅ [WebSocket] {} manos personalizadas enviadas", playerCount);
+                log.info("✅ [WebSocket] =================================================");
+
+                // NOW process bot turns AFTER sending the state to the frontend
+                // This ensures the player sees their own move before bots play
+                log.info("🤖 [WebSocket] Procesando turnos de bots...");
+                gameEngine.processBotTurns(session);
+                log.info("✅ [WebSocket] Bots procesados");
+
+                // Send updated state after bots played
+                GameStateResponse finalState = buildGameStateResponse(session);
+                messagingTemplate.convertAndSend(
+                        "/topic/game/" + sessionId,
+                        Map.of(
+                                "eventType", "GAME_STATE_UPDATE",
+                                "timestamp", System.currentTimeMillis(),
+                                "data", finalState
+                        )
+                );
+
+                // Send updated hands to human players
+                for (Player p : session.getPlayers()) {
+                    if (!(p instanceof BotPlayer)) {
+                        GameStateResponse personalFinalState = buildPersonalGameState(session, p);
+                        messagingTemplate.convertAndSendToUser(
+                                p.getNickname(),
+                                "/queue/game-state",
+                                personalFinalState
+                        );
+                    }
+                }
+                log.info("✅ [WebSocket] Estado final enviado después de bots");
+            } // End synchronized block
 
         } catch (Exception e) {
-            log.error("❌ [WebSocket] Error processing card play: {}", e.getMessage(), e);
+            // Build descriptive error message (handle null getMessage())
+            String errorMessage = e.getMessage() != null && !e.getMessage().isEmpty()
+                ? e.getMessage()
+                : e.getClass().getSimpleName() + " occurred";
 
-            // Send error to specific user
+            log.error("❌ [WebSocket] Error processing card play: {}", errorMessage, e);
+
+            // Send detailed error to specific user
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", errorMessage);
+            errorResponse.put("code", e.getClass().getSimpleName());
+            errorResponse.put("timestamp", System.currentTimeMillis());
+            errorResponse.put("context", "play-card");
+
             messagingTemplate.convertAndSendToUser(
                     principal.getName(),
                     "/queue/errors",
-                    Map.of("error", e.getMessage())
+                    errorResponse
             );
         }
     }
@@ -260,109 +290,124 @@ public class WebSocketGameController {
         try {
             GameSession session = resolveSession(sessionId);
 
-            // Find player
-            Player player = session.getPlayers().stream()
-                    .filter(p -> p.getNickname().equals(principal.getName()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Player not in game"));
+            // THREAD-SAFE: Synchronize on session to prevent concurrent modifications
+            synchronized (session) {
+                // Find player
+                Player player = session.getPlayers().stream()
+                        .filter(p -> p.getNickname().equals(principal.getName()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Player not in game"));
 
-            // Check if it's player's turn
-            if (!session.getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
-                throw new IllegalStateException("Not your turn!");
-            }
-
-            // IMPORTANT: Check if there are pending draw effects (+2, +4 stacking)
-            if (session.getPendingDrawCount() > 0) {
-                // Check if player can stack (has +2 or +4 in hand)
-                if (gameEngine.canStackDrawCards(player, session)) {
-                    throw new IllegalStateException(
-                        "You have +2/+4 cards in your hand! You must either play them to stack or forfeit by drawing.");
+                // Check if it's player's turn
+                if (!session.getCurrentPlayer().getPlayerId().equals(player.getPlayerId())) {
+                    throw new IllegalStateException("Not your turn!");
                 }
 
-                // Player cannot stack, must draw all pending cards and lose turn
-                int pendingCards = session.getPendingDrawCount();
-                log.info("⚠️ [WebSocket] Player {} cannot stack, drawing {} pending cards and losing turn",
-                    player.getNickname(), pendingCards);
+                // IMPORTANT: Check if there are pending draw effects (+2, +4 stacking)
+                if (session.getPendingDrawCount() > 0) {
+                    // Check if player can stack (has +2 or +4 in hand)
+                    if (gameEngine.canStackDrawCards(player, session)) {
+                        throw new IllegalStateException(
+                            "You have +2/+4 cards in your hand! You must either play them to stack or forfeit by drawing.");
+                    }
 
-                // Process pending effects (player draws all cards and loses turn)
-                gameEngine.processPlayerDrawPenalty(player, session);
+                    // Player cannot stack, must draw all pending cards and lose turn
+                    int pendingCards = session.getPendingDrawCount();
+                    log.info("⚠️ [WebSocket] Player {} cannot stack, drawing {} pending cards and losing turn",
+                        player.getNickname(), pendingCards);
 
-                // Advance turn (player lost turn after drawing penalty cards)
-                log.info("⏭️ [WebSocket] Avanzando turno después de penalización...");
-                session.getTurnManager().nextTurn();
-                log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
-            } else {
-                // Normal draw (no pending effects) - limit to 1 card per turn
-                log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
-                gameEngine.drawCard(player, session);
-                log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
+                    // Process pending effects (player draws all cards and loses turn)
+                    gameEngine.processPlayerDrawPenalty(player, session);
 
-                // After drawing 1 card, player's turn ends
-                log.info("⏭️ [WebSocket] Avanzando turno después de robar carta...");
-                session.getTurnManager().nextTurn();
-                log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
-            }
+                    // Advance turn (player lost turn after drawing penalty cards)
+                    log.info("⏭️ [WebSocket] Avanzando turno después de penalización...");
+                    session.getTurnManager().nextTurn();
+                    log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
+                } else {
+                    // Normal draw (no pending effects) - limit to 1 card per turn
+                    log.info("⚙️ [WebSocket] Robando carta con GameEngine...");
+                    gameEngine.drawCard(player, session);
+                    log.info("✅ [WebSocket] Carta robada: jugador {} ahora tiene {} cartas", player.getNickname(), player.getHandSize());
 
-            // Process bot turns automatically if next player is a bot
-            gameEngine.processBotTurns(session);
-
-            // Build and broadcast general game state
-            log.info("🔨 [WebSocket] Construyendo estado general del juego...");
-            GameStateResponse generalState = buildGameStateResponse(session);
-
-            log.info("📤 [WebSocket] ========== ENVIANDO ESTADO GENERAL (DRAW) ==========");
-            log.info("   🎯 Destino: /topic/game/{}", sessionId);
-            log.info("   📋 SessionId: {}", generalState.getSessionId());
-            log.info("   🎮 Status: {}", generalState.getStatus());
-            log.info("   👥 Jugadores: {}", generalState.getPlayers().size());
-            for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
-                log.info("      - {} ({} cartas)", ps.getNickname(), ps.getCardCount());
-            }
-            log.info("   🎲 Turno actual: {}", generalState.getCurrentPlayerId());
-            log.info("   🃏 Carta superior: {} {}",
-                generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
-                generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
-            log.info("   📚 Cartas en mazo: {}", generalState.getDeckSize());
-
-            messagingTemplate.convertAndSend(
-                    "/topic/game/" + sessionId,
-                    Map.of(
-                            "eventType", "GAME_STATE_UPDATE",
-                            "timestamp", System.currentTimeMillis(),
-                            "data", generalState
-                    )
-            );
-            log.info("✅ [WebSocket] Estado general ENVIADO correctamente");
-
-            // Send each player their personal hand
-            log.info("📤 [WebSocket] ========== ENVIANDO MANOS PERSONALIZADAS (DRAW) ==========");
-            int playerCount = 0;
-            for (Player p : session.getPlayers()) {
-                if (!(p instanceof BotPlayer)) {
-                    playerCount++;
-                    log.info("   👤 Preparando mano para: {}", p.getNickname());
-                    GameStateResponse personalState = buildPersonalGameState(session, p);
-                    log.info("      🎯 Destino: /user/{}/queue/game-state", p.getNickname());
-                    log.info("      🃏 Cartas en mano: {}", personalState.getHand() != null ? personalState.getHand().size() : 0);
-
-                    messagingTemplate.convertAndSendToUser(
-                            p.getNickname(),
-                            "/queue/game-state",
-                            personalState
-                    );
-                    log.info("   ✅ Mano ENVIADA a {}", p.getNickname());
+                    // After drawing 1 card, player's turn ends
+                    log.info("⏭️ [WebSocket] Avanzando turno después de robar carta...");
+                    session.getTurnManager().nextTurn();
+                    log.info("✅ [WebSocket] Turno avanzado, ahora es el turno de: {}", session.getCurrentPlayer().getNickname());
                 }
-            }
-            log.info("✅ [WebSocket] {} manos personalizadas enviadas", playerCount);
-            log.info("✅ [WebSocket] =================================================");
+
+                // Process bot turns automatically if next player is a bot
+                gameEngine.processBotTurns(session);
+
+                // Build and broadcast general game state
+                log.info("🔨 [WebSocket] Construyendo estado general del juego...");
+                GameStateResponse generalState = buildGameStateResponse(session);
+
+                log.info("📤 [WebSocket] ========== ENVIANDO ESTADO GENERAL (DRAW) ==========");
+                log.info("   🎯 Destino: /topic/game/{}", sessionId);
+                log.info("   📋 SessionId: {}", generalState.getSessionId());
+                log.info("   🎮 Status: {}", generalState.getStatus());
+                log.info("   👥 Jugadores: {}", generalState.getPlayers().size());
+                for (GameStateResponse.PlayerState ps : generalState.getPlayers()) {
+                    log.info("      - {} ({} cartas)", ps.getNickname(), ps.getCardCount());
+                }
+                log.info("   🎲 Turno actual: {}", generalState.getCurrentPlayerId());
+                log.info("   🃏 Carta superior: {} {}",
+                    generalState.getTopCard() != null ? generalState.getTopCard().getColor() : "null",
+                    generalState.getTopCard() != null ? generalState.getTopCard().getValue() : "null");
+                log.info("   📚 Cartas en mazo: {}", generalState.getDeckSize());
+
+                messagingTemplate.convertAndSend(
+                        "/topic/game/" + sessionId,
+                        Map.of(
+                                "eventType", "GAME_STATE_UPDATE",
+                                "timestamp", System.currentTimeMillis(),
+                                "data", generalState
+                        )
+                );
+                log.info("✅ [WebSocket] Estado general ENVIADO correctamente");
+
+                // Send each player their personal hand
+                log.info("📤 [WebSocket] ========== ENVIANDO MANOS PERSONALIZADAS (DRAW) ==========");
+                int playerCount = 0;
+                for (Player p : session.getPlayers()) {
+                    if (!(p instanceof BotPlayer)) {
+                        playerCount++;
+                        log.info("   👤 Preparando mano para: {}", p.getNickname());
+                        GameStateResponse personalState = buildPersonalGameState(session, p);
+                        log.info("      🎯 Destino: /user/{}/queue/game-state", p.getNickname());
+                        log.info("      🃏 Cartas en mano: {}", personalState.getHand() != null ? personalState.getHand().size() : 0);
+
+                        messagingTemplate.convertAndSendToUser(
+                                p.getNickname(),
+                                "/queue/game-state",
+                                personalState
+                        );
+                        log.info("   ✅ Mano ENVIADA a {}", p.getNickname());
+                    }
+                }
+                log.info("✅ [WebSocket] {} manos personalizadas enviadas", playerCount);
+                log.info("✅ [WebSocket] =================================================");
+            } // End synchronized block
 
         } catch (Exception e) {
-            log.error("❌ [WebSocket] Error processing card draw: {}", e.getMessage(), e);
+            // Build descriptive error message (handle null getMessage())
+            String errorMessage = e.getMessage() != null && !e.getMessage().isEmpty()
+                ? e.getMessage()
+                : e.getClass().getSimpleName() + " occurred";
+
+            log.error("❌ [WebSocket] Error processing card draw: {}", errorMessage, e);
+
+            // Send detailed error to specific user
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", errorMessage);
+            errorResponse.put("code", e.getClass().getSimpleName());
+            errorResponse.put("timestamp", System.currentTimeMillis());
+            errorResponse.put("context", "draw-card");
 
             messagingTemplate.convertAndSendToUser(
                     principal.getName(),
                     "/queue/errors",
-                    Map.of("error", e.getMessage())
+                    errorResponse
             );
         }
     }
