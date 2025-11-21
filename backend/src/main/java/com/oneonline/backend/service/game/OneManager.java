@@ -53,18 +53,23 @@ public class OneManager {
      * Call ONE for a player
      *
      * Validates:
-     * - Player has exactly 1 card
+     * - Player has 1 or 2 cards (can call preemptively with 2 cards before playing)
      * - ONE not already called
+     *
+     * UNO RULE: Players must call ONE BEFORE playing their second-to-last card.
+     * Therefore, we allow calling ONE when player has 2 cards (anticipatory call).
      *
      * @param player Player calling ONE
      * @param session Game session
      * @return true if ONE call successful, false if invalid
      */
     public boolean callOne(Player player, GameSession session) {
-        // Check if player has exactly 1 card
-        if (!hasOneCard(player)) {
-            log.warn("Player {} attempted to call ONE with {} cards",
-                player.getNickname(), player.getHandSize());
+        int handSize = player.getHandSize();
+
+        // Check if player has 1 or 2 cards (valid UNO call states)
+        if (handSize < 1 || handSize > 2) {
+            log.warn("Player {} attempted to call ONE with {} cards (must have 1 or 2 cards)",
+                player.getNickname(), handSize);
             return false;
         }
 
@@ -80,7 +85,7 @@ public class OneManager {
         // Remove from penalty tracking
         oneCardTimestamps.remove(player.getPlayerId());
 
-        log.info("Player {} called ONE! (1 card remaining)", player.getNickname());
+        log.info("Player {} called ONE! ({} card(s) remaining)", player.getNickname(), handSize);
         return true;
     }
 
