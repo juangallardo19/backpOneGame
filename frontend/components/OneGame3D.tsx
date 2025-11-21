@@ -202,7 +202,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     return (
       <div className="game-loading">
         <div className="halftone-background">
-          <HalftoneWaves animate={false} />
+          <HalftoneWaves animate={true} isMyTurn={true} />
         </div>
         <div className="spinner"></div>
         <p>Cargando juego...</p>
@@ -218,9 +218,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   return (
     <div className="game-container">
-      {/* Halftone Waves Background - Animated when it's your turn */}
+      {/* Halftone Waves Background - Always animated, brightness changes with turn */}
       <div className="halftone-background">
-        <HalftoneWaves animate={isMyTurn} />
+        <HalftoneWaves animate={true} isMyTurn={isMyTurn} />
       </div>
 
       {/* Top Bar - Leave Game Button */}

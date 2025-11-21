@@ -5,9 +5,10 @@ import { useEffect, useRef } from "react"
 interface HalftoneWavesProps {
   animate?: boolean;
   className?: string;
+  isMyTurn?: boolean; // Controla la intensidad del brillo
 }
 
-export default function HalftoneWaves({ animate = true, className = "" }: HalftoneWavesProps) {
+export default function HalftoneWaves({ animate = true, className = "", isMyTurn = true }: HalftoneWavesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -44,7 +45,9 @@ export default function HalftoneWaves({ animate = true, className = "" }: Halfto
 
           ctx.beginPath()
           ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(255, 245, 230, ${waveOffset * 0.6})`
+          // Ajustar opacidad según si es tu turno
+          const baseOpacity = isMyTurn ? 0.6 : 0.3; // Más tenue cuando NO es tu turno
+          ctx.fillStyle = `rgba(255, 245, 230, ${waveOffset * baseOpacity})`
           ctx.fill()
         }
       }
@@ -52,8 +55,14 @@ export default function HalftoneWaves({ animate = true, className = "" }: Halfto
 
     const draw = () => {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-      gradient.addColorStop(0, "rgba(220, 85, 40, 0.1)")
-      gradient.addColorStop(1, "rgba(200, 60, 30, 0.1)")
+      // Gradiente más oscuro cuando NO es tu turno
+      if (isMyTurn) {
+        gradient.addColorStop(0, "rgba(220, 85, 40, 0.1)")
+        gradient.addColorStop(1, "rgba(200, 60, 30, 0.1)")
+      } else {
+        gradient.addColorStop(0, "rgba(100, 40, 20, 0.15)")
+        gradient.addColorStop(1, "rgba(80, 30, 15, 0.15)")
+      }
       ctx.fillStyle = gradient
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -87,13 +96,17 @@ export default function HalftoneWaves({ animate = true, className = "" }: Halfto
       }
       window.removeEventListener("resize", handleResize)
     }
-  }, [animate])
+  }, [animate, isMyTurn]) // Re-render cuando cambia el turno
 
   return (
     <canvas
       ref={canvasRef}
       className={className || "w-full h-screen"}
-      style={{ background: "linear-gradient(135deg, #DC5528 0%, #C83C1E 100%)" }}
+      style={{
+        background: isMyTurn
+          ? "linear-gradient(135deg, #DC5528 0%, #C83C1E 100%)" // Color normal cuando es tu turno
+          : "linear-gradient(135deg, #8B3A1E 0%, #6B2A14 100%)" // Más oscuro cuando NO es tu turno
+      }}
     />
   )
 }
