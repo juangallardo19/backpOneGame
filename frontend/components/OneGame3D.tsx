@@ -173,18 +173,23 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
     const topCard = gameState.topCard;
 
+    // Wild cards always playable
     if (card.color === 'WILD' || card.type === 'WILD') {
       return true;
     }
 
+    // Same color
     if (card.color === topCard.color) {
       return true;
     }
 
-    if (card.value === topCard.value) {
+    // Same value (ONLY for NUMBER cards to avoid null === null)
+    // Special cards have value: null, so we must check type first
+    if (card.type === 'NUMBER' && topCard.type === 'NUMBER' && card.value === topCard.value) {
       return true;
     }
 
+    // Same type (for special cards only: SKIP on SKIP, REVERSE on REVERSE, etc.)
     if (card.type === topCard.type && card.type !== 'NUMBER') {
       return true;
     }
