@@ -52,6 +52,7 @@ public class WebSocketGameController {
     private final GameEngine gameEngine;
     private final GameManager gameManager = GameManager.getInstance();
     private final com.oneonline.backend.service.game.CardValidator cardValidator;
+    private final com.oneonline.backend.service.game.OneManager oneManager;
 
     /**
      * Resolve session from sessionId or roomCode
@@ -426,21 +427,49 @@ public class WebSocketGameController {
             @DestinationVariable String sessionId,
             Principal principal) {
 
-        log.info("WebSocket: Player {} calling ONE in session/room {}", principal.getName(), sessionId);
+        log.info("🔔 [WebSocket] Player {} calling ONE in session/room {}", principal.getName(), sessionId);
 
         try {
-            // Broadcast ONE call to all players
+            GameSession session = resolveSession(sessionId);
+
+            // Find player
+            Player player = session.getPlayers().stream()
+                    .filter(p -> p.getNickname().equals(principal.getName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (player == null) {
+                log.warn("⚠️ Player {} not found in session {}", principal.getName(), sessionId);
+                return;
+            }
+
+            // Call ONE through OneManager to mark player as having called
+            boolean success = oneManager.callOne(player, session);
+
+            if (!success) {
+                log.warn("⚠️ Player {} failed to call ONE (either already called or doesn't have 1 card)",
+                    player.getNickname());
+                return;
+            }
+
+            // Broadcast ONE_CALLED event to ALL players (so everyone hears the sound!)
             messagingTemplate.convertAndSend(
                     "/topic/game/" + sessionId,
                     Map.of(
-                            "type", "ONE_CALLED",
-                            "player", principal.getName(),
-                            "timestamp", System.currentTimeMillis()
+                            "eventType", "ONE_CALLED",
+                            "timestamp", System.currentTimeMillis(),
+                            "data", Map.of(
+                                "playerId", player.getPlayerId(),
+                                "playerNickname", player.getNickname(),
+                                "cardsRemaining", player.getHandSize()
+                            )
                     )
             );
 
+            log.info("✅ [WebSocket] ONE call successful for {} - broadcasted to all players", player.getNickname());
+
         } catch (Exception e) {
-            log.error("WebSocket: Error processing ONE call: {}", e.getMessage());
+            log.error("❌ [WebSocket] Error processing ONE call: {}", e.getMessage(), e);
         }
     }
 
