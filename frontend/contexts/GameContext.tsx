@@ -138,19 +138,35 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       hasCalledUno: p.calledOne || false,
     }));
 
-    // Find current player from hand data
-    const currentPlayerId = backendState.currentPlayerId;
-    const currentPlayerData = players.find(p => p.id === currentPlayerId);
+    // Find current player (YOU) from hand data
+    // If backend sent hand data, it means YOU are the player with those cards
+    // Find the player that matches the hand size and is not a bot
+    let currentPlayer: CurrentPlayer | null = null;
+    if (hand && hand.length > 0) {
+      // Find player with matching card count that is not a bot
+      const currentPlayerData = players.find(p =>
+        !p.isBot && p.cardCount === hand.length
+      );
 
-    // Create currentPlayer with hand (required by CurrentPlayer type)
-    // If we don't have hand data yet, use empty array
-    const currentPlayer: CurrentPlayer | null = currentPlayerData ? {
-      ...currentPlayerData,
-      hand: hand || [],  // Always provide hand array, even if empty
-    } as CurrentPlayer : null;
+      if (currentPlayerData) {
+        currentPlayer = {
+          ...currentPlayerData,
+          hand: hand,
+        } as CurrentPlayer;
+      }
+    } else if (hand && hand.length === 0) {
+      // Empty hand but still sent - find non-bot player with 0 cards
+      const currentPlayerData = players.find(p => !p.isBot && p.cardCount === 0);
+      if (currentPlayerData) {
+        currentPlayer = {
+          ...currentPlayerData,
+          hand: [],
+        } as CurrentPlayer;
+      }
+    }
 
     console.log('👤 Current player detectado:', {
-      currentPlayerId,
+      yourPlayerId: currentPlayer?.id || 'not found',
       hasHand: hand.length > 0,
       handSize: hand.length,
       currentPlayer
@@ -223,7 +239,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     console.log('   - Jugadores:', players.length);
     console.log('   - Mano actual:', hand.length, 'cartas');
     console.log('   - Carta superior:', topCard?.color, topCard?.value);
-    console.log('   - Turno de:', currentPlayerId);
+    console.log('   - Turno de:', backendState.currentPlayerId);
+    console.log('   - Tú eres:', currentPlayer?.id || 'no identificado');
     console.log('   - Dirección:', direction);
     return transformed;
   }, []);
