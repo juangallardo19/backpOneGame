@@ -172,7 +172,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     if (!gameState?.topCard) return true;
 
     const topCard = gameState.topCard;
-    const stackActive = (gameState.stackingCount || 0) > 0;
+    const stackActive = (gameState?.stackingCount ?? 0) > 0;
 
     // STACKING LOGIC: If there's an active stack (+2 or +4), only +2/+4 cards can be played
     if (stackActive) {
@@ -226,8 +226,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const rightPlayer = otherPlayers[2];
 
   // Check if there's an active stack
-  const stackActive = (gameState.stackingCount || 0) > 0;
-  const totalCardsToDrawu = (gameState.stackingCount || 0) * 2;
+  const stackActive = (gameState?.stackingCount ?? 0) > 0;
+  const totalCardsToDrawu = (gameState?.stackingCount ?? 0) * 2;
 
   return (
     <div className="game-container">
@@ -403,9 +403,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                       </div>
                     </div>
                   </div>
-                  {(gameState.stackingCount || 0) > 0 ? (
+                  {(gameState?.stackingCount ?? 0) > 0 ? (
                     <p className="pile-text pile-text-stack">
-                      Robar {gameState.stackingCount === 1 ? '+2' : `+${gameState.stackingCount! * 2}`}
+                      Robar {(gameState?.stackingCount ?? 0) === 1 ? '+2' : `+${(gameState?.stackingCount ?? 0) * 2}`}
                     </p>
                   ) : (
                     <p className="pile-text">Robar</p>
