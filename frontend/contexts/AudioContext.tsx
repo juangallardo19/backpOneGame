@@ -12,6 +12,8 @@ interface AudioContextType {
   setBackgroundMusic: (enabled: boolean) => void
   setCardSounds: (enabled: boolean) => void
   playSound: (soundType: 'card' | 'effect' | 'music') => void
+  playUnoSound: () => void
+  playIncorrectSound: () => void
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined)
@@ -58,11 +60,37 @@ export function AudioProvider({ children }: AudioProviderProps) {
     // Aquí se reproduciría el sonido real
     // Por ahora solo mostramos en consola
     console.log(`🔊 Playing ${soundType} sound at ${masterVolume}% volume`)
-    
+
     // En una implementación real, aquí usarías:
     // const audio = new Audio(`/sounds/${soundType}.mp3`)
     // audio.volume = masterVolume / 100
     // audio.play()
+  }
+
+  // Función genérica para reproducir cualquier sonido por ruta
+  const playSoundFile = (soundPath: string, volume?: number) => {
+    if (!soundEffects || masterVolume === 0) return
+
+    try {
+      const audio = new Audio(soundPath)
+      audio.volume = (volume !== undefined ? volume : masterVolume) / 100
+      audio.play().catch((error) => {
+        console.error(`Error playing sound: ${soundPath}`, error)
+      })
+    } catch (error) {
+      console.error(`Failed to load sound: ${soundPath}`, error)
+    }
+  }
+
+  // Funciones específicas para los sonidos de UNO
+  const playUnoSound = () => {
+    console.log('🔔 Playing UNO sound!')
+    playSoundFile('/sounds/UnoSound.mp3')
+  }
+
+  const playIncorrectSound = () => {
+    console.log('❌ Playing incorrect sound!')
+    playSoundFile('/sounds/Incorrect.mp3')
   }
 
   return (
@@ -76,7 +104,9 @@ export function AudioProvider({ children }: AudioProviderProps) {
         setSoundEffects,
         setBackgroundMusic,
         setCardSounds,
-        playSound
+        playSound,
+        playUnoSound,
+        playIncorrectSound
       }}
     >
       {children}

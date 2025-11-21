@@ -8,6 +8,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { WebSocketService, GameEventType, getWebSocketService, cleanupWebSocketService } from '@/services/websocket.service';
 import { GameState, Player, CurrentPlayer, Card, Room, ChatMessage, GameMove, GameStatus, Direction, PlayerStatus, GameEndResult } from '@/types/game.types';
+import { useAudio } from '@/contexts/AudioContext';
+import { useNotification } from '@/contexts/NotificationContext';
 
 // ============================================
 // INTERFACES
@@ -77,6 +79,10 @@ export interface GameProviderProps {
 }
 
 export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, onPlayerKicked }) => {
+  // Hooks de audio y notificaciones
+  const { playUnoSound, playIncorrectSound } = useAudio();
+  const { warning, info } = useNotification();
+
   // Estado
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
@@ -785,28 +791,57 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   const handleUnoCall = useCallback((payload: any) => {
     console.log('🔔 UNO cantado:', payload);
 
+    // Extraer datos del evento
+    const data = payload.data || payload;
+    const playerNickname = data.playerNickname || 'Jugador';
+
+    // Reproducir sonido de UNO (TODOS lo escuchan)
+    playUnoSound();
+
+    // Mostrar notificación
+    info(
+      '¡UNO!',
+      `${playerNickname} gritó UNO - ¡Solo le queda 1 carta!`,
+      3000
+    );
+
     const move: GameMove = {
       id: Date.now().toString(),
-      playerId: payload.playerId,
-      playerNickname: payload.playerNickname || 'Jugador',
+      playerId: data.playerId,
+      playerNickname: playerNickname,
       type: 'ONE_CALL',
       timestamp: Date.now(),
     };
     setGameMoves(prev => [...prev, move]);
-  }, []);
+  }, [playUnoSound, info]);
 
   const handleUnoPenalty = useCallback((payload: any) => {
     console.log('⚠️ Penalización UNO:', payload);
 
+    // Extraer datos del evento
+    const data = payload.data || payload;
+    const playerNickname = data.playerNickname || 'Jugador';
+    const cardsDrawn = data.cardsDrawn || 2;
+
+    // Reproducir sonido de error
+    playIncorrectSound();
+
+    // Mostrar notificación de advertencia
+    warning(
+      '¡Penalización!',
+      `${playerNickname} no gritó UNO y recibió ${cardsDrawn} cartas adicionales`,
+      5000
+    );
+
     const move: GameMove = {
       id: Date.now().toString(),
-      playerId: payload.playerId,
-      playerNickname: payload.playerNickname || 'Jugador',
+      playerId: data.playerId,
+      playerNickname: playerNickname,
       type: 'ONE_PENALTY',
       timestamp: Date.now(),
     };
     setGameMoves(prev => [...prev, move]);
-  }, []);
+  }, [playIncorrectSound, warning]);
 
   const handleDirectionReversed = useCallback((payload: any) => {
     console.log('↩️ Dirección invertida');
