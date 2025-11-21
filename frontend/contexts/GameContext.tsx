@@ -326,6 +326,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     console.log('      - players:', payload.players?.length);
     console.log('      - currentPlayerId:', payload.currentPlayerId);
     console.log('      - topCard:', payload.topCard);
+    console.log('      - playableCardIds:', payload.playableCardIds);
 
     // Transform backend response to frontend GameState format
     console.log('   🔄 Llamando transformBackendGameState...');
@@ -728,7 +729,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   }, []);
 
   const handleCardPlayed = useCallback((payload: any) => {
-    console.log('🃏 Carta jugada:', payload);
+    console.log('🃏 ========== CARD PLAYED EVENT ==========');
+    console.log('   📥 Payload:', payload);
+    console.log('   👤 Player:', payload.playerNickname);
+    console.log('   🎴 Card:', payload.card?.color, payload.card?.type, payload.card?.value);
+    console.log('   ⏱️ Expecting TURN_CHANGED event next...');
+    console.log('========================================');
 
     // Agregar al historial de movimientos
     const move: GameMove = {
@@ -756,8 +762,24 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
   }, []);
 
   const handleTurnChanged = useCallback((payload: any) => {
-    console.log('🔄 Turno cambiado:', payload);
-    setGameState(prev => prev ? { ...prev, currentTurnPlayerId: payload.currentPlayerId } : null);
+    console.log('🔄 ========== TURN CHANGED EVENT ==========');
+    console.log('   📥 Payload:', payload);
+    console.log('   👤 New current player ID:', payload.currentPlayerId);
+    console.log('   🔄 Updating gameState.currentTurnPlayerId...');
+
+    setGameState(prev => {
+      if (!prev) {
+        console.log('   ❌ No previous state, cannot update');
+        return null;
+      }
+
+      console.log('   📊 Previous currentTurnPlayerId:', prev.currentTurnPlayerId);
+      console.log('   📊 New currentTurnPlayerId:', payload.currentPlayerId);
+      console.log('   ✅ Turn updated successfully');
+      console.log('========================================');
+
+      return { ...prev, currentTurnPlayerId: payload.currentPlayerId };
+    });
   }, []);
 
   const handleUnoCall = useCallback((payload: any) => {
@@ -1211,7 +1233,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
 
   const playCard = useCallback((cardId: string, chosenColor?: string) => {
     if (wsServiceRef.current?.isConnected()) {
-      console.log('🃏 Jugando carta:', cardId, chosenColor);
+      console.log('🎴 ========== PLAYING CARD ==========');
+      console.log('   🃏 Card ID:', cardId);
+      console.log('   🎨 Chosen color:', chosenColor || 'N/A');
+      console.log('   📤 Sending to backend...');
+      console.log('   ⏱️ Waiting for CARD_PLAYED + TURN_CHANGED events...');
+      console.log('========================================');
       wsServiceRef.current.playCard(cardId, chosenColor);
     } else {
       console.warn('⚠️ No conectado al WebSocket');
