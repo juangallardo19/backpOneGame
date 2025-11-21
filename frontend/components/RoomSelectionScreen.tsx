@@ -250,11 +250,10 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           <Image
             src="/one-logo.png"
             alt="ONE Logo"
-            width={200}
-            height={100}
+            width={150}
+            height={75}
             className="uno-logo"
           />
-          <h1 className="welcome-title">¡A JUGAR!</h1>
         </div>
 
         {!showJoinRoom ? (
@@ -290,13 +289,13 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
             </div>
 
             {/* Back Button */}
-            <div className="absolute top-6 left-6 z-10">
+            <div className="absolute top-4 left-4 z-10">
               <button
                 onClick={onBack}
-                className="glass-back-button flex items-center gap-3 px-6 py-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="glass-back-button flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                <ArrowLeft className="w-6 h-6" />
-                <span className="text-xl font-semibold">VOLVER</span>
+                <ArrowLeft className="w-5 h-5" />
+                <span className="text-base font-semibold">VOLVER</span>
               </button>
             </div>
           </>
@@ -430,7 +429,9 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
                 className="back-from-join-button glass-button bg-transparent text-white w-full mt-3"
                 onClick={() => {
                   setShowPrivateCodeInput(false)
+                  setShowJoinRoom(false)
                   setRoomCode("")
+                  setPublicRooms([])
                 }}
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
@@ -450,16 +451,17 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           --radius: 22px;
           --ease: cubic-bezier(0.5, 1, 0.89, 1);
 
-          position: relative;
-          width: 88%;
-          max-width: 680px;
-          min-height: 70vh;
-          max-height: 90vh;
+          z-index: 10 !important;
+          width: 55% !important;
+          max-width: none !important;
+          position: relative !important;
+          min-height: 55vh;
+          max-height: 85vh;
           display: flex;
           flex-direction: column;
           border-radius: var(--radius);
           border: var(--border) solid var(--border-color);
-          padding: clamp(16px, 2.5%, 24px);
+          padding: clamp(12px, 2%, 18px);
           background: linear-gradient(
               235deg,
               hsl(var(--hue1) 50% 10% / 0.8),
@@ -479,21 +481,30 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         /* Responsive adjustments */
+        @media (max-width: 1024px) {
+          .glass-room-selection-container {
+            width: 75%;
+            max-width: 500px;
+          }
+        }
+
         @media (max-width: 768px) {
           .glass-room-selection-container {
-            width: 92%;
-            min-height: 75vh;
-            max-height: 92vh;
-            padding: clamp(14px, 3%, 20px);
+            width: 85%;
+            max-width: 480px;
+            min-height: 55vh;
+            max-height: 88vh;
+            padding: clamp(10px, 2.5%, 16px);
           }
         }
 
         @media (max-width: 480px) {
           .glass-room-selection-container {
             width: 95%;
-            min-height: 82vh;
-            max-height: 95vh;
-            padding: clamp(12px, 3.5%, 18px);
+            max-width: 100%;
+            min-height: 60vh;
+            max-height: 90vh;
+            padding: clamp(10px, 3%, 14px);
           }
         }
 
@@ -702,50 +713,59 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           z-index: 10;
           display: flex;
           flex-direction: column;
-          gap: clamp(18px, 3.5%, 28px);
+          gap: clamp(8px, 1.8%, 12px);
           min-height: 100%;
-          padding: clamp(8px, 1.5%, 16px) 0;
+          padding: clamp(8px, 1.5%, 12px) 0;
         }
 
         .logo-section {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: clamp(8px, 2%, 14px);
+          gap: clamp(4px, 1%, 6px);
           text-align: center;
-          margin-bottom: clamp(8px, 1.5%, 12px);
+          margin-bottom: 0;
+          margin-top: -50px;
+          margin-left: auto;
+          margin-right: auto;
+          width: 320px !important;
+          height: 160px !important;
         }
 
         .uno-logo {
-          object-fit: contain;
-          filter: drop-shadow(0 5px 15px rgba(255, 140, 0, 0.4));
-          width: clamp(160px, 45%, 200px);
-          height: auto;
+          filter: drop-shadow(0 8px 16px #0000004d) !important;
+          width: 269px !important;
+          height: 188px !important;
+          margin-bottom: 1.5rem !important;
         }
 
         @media (max-width: 768px) {
           .uno-logo {
-            width: clamp(140px, 55%, 180px);
+            width: clamp(90px, 35%, 110px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .uno-logo {
+            width: clamp(85px, 40%, 100px);
           }
         }
 
         .welcome-title {
-          font-size: clamp(1.25rem, 4vw, 1.55rem);
-          font-weight: 700;
-          color: white;
-          letter-spacing: 0.15em;
-          text-shadow: 0 0 20px rgba(255, 140, 0, 0.6),
-                       0 0 40px rgba(255, 69, 0, 0.4),
-                       2px 2px 8px rgba(0, 0, 0, 0.8);
-          white-space: nowrap;
-          margin: 0;
+          color: #fff !important;
+          text-shadow: 0 4px 8px #00000080 !important;
+          margin: 0 !important;
+          font-size: 4rem !important;
+          font-weight: 700 !important;
+          line-height: 1 !important;
         }
 
         .room-options-container {
           display: flex;
           flex-direction: column;
-          gap: clamp(14px, 3%, 20px);
-          padding: 0 clamp(8px, 2%, 14px);
+          gap: clamp(8px, 2%, 12px);
+          padding: 0 clamp(6px, 1.5%, 10px);
+          margin-top: -20px;
         }
 
         .room-option-button {
@@ -753,8 +773,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           align-items: center !important;
           justify-content: flex-start !important;
           width: 100%;
-          padding: clamp(16px, 4%, 22px);
-          border-radius: 14px;
+          padding: clamp(10px, 2.5%, 14px);
+          border-radius: 12px;
           background: rgba(0, 0, 0, 0.35) !important;
           color: white;
           font-weight: 600;
@@ -763,6 +783,12 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           border: 2px solid rgba(255, 255, 255, 0.15) !important;
           text-align: left;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+          .room-option-button {
+            padding: clamp(8px, 2%, 12px);
+          }
         }
 
         .room-option-button:hover:not(:disabled) {
@@ -805,15 +831,15 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         .join-room-container {
           display: flex;
           flex-direction: column;
-          gap: clamp(16px, 3.5%, 22px);
+          gap: clamp(12px, 2.5%, 16px);
           animation: fadeInUp 0.5s ease-in-out forwards;
           flex: 1;
           min-height: 0;
-          padding: 0 clamp(8px, 2%, 14px);
+          padding: 0 clamp(6px, 1.5%, 10px);
         }
 
         .section-title {
-          font-size: clamp(1.15rem, 3.2vw, 1.3rem);
+          font-size: clamp(1.05rem, 2.8vw, 1.2rem);
           font-weight: 700;
           color: white;
           text-align: center;
@@ -826,15 +852,22 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         .public-rooms-list {
           display: flex;
           flex-direction: column;
-          gap: clamp(10px, 2.5%, 14px);
-          min-height: clamp(240px, 40vh, 320px);
-          max-height: clamp(280px, 48vh, 380px);
+          gap: clamp(8px, 2%, 12px);
+          min-height: clamp(180px, 32vh, 240px);
+          max-height: clamp(220px, 38vh, 280px);
           overflow-y: auto;
           overflow-x: hidden;
-          padding: clamp(12px, 3%, 18px);
+          padding: clamp(10px, 2.5%, 14px);
           background: rgba(0, 0, 0, 0.25);
-          border-radius: 14px;
+          border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        @media (max-width: 768px) {
+          .public-rooms-list {
+            min-height: clamp(160px, 30vh, 220px);
+            max-height: clamp(200px, 36vh, 260px);
+          }
         }
 
         /* Custom scrollbar styles */
@@ -861,29 +894,36 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: clamp(10px, 2.5%, 14px);
-          padding: clamp(32px, 8%, 48px) clamp(16px, 4%, 24px);
+          gap: clamp(8px, 2%, 12px);
+          padding: clamp(24px, 6%, 36px) clamp(12px, 3%, 18px);
           color: rgba(255, 255, 255, 0.65);
           text-align: center;
-          min-height: 200px;
+          min-height: 150px;
         }
 
         .empty-state p {
           margin: 0;
-          font-size: clamp(0.88rem, 2.4vw, 0.98rem);
+          font-size: clamp(0.84rem, 2.2vw, 0.92rem);
         }
 
         .room-card {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: clamp(14px, 3.5%, 18px);
+          padding: clamp(10px, 2.5%, 14px);
           background: rgba(0, 0, 0, 0.45) !important;
           border: 1px solid rgba(255, 255, 255, 0.25) !important;
-          border-radius: 12px;
+          border-radius: 10px;
           transition: all 0.25s ease;
-          min-height: 80px;
+          min-height: 70px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+          .room-card {
+            padding: clamp(8px, 2%, 12px);
+            min-height: 65px;
+          }
         }
 
         .room-card:hover {
@@ -994,8 +1034,8 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
           align-items: center !important;
           justify-content: flex-start !important;
           width: 100%;
-          padding: clamp(14px, 3.5%, 18px);
-          border-radius: 12px;
+          padding: clamp(10px, 2.5%, 14px);
+          border-radius: 10px;
           background: rgba(139, 92, 246, 0.25) !important;
           border: 2px solid rgba(139, 92, 246, 0.5) !important;
           color: white;
@@ -1006,8 +1046,14 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         .private-code-button:hover {
           background: rgba(139, 92, 246, 0.4) !important;
           border-color: rgba(139, 92, 246, 0.7) !important;
-          transform: translateY(-3px);
-          box-shadow: 0 8px 20px rgba(139, 92, 246, 0.35);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35);
+        }
+
+        @media (max-width: 768px) {
+          .private-code-button {
+            padding: clamp(8px, 2%, 12px);
+          }
         }
 
         /* Form Styles */
@@ -1033,17 +1079,24 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
         .code-input {
           width: 100%;
-          padding: clamp(14px, 4%, 20px);
-          font-size: clamp(1.2rem, 3vw, 1.4rem);
+          padding: clamp(12px, 3%, 16px);
+          font-size: clamp(1.1rem, 2.8vw, 1.3rem);
           text-align: center;
           letter-spacing: 0.18em;
           font-weight: 700;
           text-transform: uppercase;
           background: linear-gradient(to bottom, hsl(45 20% 20% / 0.25) 50%, hsl(45 50% 50% / 0.12) 180%);
           border: 2px solid hsl(0 13% 18.5% / 0.6);
-          border-radius: 12px;
+          border-radius: 10px;
           color: white;
           box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+          .code-input {
+            padding: clamp(10px, 2.5%, 14px);
+            font-size: clamp(1rem, 2.6vw, 1.2rem);
+          }
         }
 
         .code-input::placeholder {
@@ -1080,18 +1133,25 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
 
         .join-submit-button {
           width: 100%;
-          padding: clamp(16px, 4%, 22px);
-          font-size: clamp(1.08rem, 3vw, 1.24rem);
+          padding: clamp(12px, 3%, 16px);
+          font-size: clamp(1rem, 2.8vw, 1.15rem);
           font-weight: 700;
           letter-spacing: 0.1em;
-          border-radius: 12px;
+          border-radius: 10px;
           transition: all 0.3s ease;
           box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
         }
 
+        @media (max-width: 768px) {
+          .join-submit-button {
+            padding: clamp(10px, 2.5%, 14px);
+            font-size: clamp(0.95rem, 2.6vw, 1.08rem);
+          }
+        }
+
         .join-submit-button:hover:not(:disabled) {
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 8px 28px rgba(59, 130, 246, 0.45);
+          transform: translateY(-2px) scale(1.01);
+          box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
         }
 
         .join-submit-button:disabled {
@@ -1100,9 +1160,15 @@ export default function RoomSelectionScreen({ onCreateRoom, onJoinRoomSuccess, o
         }
 
         .back-from-join-button {
-          padding: clamp(12px, 3%, 16px);
+          padding: clamp(10px, 2.5%, 14px);
           font-weight: 650;
-          font-size: clamp(0.88rem, 2.4vw, 0.98rem);
+          font-size: clamp(0.84rem, 2.2vw, 0.92rem);
+        }
+
+        @media (max-width: 768px) {
+          .back-from-join-button {
+            padding: clamp(8px, 2%, 12px);
+          }
         }
 
         /* Animations */
