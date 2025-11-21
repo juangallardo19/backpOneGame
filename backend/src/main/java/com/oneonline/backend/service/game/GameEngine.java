@@ -137,9 +137,25 @@ public class GameEngine {
         if (player.shouldBePenalized()) {
             log.warn("🚫 [UNO PENALTY] Player {} has 1 card but didn't call UNO! Applying 2-card penalty...",
                 player.getNickname());
-            oneManager.penalizeNoOne(player, session);
+            int cardsDrawn = oneManager.penalizeNoOne(player, session);
             log.info("✅ [UNO PENALTY] Penalty applied to {}. New hand size: {}",
                 player.getNickname(), player.getHandSize());
+
+            // Broadcast ONE_PENALTY event to ALL players
+            messagingTemplate.convertAndSend(
+                "/topic/game/" + session.getSessionId(),
+                Map.of(
+                    "eventType", "ONE_PENALTY",
+                    "timestamp", System.currentTimeMillis(),
+                    "data", Map.of(
+                        "playerId", player.getPlayerId(),
+                        "playerNickname", player.getNickname(),
+                        "cardsDrawn", cardsDrawn,
+                        "newHandSize", player.getHandSize()
+                    )
+                )
+            );
+            log.info("📢 [UNO PENALTY] Event broadcasted to all players in session {}", session.getSessionId());
         }
 
         // Check win condition
