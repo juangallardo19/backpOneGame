@@ -10,6 +10,12 @@ interface HalftoneWavesProps {
 
 export default function HalftoneWaves({ animate = true, className = "", isMyTurn = true }: HalftoneWavesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const isMyTurnRef = useRef(isMyTurn)
+
+  // Actualizar ref cuando cambia isMyTurn sin reiniciar el efecto
+  useEffect(() => {
+    isMyTurnRef.current = isMyTurn
+  }, [isMyTurn])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -45,8 +51,8 @@ export default function HalftoneWaves({ animate = true, className = "", isMyTurn
 
           ctx.beginPath()
           ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2)
-          // Ajustar opacidad según si es tu turno
-          const baseOpacity = isMyTurn ? 0.6 : 0.3; // Más tenue cuando NO es tu turno
+          // Ajustar opacidad según si es tu turno (usando ref)
+          const baseOpacity = isMyTurnRef.current ? 0.6 : 0.3; // Más tenue cuando NO es tu turno
           ctx.fillStyle = `rgba(255, 245, 230, ${waveOffset * baseOpacity})`
           ctx.fill()
         }
@@ -55,8 +61,8 @@ export default function HalftoneWaves({ animate = true, className = "", isMyTurn
 
     const draw = () => {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-      // Gradiente más oscuro cuando NO es tu turno
-      if (isMyTurn) {
+      // Gradiente más oscuro cuando NO es tu turno (usando ref)
+      if (isMyTurnRef.current) {
         gradient.addColorStop(0, "rgba(220, 85, 40, 0.1)")
         gradient.addColorStop(1, "rgba(200, 60, 30, 0.1)")
       } else {
@@ -72,11 +78,9 @@ export default function HalftoneWaves({ animate = true, className = "", isMyTurn
     const animateFrame = () => {
       draw()
 
-      // Only increment time and continue animation if enabled
-      if (animate) {
-        time += 0.015
-        animationFrameId = requestAnimationFrame(animateFrame)
-      }
+      // SIEMPRE incrementar tiempo y continuar animación
+      time += 0.015
+      animationFrameId = requestAnimationFrame(animateFrame)
     }
 
     const handleResize = () => {
@@ -96,7 +100,8 @@ export default function HalftoneWaves({ animate = true, className = "", isMyTurn
       }
       window.removeEventListener("resize", handleResize)
     }
-  }, [animate, isMyTurn]) // Re-render cuando cambia el turno
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Solo ejecutar una vez al montar, la animación corre continuamente
 
   return (
     <canvas
