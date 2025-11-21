@@ -1079,3 +1079,111 @@ body, html {
     opacity: 0.6;
   }
 }
+
+/* UNO Button with Image (replaces CSS-only button) */
+.uno-button-image {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 10px 30px rgba(220, 38, 38, 0.8));
+  animation: unoPulse 2s ease-in-out infinite;
+}
+
+@keyframes unoPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 10px 30px rgba(220, 38, 38, 0.8));
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 15px 40px rgba(220, 38, 38, 1));
+  }
+}
+
+.uno-button-image:hover {
+  animation: none;
+  transform: scale(1.15) rotate(-5deg);
+  filter: drop-shadow(0 15px 40px rgba(255, 140, 0, 1));
+}
+
+.uno-button-image:active {
+  transform: scale(1.05) rotate(0deg);
+  filter: drop-shadow(0 5px 20px rgba(220, 38, 38, 1));
+}
+
+.uno-logo-button {
+  width: 250px;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+
+/* UNO Container adjustments for image button */
+.uno-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.uno-alert {
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  animation: alertBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes alertBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.uno-hint {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .uno-logo-button {
+    width: 200px;
+  }
+  
+  .uno-container {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .uno-logo-button {
+    width: 150px;
+  }
+  
+  .uno-container {
+    padding: 1rem;
+  }
+  
+  .uno-alert {
+    font-size: 1.1rem;
+  }
+  
+  .uno-hint {
+    font-size: 0.9rem;
+  }
+}
