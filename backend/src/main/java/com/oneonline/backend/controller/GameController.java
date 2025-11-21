@@ -371,8 +371,6 @@ public class GameController {
                         .build() : null)
                 .hand(hand)
                 .deckSize(session.getDeck().getRemainingCards())
-                .discardPileSize(session.getDiscardPile().size())
-                .direction(session.getTurnManager().isClockwise() ? "CLOCKWISE" : "COUNTER_CLOCKWISE")
                 .pendingDrawCount(session.getPendingDrawCount())
                 .clockwise(session.getTurnManager().isClockwise())
                 .build();
