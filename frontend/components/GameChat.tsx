@@ -40,12 +40,15 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!message.trim()) return;
+    const trimmedMessage = message.trim();
+
+    // Validate message length (max 150 characters)
+    if (!trimmedMessage || trimmedMessage.length > 150) return;
 
     try {
-      console.log('💬 Enviando mensaje:', message.trim());
+      console.log('💬 Enviando mensaje:', trimmedMessage);
       // Send message via WebSocket (RF45, RF49)
-      sendMessage(message.trim());
+      sendMessage(trimmedMessage);
       console.log('✅ Mensaje enviado correctamente');
       setMessage('');
     } catch (error) {
@@ -124,7 +127,7 @@ export default function GameChat({ isMinimized = false, onToggleMinimize }: Game
               placeholder="Type a message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              maxLength={200}
+              maxLength={150}
               className="chat-input"
             />
             <Button
