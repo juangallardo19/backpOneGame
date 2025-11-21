@@ -191,43 +191,80 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     // PRIORITY 2: Calculate locally if backend doesn't provide them
     else {
       console.log('⚠️ Backend did not send playableCardIds, calculating locally');
+      console.log('🔍 DEBUG INFO:');
+      console.log('   - stackingCount from backend:', backendState.stackingCount);
+      console.log('   - topCard:', topCard);
+      console.log('   - hand length:', hand.length);
 
       const stackActive = (backendState.stackingCount || 0) > 0;
+      console.log('   - stackActive calculated as:', stackActive);
 
       if (topCard && hand.length > 0) {
-        for (const card of hand) {
+        console.log('🎯 TOP CARD DETAILS:');
+        console.log('   - id:', topCard.id);
+        console.log('   - color:', topCard.color, '(type:', typeof topCard.color + ')');
+        console.log('   - type:', topCard.type, '(type:', typeof topCard.type + ')');
+        console.log('   - value:', topCard.value, '(type:', typeof topCard.value + ')');
+
+        console.log('🃏 ANALYZING EACH CARD IN HAND:');
+        for (let i = 0; i < hand.length; i++) {
+          const card = hand[i];
+          console.log(`\n   Card ${i + 1}/${hand.length}:`);
+          console.log('   - id:', card.id);
+          console.log('   - color:', card.color, '(type:', typeof card.color + ')');
+          console.log('   - type:', card.type, '(type:', typeof card.type + ')');
+          console.log('   - value:', card.value, '(type:', typeof card.value + ')');
+
           // STACKING LOGIC: If there's a stack, only +2 or +4 can be played
           if (stackActive) {
+            console.log('   - Stack is ACTIVE, checking if DRAW_TWO or WILD_DRAW_FOUR...');
             if (card.type === 'DRAW_TWO' || card.type === 'WILD_DRAW_FOUR') {
+              console.log('   ✅ PLAYABLE - is draw card');
               playableCardIds.push(card.id);
+            } else {
+              console.log('   ❌ NOT PLAYABLE - not a draw card');
             }
           }
           // NORMAL LOGIC: Regular UNO rules
           else {
+            console.log('   - Stack is NOT active, checking normal UNO rules...');
+
             // Wild cards can always be played
             if (card.type === 'WILD' || card.type === 'WILD_DRAW_FOUR' || card.color === 'WILD') {
+              console.log('   ✅ PLAYABLE - is WILD card');
               playableCardIds.push(card.id);
             }
             // Card matches color
             else if (card.color === topCard.color) {
+              console.log('   ✅ PLAYABLE - color matches (' + card.color + ' === ' + topCard.color + ')');
               playableCardIds.push(card.id);
             }
             // Card matches value (only for NUMBER cards)
             else if (card.type === 'NUMBER' && topCard.type === 'NUMBER' && card.value === topCard.value) {
+              console.log('   ✅ PLAYABLE - value matches (' + card.value + ' === ' + topCard.value + ')');
               playableCardIds.push(card.id);
             }
             // Card matches type (for special cards: SKIP, REVERSE, DRAW_TWO)
             else if (card.type === topCard.type && card.type !== 'NUMBER') {
+              console.log('   ✅ PLAYABLE - type matches (' + card.type + ' === ' + topCard.type + ')');
               playableCardIds.push(card.id);
+            }
+            else {
+              console.log('   ❌ NOT PLAYABLE - no match');
+              console.log('      - color match? ' + card.color + ' === ' + topCard.color + ' = ' + (card.color === topCard.color));
+              console.log('      - value match? ' + card.value + ' === ' + topCard.value + ' = ' + (card.value === topCard.value));
+              console.log('      - type match? ' + card.type + ' === ' + topCard.type + ' = ' + (card.type === topCard.type));
             }
           }
         }
       } else if (hand.length > 0) {
         // No top card yet, allow all cards
+        console.log('⚠️ No top card, allowing all cards');
         playableCardIds.push(...hand.map(c => c.id));
       }
 
       console.log('📝 Calculated playableCardIds locally:', playableCardIds.length, 'cards');
+      console.log('📋 Playable card IDs:', playableCardIds);
     }
 
     // CRITICAL: Backend now uses 'clockwise' boolean instead of 'direction' string
