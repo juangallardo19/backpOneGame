@@ -412,7 +412,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                 <p className="player-label-small">Tu Mano ({currentPlayer?.hand.length || 0})</p>
                 <div className="your-cards-row">
                   {currentPlayer?.hand.map((card, index) => {
-                    const canPlay = canPlayCard(card);
+                    // Solo puede jugar si: 1) Es tu turno Y 2) La carta es válida
+                    const canPlay = isMyTurn && canPlayCard(card);
                     const totalCards = currentPlayer.hand.length;
                     const center = (totalCards - 1) / 2;
                     const offset = (index - center) * 60; // Separación de 60px
@@ -425,7 +426,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                       <div
                         key={card.id}
                         className={`game-card card-medium ${getCardColorClass(card.color)} ${
-                          canPlay && isMyTurn ? 'card-playable' : 'card-disabled'
+                          canPlay ? 'card-playable' : 'card-disabled'
                         } ${selectedCardId === card.id ? 'card-selected' : ''}`}
                         style={{
                           transform: `translateX(${offset}px) rotate(${rotation}deg)`,
@@ -436,7 +437,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                         }}
                         onClick={(e) => {
                           console.log('Card clicked:', index, card.id, 'canPlay:', canPlay, 'isMyTurn:', isMyTurn);
-                          if (canPlay && isMyTurn) {
+                          if (canPlay) {
                             handlePlayCard(card.id);
                           }
                         }}
@@ -1107,11 +1108,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         .card-playable {
           cursor: pointer;
           pointer-events: all !important;
-        }
-
-        .card-playable {
-          cursor: pointer;
-          pointer-events: all !important;
           filter: brightness(1.2);
         }
 
@@ -1131,9 +1127,10 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         }
 
         .card-disabled {
-          filter: brightness(0.5);
+          filter: brightness(0.4) grayscale(0.3);
           cursor: not-allowed;
           pointer-events: none !important;
+          opacity: 0.7;
         }
 
         /* Modal */
