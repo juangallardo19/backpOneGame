@@ -66,13 +66,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     const card = currentPlayer?.hand.find(c => c.id === cardId);
     if (!card) return;
 
-    // CRITICAL: Check if player needs to call UNO first
-    // If player has 2 cards and hasn't called UNO, they must call it BEFORE playing
-    if (currentPlayer && currentPlayer.hand.length === 2 && !currentPlayer.calledOne) {
-      showError("¡Debes gritar UNO!", "Presiona el botón UNO antes de jugar tu penúltima carta");
-      return;
-    }
-
     // If it's a wild card (RF26: Choose color after wild)
     // This includes both WILD and WILD_DRAW_FOUR (+4)
     if (isWildCard(card)) {
@@ -85,6 +78,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     try {
       // RF27: Validate card can be played (backend will validate)
       // RF31: Play special card
+      // NOTE: If player didn't call UNO and plays with 2 cards, backend will penalize with +2 cards
       await playCard(cardId);
       const cardDisplay = getCardSymbol(card);
       success("Card played", `Played ${card.color} ${cardDisplay}`);
@@ -98,15 +92,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const handleChooseColor = async (color: 'RED' | 'YELLOW' | 'GREEN' | 'BLUE') => {
     if (!selectedCardId) return;
 
-    // CRITICAL: Check if player needs to call UNO first (same validation as handlePlayCard)
-    if (currentPlayer && currentPlayer.hand.length === 2 && !currentPlayer.calledOne) {
-      showError("¡Debes gritar UNO!", "Presiona el botón UNO antes de jugar tu penúltima carta");
-      setShowColorPicker(false);
-      setSelectedCardId(null);
-      return;
-    }
-
     try {
+      // NOTE: If player didn't call UNO and plays with 2 cards, backend will penalize with +2 cards
       await playCard(selectedCardId, color);
       success("Card played", `Chose ${color}`);
       setSelectedCardId(null);
