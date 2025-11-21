@@ -166,10 +166,13 @@ public class Player {
     }
 
     /**
-     * Call "ONE" when player has one card left
+     * Call "ONE" when player has one or two cards left
+     *
+     * UNO RULE: Players can call ONE preemptively when they have 2 cards
+     * (before playing their second-to-last card) or when they have 1 card.
      */
     public void callOne() {
-        if (hasOne()) {
+        if (hand.size() == 1 || hand.size() == 2) {
             this.calledOne = true;
         }
     }
