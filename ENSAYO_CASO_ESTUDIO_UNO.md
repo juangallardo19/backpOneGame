@@ -13,17 +13,53 @@ El presente documento analiza la implementación de una versión digital del jue
 
 ### 1.1 Contexto y Motivación
 
-El juego UNO, conocido mundialmente por su dinámica de turnos circulares y reglas especiales, presenta desafíos técnicos únicos que lo convierten en un excelente caso de estudio para la ingeniería de software. La necesidad de gestionar turnos circulares, manejar efectos de cartas especiales, coordinar múltiples jugadores en tiempo real y mantener la integridad del estado del juego requiere una arquitectura robusta y bien diseñada.
+El desarrollo de aplicaciones multiplayer en tiempo real representa uno de los desafíos más complejos en la ingeniería de software moderna. Este proyecto implementa una versión digital del juego de cartas UNO, un caso de estudio ideal que combina múltiples dimensiones de complejidad: gestión de turnos circulares, procesamiento de efectos de cartas especiales, sincronización de estados entre múltiples clientes, y coordinación de sesiones concurrentes.
 
-### 1.2 Objetivos del Proyecto
+El juego UNO, conocido mundialmente por su dinámica de turnos circulares y reglas especiales, presenta desafíos técnicos únicos que requieren la aplicación de patrones de diseño de software y estructuras de datos especializadas. La necesidad de invertir direcciones de juego en tiempo constante, saltar jugadores sin reorganizar estructuras, y mantener sincronizados múltiples clientes con el estado del servidor hace de este proyecto un excelente vehículo para demostrar principios de arquitectura de software de alta calidad.
+
+### 1.2 Justificación Académica
+
+Este caso de estudio demuestra que los patrones de diseño no son conceptos teóricos abstractos, sino soluciones prácticas a problemas reales de ingeniería:
+
+- **Patrón Command**: Necesario para implementar historial de jugadas, funcionalidad de deshacer/rehacer, y transmisión de acciones a través de la red
+- **Patrón State**: Esencial para gestionar diferentes comportamientos según el estado del juego (Lobby, Playing, GameOver) sin condicionales complejos
+- **Patrón Observer**: Crítico para sincronizar el estado del juego entre múltiples clientes conectados en tiempo real
+- **Patrón Strategy**: Permite implementar inteligencia artificial con diferentes niveles de dificultad de manera intercambiable
+- **Lista Circular Doblemente Enlazada**: Estructura de datos perfecta para gestionar turnos que avanzan circularmente con capacidad de invertir dirección en O(1)
+- **Grafos**: Modela relaciones entre jugadores para análisis de interacciones, rivalidades y estadísticas
+
+### 1.3 Objetivos del Proyecto
 
 Los objetivos principales de este caso de estudio fueron:
 
-- **Aplicar patrones de diseño reconocidos** para resolver problemas comunes en el desarrollo de software
-- **Implementar estructuras de datos especializadas** que optimicen las operaciones críticas del juego
-- **Desarrollar una arquitectura escalable** capaz de manejar múltiples sesiones de juego concurrentes
-- **Garantizar comunicación en tiempo real** entre los jugadores con latencia mínima
-- **Demostrar principios SOLID** y buenas prácticas de ingeniería de software
+- **Aplicar patrones de diseño reconocidos** del catálogo Gang of Four para resolver problemas específicos del dominio
+- **Implementar estructuras de datos especializadas** que optimicen las operaciones críticas del juego con complejidad temporal O(1)
+- **Desarrollar una arquitectura escalable** capaz de manejar múltiples sesiones de juego concurrentes sin interferencia
+- **Garantizar comunicación en tiempo real** entre los jugadores mediante WebSocket con latencia mínima
+- **Demostrar principios SOLID** y buenas prácticas de ingeniería de software en un contexto real
+- **Documentar decisiones arquitectónicas** con justificación técnica y análisis de complejidad
+
+### 1.4 Alcance Técnico
+
+El proyecto abarca las siguientes áreas técnicas:
+
+**Backend** (Java 21 + Spring Boot 3.5.7):
+- Implementación de 6 patrones de diseño (Command, State, Observer, Strategy, Singleton, Factory)
+- 2 estructuras de datos personalizadas (Lista Circular Doblemente Enlazada, Grafo de Relaciones)
+- Motor de juego con validación de reglas UNO oficiales
+- Sistema de bots con inteligencia artificial estratégica
+- Comunicación en tiempo real mediante WebSocket (STOMP)
+
+**Frontend** (Next.js 15 + React 19):
+- Interfaz de usuario interactiva con animaciones
+- Cliente WebSocket con reconexión automática
+- Gestión de estado global con Context API
+- Visualización de efectos de cartas especiales
+
+**Infraestructura**:
+- Base de datos PostgreSQL 15 para persistencia
+- Autenticación JWT + OAuth2 (Google, GitHub)
+- Arquitectura de microservicios escalable horizontalmente
 
 ---
 
@@ -86,17 +122,363 @@ El `RoomBuilder` permite crear salas de juego con múltiples configuraciones opc
 
 #### 3.2.1 Patrón State
 
-**Propósito:** Permitir que un objeto altere su comportamiento cuando su estado interno cambia.
+**Propósito:** Permitir que un objeto altere su comportamiento cuando su estado interno cambia, aparentando que el objeto ha cambiado de clase.
+
+**Ubicación en el Código:**
+- Interfaz: `backend/src/main/java/com/oneonline/backend/pattern/behavioral/state/GameState.java`
+- Implementaciones: `LobbyState.java`, `PlayingState.java`, `GameOverState.java`
+
+**Diagrama de Transición de Estados:**
+
+```
+┌─────────────────────────────────────────────────────┐
+│              DIAGRAMA DE ESTADOS                    │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  [LOBBY] ──startGame()──> [PLAYING] ──endGame()──> [GAME_OVER]
+│    ↑                           │                        │
+│    │                      pauseGame()             playerLeave()
+│    └──────────────────────────────────────────────────┘
+│                                                         │
+│ Acciones permitidas por estado:                         │
+│ LOBBY:       JOIN, LEAVE, START_GAME                    │
+│ PLAYING:     PLAY_CARD, DRAW_CARD, CALL_ONE, END       │
+│ GAME_OVER:   LEAVE, VIEW_SCORES                        │
+└─────────────────────────────────────────────────────┘
+```
 
 **Aplicación en el Proyecto:**
-La sesión de juego puede estar en tres estados distintos: Lobby (esperando jugadores), Playing (partida activa), y GameOver (juego terminado). Cada estado implementa la interfaz `GameState` y define comportamiento específico para acciones como jugar carta, robar carta, unirse a la sala, o iniciar el juego.
+La sesión de juego puede estar en tres estados distintos: Lobby (esperando jugadores), Playing (partida activa), y GameOver (juego terminado). Cada estado implementa la interfaz `GameState` y define comportamiento específico para todas las acciones posibles del juego.
 
-**Ejemplos de Comportamiento Específico por Estado:**
-- **Lobby State:** Permite que jugadores se unan, previene jugar cartas, permite iniciar el juego si hay suficientes jugadores
-- **Playing State:** Permite jugar cartas y robar, valida turnos, procesa efectos de cartas especiales
-- **GameOver State:** Muestra resultados finales, permite ver estadísticas, previene cualquier acción de juego
+**Interfaz GameState:**
 
-**Beneficio:** Elimina condicionales complejos distribuidos por el código, hace explícitas las transiciones entre estados, y facilita agregar nuevos estados en el futuro.
+```java
+public interface GameState {
+    // Lifecycle
+    void enter(GameSession session);
+    void exit(GameSession session);
+
+    // Game actions
+    void playCard(Player player, Card card, GameSession session);
+    void drawCard(Player player, GameSession session);
+    void callOne(Player player, GameSession session);
+    void chooseColor(Player player, CardColor color, GameSession session);
+
+    // Player management
+    void playerJoin(Player player, GameSession session);
+    void playerLeave(Player player, GameSession session);
+
+    // Game control
+    void startGame(GameSession session);
+    void pauseGame(GameSession session);
+    void resumeGame(GameSession session);
+    void endGame(GameSession session, Player winner);
+
+    // Query methods
+    String getStateName();
+    boolean isActionAllowed(String action);
+    String getStateDescription();
+}
+```
+
+**Implementación: LobbyState**
+
+Este estado representa la sala de espera donde los jugadores se unen antes de comenzar la partida:
+
+```java
+public class LobbyState implements GameState {
+
+    @Override
+    public void enter(GameSession session) {
+        session.setStatus(GameStatus.LOBBY);
+        log.info("Session {} entered LOBBY state", session.getSessionId());
+    }
+
+    @Override
+    public void playerJoin(Player player, GameSession session) {
+        if (session.getPlayers().size() >= session.getMaxPlayers()) {
+            throw new IllegalStateException("Room is full");
+        }
+        session.getPlayers().add(player);
+        log.info("Player {} joined lobby", player.getPlayerId());
+    }
+
+    @Override
+    public void startGame(GameSession session) {
+        int playerCount = session.getPlayers().size();
+
+        if (playerCount < 2) {
+            throw new IllegalStateException(
+                "Need at least 2 players to start"
+            );
+        }
+
+        // Inicializar el juego
+        session.initializeDeck();
+        session.distributeCards();
+
+        // Transición de estado
+        session.setState(new PlayingState());
+        log.info("Game started, transitioning to PLAYING state");
+    }
+
+    @Override
+    public void playCard(Player player, Card card, GameSession session) {
+        throw new IllegalStateException(
+            "Cannot play cards in LOBBY state. Start the game first."
+        );
+    }
+
+    @Override
+    public void drawCard(Player player, GameSession session) {
+        throw new IllegalStateException(
+            "Cannot draw cards in LOBBY state"
+        );
+    }
+
+    @Override
+    public boolean isActionAllowed(String action) {
+        return action.equals("JOIN") ||
+               action.equals("LEAVE") ||
+               action.equals("START_GAME");
+    }
+}
+```
+
+**Implementación: PlayingState**
+
+Este estado representa la partida activa donde los jugadores juegan sus cartas:
+
+```java
+public class PlayingState implements GameState {
+
+    @Override
+    public void enter(GameSession session) {
+        session.setStatus(GameStatus.PLAYING);
+        session.setGameStartTime(Instant.now());
+        log.info("Session {} entered PLAYING state", session.getSessionId());
+    }
+
+    @Override
+    public void playCard(Player player, Card card, GameSession session) {
+        // Validar que sea el turno del jugador
+        if (!player.equals(session.getCurrentPlayer())) {
+            throw new IllegalStateException("Not your turn!");
+        }
+
+        // Validar que la carta sea válida
+        Card topCard = session.getDiscardPile().peek();
+        if (!isValidPlay(card, topCard, session)) {
+            throw new IllegalStateException("Invalid card play");
+        }
+
+        // Remover carta de la mano del jugador
+        player.getHand().remove(card);
+
+        // Agregar a la pila de descarte
+        session.getDiscardPile().push(card);
+
+        // Verificar condición de victoria
+        if (player.getHand().isEmpty()) {
+            endGame(session, player);
+            return;
+        }
+
+        // IMPORTANTE: NO avanzar el turno aquí
+        // GameEngine lo hace después de aplicar efectos de carta
+    }
+
+    @Override
+    public void drawCard(Player player, GameSession session) {
+        if (!player.equals(session.getCurrentPlayer())) {
+            throw new IllegalStateException("Not your turn!");
+        }
+
+        if (session.getDeck().isEmpty()) {
+            session.reshuffleDeck();
+        }
+
+        Card drawnCard = session.getDeck().pop();
+        player.getHand().add(drawnCard);
+    }
+
+    @Override
+    public void endGame(GameSession session, Player winner) {
+        session.setWinner(winner);
+        session.setGameEndTime(Instant.now());
+
+        // Transición de estado
+        session.setState(new GameOverState(winner));
+        log.info("Game ended, player {} won", winner.getPlayerId());
+    }
+
+    @Override
+    public void startGame(GameSession session) {
+        throw new IllegalStateException(
+            "Game already in progress"
+        );
+    }
+
+    @Override
+    public boolean isActionAllowed(String action) {
+        return action.equals("PLAY_CARD") ||
+               action.equals("DRAW_CARD") ||
+               action.equals("CALL_ONE") ||
+               action.equals("PAUSE") ||
+               action.equals("END");
+    }
+
+    private boolean isValidPlay(Card card, Card topCard, GameSession session) {
+        // Wild cards pueden jugarse siempre
+        if (card.isWild()) return true;
+
+        // Mismo color
+        if (card.getColor() == topCard.getColor()) return true;
+
+        // Mismo número/tipo
+        if (card.getType() == topCard.getType()) return true;
+
+        // Si hay efectos pendientes, solo pueden jugarse cartas que apilen
+        if (session.getPendingDrawCount() > 0) {
+            return card.getType() == CardType.DRAW_TWO ||
+                   card.getType() == CardType.WILD_DRAW_FOUR;
+        }
+
+        return false;
+    }
+}
+```
+
+**Implementación: GameOverState**
+
+Este estado representa el fin de la partida:
+
+```java
+public class GameOverState implements GameState {
+    private final Player winner;
+    private Map<Player, Integer> finalScores;
+
+    public GameOverState(Player winner) {
+        this.winner = winner;
+    }
+
+    @Override
+    public void enter(GameSession session) {
+        session.setStatus(GameStatus.GAME_OVER);
+        session.setWinner(winner);
+
+        // Calcular puntuaciones finales
+        this.finalScores = calculateFinalScores(session);
+
+        log.info("Session {} entered GAME_OVER state. Winner: {}",
+                 session.getSessionId(), winner.getPlayerId());
+    }
+
+    private Map<Player, Integer> calculateFinalScores(GameSession session) {
+        Map<Player, Integer> scores = new HashMap<>();
+
+        for (Player player : session.getPlayers()) {
+            int score = calculatePlayerScore(player);
+            scores.put(player, score);
+        }
+
+        return scores;
+    }
+
+    private int calculatePlayerScore(Player player) {
+        // Puntuación basada en cartas restantes
+        int totalScore = 0;
+
+        for (Card card : player.getHand()) {
+            switch (card.getType()) {
+                case NUMBER -> totalScore += card.getValue();
+                case SKIP, REVERSE, DRAW_TWO -> totalScore += 20;
+                case WILD, WILD_DRAW_FOUR -> totalScore += 50;
+            }
+        }
+
+        return totalScore;
+    }
+
+    @Override
+    public void playCard(Player player, Card card, GameSession session) {
+        throw new IllegalStateException(
+            "Game is over. Cannot play cards."
+        );
+    }
+
+    @Override
+    public void drawCard(Player player, GameSession session) {
+        throw new IllegalStateException(
+            "Game is over. Cannot draw cards."
+        );
+    }
+
+    @Override
+    public void playerLeave(Player player, GameSession session) {
+        session.getPlayers().remove(player);
+
+        // Si todos abandonan, eliminar la sesión
+        if (session.getPlayers().isEmpty()) {
+            session.setState(null);
+        }
+    }
+
+    @Override
+    public boolean isActionAllowed(String action) {
+        return action.equals("LEAVE") ||
+               action.equals("VIEW_SCORES");
+    }
+
+    public Map<Player, Integer> getFinalScores() {
+        return finalScores;
+    }
+}
+```
+
+**Uso en GameSession:**
+
+```java
+public class GameSession {
+    private GameState currentState;
+
+    public GameSession() {
+        this.currentState = new LobbyState();
+        this.currentState.enter(this);
+    }
+
+    public void setState(GameState newState) {
+        if (this.currentState != null) {
+            this.currentState.exit(this);
+        }
+        this.currentState = newState;
+        if (newState != null) {
+            newState.enter(this);
+        }
+    }
+
+    // Delegación a estado actual
+    public void playCard(Player player, Card card) {
+        currentState.playCard(player, card, this);
+    }
+
+    public void drawCard(Player player) {
+        currentState.drawCard(player, this);
+    }
+
+    public void startGame() {
+        currentState.startGame(this);
+    }
+}
+```
+
+**Beneficios del Patrón State:**
+
+1. **Elimina Condicionales Complejos**: Sin el patrón State, el código estaría lleno de `if (status == LOBBY) {...} else if (status == PLAYING) {...}`
+2. **Transiciones Explícitas**: Las transiciones entre estados son claras y controladas
+3. **Open/Closed Principle**: Agregar nuevos estados (ej: PAUSED) no requiere modificar estados existentes
+4. **Comportamiento Específico**: Cada estado tiene su propia lógica sin interferir con otros
+5. **Facilita Testing**: Cada estado puede probarse independientemente
 
 #### 3.2.2 Patrón Observer
 
@@ -116,15 +498,203 @@ El motor de juego (`GameEngine`) actúa como sujeto observable, mientras que el 
 
 **Propósito:** Encapsular una solicitud como un objeto, permitiendo parametrizar clientes con diferentes solicitudes, encolar operaciones, y soportar operaciones reversibles.
 
+**Ubicación en el Código:**
+- Interfaz: `backend/src/main/java/com/oneonline/backend/pattern/behavioral/command/GameCommand.java`
+- Implementaciones: `PlayCardCommand.java`, `DrawCardCommand.java`, `CallOneCommand.java`
+
 **Aplicación en el Proyecto:**
-Cada acción del juego (jugar carta, robar carta, llamar UNO) se encapsula en un objeto comando que implementa la interfaz `GameCommand`. Cada comando tiene métodos para ejecutar (`execute()`), deshacer (`undo()`), y validar (`canExecute()`) la acción. Los comandos se almacenan en una pila de historial para permitir funcionalidad de deshacer/rehacer.
+Cada acción del juego (jugar carta, robar carta, llamar UNO) se encapsula en un objeto comando que implementa la interfaz `GameCommand`. Esta interfaz define el contrato que todos los comandos deben cumplir:
 
-**Tipos de Comandos Implementados:**
-- **PlayCardCommand:** Ejecuta jugar una carta, puede deshacerse devolviendo la carta a la mano
-- **DrawCardCommand:** Ejecuta robar carta(s), puede deshacerse eliminando las cartas agregadas
-- **CallOneCommand:** Ejecuta el llamado de UNO, puede deshacerse limpiando la bandera
+```java
+public interface GameCommand {
+    void execute();              // Ejecuta la acción
+    void undo();                 // Revierte la acción
+    boolean canExecute();        // Valida si puede ejecutarse
+    boolean isUndoable();        // Verifica si es reversible
+    GameSession getSession();    // Obtiene la sesión
+    String getCommandName();     // Nombre del comando
+    String getDescription();     // Descripción legible
+    long getTimestamp();         // Timestamp de creación
+    void validate();            // Validación detallada
+}
+```
 
-**Beneficio:** Permite implementar historial de movimientos, facilita la repetición de partidas para torneos o análisis, simplifica la transmisión de acciones a través de la red, y habilita funcionalidad de deshacer/rehacer.
+**Implementación: PlayCardCommand**
+
+Esta clase encapsula la acción de jugar una carta. Guarda el estado necesario para poder deshacer la operación:
+
+```java
+public class PlayCardCommand implements GameCommand {
+    private final Player player;
+    private final Card card;
+    private final GameSession session;
+    private final long timestamp;
+
+    // Estado guardado para undo
+    private Player previousPlayer;
+    private boolean previousOneFlag;
+    private Card previousTopCard;
+
+    @Override
+    public void execute() {
+        validate();
+        saveState();
+
+        // Remover carta de la mano del jugador
+        player.getHand().remove(card);
+
+        // Agregar carta a la pila de descarte
+        session.getDiscardPile().push(card);
+
+        // Resetear bandera de UNO si jugó carta
+        if (player.hasCalledOne()) {
+            player.setHasCalledOne(false);
+        }
+    }
+
+    @Override
+    public void undo() {
+        if (!isUndoable()) {
+            throw new IllegalStateException("Command cannot be undone");
+        }
+
+        // Devolver carta a la mano del jugador
+        session.getDiscardPile().pop();
+        player.getHand().add(card);
+
+        // Restaurar estado previo
+        restoreState();
+    }
+
+    private void saveState() {
+        this.previousPlayer = session.getCurrentPlayer();
+        this.previousOneFlag = player.hasCalledOne();
+        this.previousTopCard = session.getDiscardPile().peek();
+    }
+}
+```
+
+**Implementación: DrawCardCommand**
+
+Encapsula la acción de robar cartas del mazo. Soporta robar múltiples cartas (importante para efectos de +2 y +4):
+
+```java
+public class DrawCardCommand implements GameCommand {
+    private final Player player;
+    private final GameSession session;
+    private final int cardCount;
+
+    // Cartas robadas (para undo)
+    private List<Card> drawnCards = new ArrayList<>();
+
+    @Override
+    public void execute() {
+        validate();
+
+        for (int i = 0; i < cardCount; i++) {
+            // Verificar si el mazo tiene cartas
+            if (session.getDeck().isEmpty()) {
+                // Barajar pila de descarte y convertirla en mazo
+                session.reshuffleDeck();
+            }
+
+            Card drawnCard = session.getDeck().pop();
+            player.getHand().add(drawnCard);
+            drawnCards.add(drawnCard);
+        }
+    }
+
+    @Override
+    public void undo() {
+        // Remover las cartas robadas de la mano
+        for (Card card : drawnCards) {
+            player.getHand().remove(card);
+            session.getDeck().push(card);
+        }
+        drawnCards.clear();
+    }
+}
+```
+
+**Implementación: CallOneCommand**
+
+Encapsula la llamada de "UNO!" cuando un jugador tiene una carta:
+
+```java
+public class CallOneCommand implements GameCommand {
+    private final Player player;
+    private final GameSession session;
+
+    @Override
+    public void execute() {
+        validate();
+        player.setHasCalledOne(true);
+    }
+
+    @Override
+    public void validate() {
+        if (player.getHand().size() != 1) {
+            throw new IllegalStateException(
+                "Can only call ONE with exactly 1 card"
+            );
+        }
+
+        if (player.hasCalledOne()) {
+            throw new IllegalStateException(
+                "Player has already called ONE"
+            );
+        }
+    }
+
+    @Override
+    public void undo() {
+        player.setHasCalledOne(false);
+    }
+}
+```
+
+**Integración en GameEngine:**
+
+El motor de juego utiliza estos comandos para procesar las acciones de los jugadores:
+
+```java
+public class GameEngine {
+    private final Stack<GameCommand> commandHistory = new Stack<>();
+
+    public void processMove(Player player, Card card, GameSession session) {
+        // Crear comando
+        GameCommand command = new PlayCardCommand(player, card, session);
+
+        // Ejecutar comando
+        command.execute();
+
+        // Guardar en historial
+        commandHistory.push(command);
+    }
+
+    public void undoLastMove() {
+        if (!commandHistory.isEmpty()) {
+            GameCommand lastCommand = commandHistory.pop();
+            lastCommand.undo();
+        }
+    }
+}
+```
+
+**Casos de Uso del Patrón Command:**
+
+1. **Historial de Movimientos**: Permite revisar todas las acciones realizadas en una partida
+2. **Undo/Redo**: Funcionalidad para deshacer y rehacer movimientos
+3. **Replay de Partidas**: Reproducir una partida completa desde el historial de comandos
+4. **Transmisión por Red**: Los comandos pueden serializarse y enviarse a través de WebSocket
+5. **Logging y Auditoría**: Registrar todas las acciones para análisis posterior
+6. **Análisis de Torneos**: Estudiar estrategias analizando secuencias de comandos
+
+**Beneficios Técnicos:**
+- **Desacoplamiento**: La lógica de ejecución está separada de la lógica de negocio
+- **Extensibilidad**: Agregar nuevos comandos no afecta el código existente
+- **Testabilidad**: Cada comando puede probarse independientemente
+- **Trazabilidad**: Cada acción queda registrada con timestamp y descripción
 
 #### 3.2.4 Patrón Strategy
 
