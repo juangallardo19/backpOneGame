@@ -56,6 +56,20 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   // Player should call UNO when they have 2 cards (BEFORE playing the penultimate card)
   const shouldCallUno = currentPlayer && currentPlayer.hand.length === 2 && !currentPlayer.calledOne;
 
+  // Debug: Log game state changes
+  useEffect(() => {
+    if (gameState && currentPlayer) {
+      console.log('🎮 ========== GAME STATE UPDATE ==========');
+      console.log('   🃏 Top card:', gameState.topCard?.color, gameState.topCard?.value ?? gameState.topCard?.type);
+      console.log('   👤 My turn:', isMyTurn);
+      console.log('   🎯 Current player ID:', gameState.currentTurnPlayerId);
+      console.log('   📊 My hand:', currentPlayer.hand.length, 'cards');
+      console.log('   ✅ Playable card IDs:', gameState.playableCardIds);
+      console.log('   📚 Stack count:', gameState.stackingCount ?? 0);
+      console.log('========================================');
+    }
+  }, [gameState, currentPlayer, isMyTurn]);
+
   // RF24-RF39: Handle card play
   const handlePlayCard = async (cardId: string) => {
     if (!isMyTurn) {
@@ -171,7 +185,19 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   };
 
   // Helper to check if card can be played
+  // Uses backend's playableCardIds list instead of calculating locally
+  // This prevents desynchronization between frontend and backend logic
   const canPlayCard = (card: Card) => {
+    // If backend provided playableCardIds, use it (most reliable)
+    if (gameState?.playableCardIds && gameState.playableCardIds.length >= 0) {
+      const isPlayable = gameState.playableCardIds.includes(card.id);
+      console.log(`🎴 Card ${card.color} ${card.value ?? card.type} (${card.id.substring(0, 8)}...): ${isPlayable ? '✅ Playable' : '❌ Not playable'}`);
+      return isPlayable;
+    }
+
+    console.warn('⚠️ No playableCardIds from backend, using fallback logic');
+
+    // Fallback: if no playableCardIds from backend, calculate locally
     if (!gameState?.topCard) return true;
 
     const topCard = gameState.topCard;
@@ -179,11 +205,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
     // STACKING LOGIC: If there's an active stack (+2 or +4), only +2/+4 cards can be played
     if (stackActive) {
-      // Only DRAW_TWO (+2) or WILD_DRAW_FOUR (+4) can be played during stack
       return card.type === 'DRAW_TWO' || card.type === 'WILD_DRAW_FOUR';
     }
-
-    // NORMAL LOGIC: No stack active, regular UNO rules apply
 
     // Wild cards always playable
     if (card.color === 'WILD' || card.type === 'WILD') {
@@ -196,7 +219,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     }
 
     // Same value (ONLY for NUMBER cards to avoid null === null)
-    // Special cards have value: null, so we must check type first
     if (card.type === 'NUMBER' && topCard.type === 'NUMBER' && card.value === topCard.value) {
       return true;
     }
