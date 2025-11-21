@@ -63,6 +63,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
       console.log('   🃏 Top card:', gameState.topCard?.color, gameState.topCard?.value ?? gameState.topCard?.type, `(ID: ${gameState.topCard?.id?.substring(0, 8)}...)`);
       console.log('   👤 My turn:', isMyTurn);
       console.log('   🎯 Current player ID:', gameState.currentTurnPlayerId);
+      console.log('   🆔 My player ID:', currentPlayer.id);
+      console.log('   🔍 Turn calculation:', gameState.currentTurnPlayerId, '===', currentPlayer.id, '→', gameState.currentTurnPlayerId === currentPlayer.id);
       console.log('   📊 My hand:', currentPlayer.hand.length, 'cards');
       console.log('   🔢 My card IDs:', currentPlayer.hand.map(c => c.id.substring(0, 8) + '...'));
       console.log('   ✅ Playable card IDs from backend:', gameState.playableCardIds?.length || 0);
@@ -306,7 +308,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                   <div className="player-info">
                     <span className="player-name">
                       {player.nickname}
-                      {player.id === currentPlayer?.id && ' (Tú)'}
                     </span>
                     <span className="player-cards">
                       {player.cardCount} {player.cardCount === 1 ? 'carta' : 'cartas'}
