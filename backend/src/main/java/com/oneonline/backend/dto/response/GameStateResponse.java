@@ -106,6 +106,18 @@ public class GameStateResponse {
     private Map<String, Integer> finalScores;
 
     /**
+     * IDs of cards that the current player can play.
+     * This list is calculated server-side to ensure consistency.
+     */
+    private List<String> playableCardIds;
+
+    /**
+     * Number of stacked draw cards (+2/+4).
+     * Used for stacking logic where players can stack draw cards.
+     */
+    private Integer stackingCount;
+
+    /**
      * Card information nested DTO.
      */
     @Data
