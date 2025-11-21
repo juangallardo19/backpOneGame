@@ -172,6 +172,15 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     if (!gameState?.topCard) return true;
 
     const topCard = gameState.topCard;
+    const stackActive = (gameState.stackingCount || 0) > 0;
+
+    // STACKING LOGIC: If there's an active stack (+2 or +4), only +2/+4 cards can be played
+    if (stackActive) {
+      // Only DRAW_TWO (+2) or WILD_DRAW_FOUR (+4) can be played during stack
+      return card.type === 'DRAW_TWO' || card.type === 'WILD_DRAW_FOUR';
+    }
+
+    // NORMAL LOGIC: No stack active, regular UNO rules apply
 
     // Wild cards always playable
     if (card.color === 'WILD' || card.type === 'WILD') {
@@ -216,6 +225,10 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const leftPlayer = otherPlayers[1];
   const rightPlayer = otherPlayers[2];
 
+  // Check if there's an active stack
+  const stackActive = (gameState.stackingCount || 0) > 0;
+  const totalCardsToDrawu = (gameState.stackingCount || 0) * 2;
+
   return (
     <div className="game-container">
       {/* Halftone Waves Background - Always animated, brightness changes with turn */}
@@ -230,6 +243,19 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           <span>Abandonar Juego</span>
         </button>
       </div>
+
+      {/* Stack Alert - Shows when +2/+4 stacking is active */}
+      {stackActive && isMyTurn && (
+        <div className="stack-alert">
+          <div className="stack-alert-content">
+            <span className="stack-alert-icon">⚠️</span>
+            <div className="stack-alert-text">
+              <strong>¡Stack Activo!</strong>
+              <p>Juega un +2 o +4 para sumar, o roba {totalCardsToDrawu} cartas</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="game-layout">
         {/* Left Sidebar */}
@@ -377,7 +403,13 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                       </div>
                     </div>
                   </div>
-                  <p className="pile-text">Robar</p>
+                  {(gameState.stackingCount || 0) > 0 ? (
+                    <p className="pile-text pile-text-stack">
+                      Robar {gameState.stackingCount === 1 ? '+2' : `+${gameState.stackingCount! * 2}`}
+                    </p>
+                  ) : (
+                    <p className="pile-text">Robar</p>
+                  )}
                 </div>
 
                 {/* Discard Pile */}

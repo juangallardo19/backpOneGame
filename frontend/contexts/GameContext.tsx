@@ -232,6 +232,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       canDraw: true,
       canPlay: true,
       playableCardIds,
+      stackingCount: backendState.stackingCount || 0,  // Number of accumulated +2/+4 cards
     };
 
     console.log('✅ Estado transformado:', transformed);
