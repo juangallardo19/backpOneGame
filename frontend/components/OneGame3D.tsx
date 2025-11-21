@@ -306,7 +306,6 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
                   <div className="player-info">
                     <span className="player-name">
                       {player.nickname}
-                      {player.id === currentPlayer?.id && ' (Tú)'}
                     </span>
                     <span className="player-cards">
                       {player.cardCount} {player.cardCount === 1 ? 'carta' : 'cartas'}
