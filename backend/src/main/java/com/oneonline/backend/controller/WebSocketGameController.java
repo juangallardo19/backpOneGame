@@ -51,6 +51,7 @@ public class WebSocketGameController {
     private final SimpMessagingTemplate messagingTemplate;
     private final GameEngine gameEngine;
     private final GameManager gameManager = GameManager.getInstance();
+    private final com.oneonline.backend.service.game.CardValidator cardValidator;
 
     /**
      * Resolve session from sessionId or roomCode
@@ -641,6 +642,45 @@ public class WebSocketGameController {
     }
 
     /**
+     * Calculate playable card IDs for a player considering stacking rules
+     *
+     * @param session Game session
+     * @param player Player to calculate for
+     * @return List of card IDs that can be played
+     */
+    private List<String> calculatePlayableCardIds(GameSession session, Player player) {
+        List<String> playableIds = new java.util.ArrayList<>();
+
+        Card topCard = session.getTopCard();
+        if (topCard == null || player.getHand().isEmpty()) {
+            return playableIds;
+        }
+
+        int pendingDrawCount = session.getPendingDrawCount();
+
+        // STACKING LOGIC: If there are pending draw cards, only +2 or +4 can be played
+        if (pendingDrawCount > 0) {
+            log.debug("🔄 Stacking active ({} pending draws), filtering for +2/+4 cards", pendingDrawCount);
+            for (Card card : player.getHand()) {
+                if (card.getType() == com.oneonline.backend.model.enums.CardType.DRAW_TWO ||
+                    card.getType() == com.oneonline.backend.model.enums.CardType.WILD_DRAW_FOUR) {
+                    playableIds.add(card.getCardId());
+                }
+            }
+        }
+        // NORMAL LOGIC: Use CardValidator to get all valid cards
+        else {
+            List<Card> validCards = cardValidator.getValidCards(player.getHand(), topCard);
+            for (Card card : validCards) {
+                playableIds.add(card.getCardId());
+            }
+        }
+
+        log.debug("📝 Calculated {} playable cards for player {}", playableIds.size(), player.getNickname());
+        return playableIds;
+    }
+
+    /**
      * Build GameStateResponse from GameSession
      *
      * @param session Game session
@@ -733,6 +773,13 @@ public class WebSocketGameController {
                         .build())
                 .collect(java.util.stream.Collectors.toList());
 
+        // Calculate playable cards for this player
+        List<String> playableCardIds = calculatePlayableCardIds(session, player);
+
+        // Calculate stacking count (number of +2/+4 effects accumulated)
+        Integer stackingCount = session.getPendingDrawCount() > 0 ?
+                (session.getPendingDrawCount() / 2) : 0;  // Divide by 2 since each card is +2 or +4
+
         return GameStateResponse.builder()
                 .sessionId(session.getSessionId())
                 .roomCode(session.getRoom().getRoomCode())
@@ -745,6 +792,8 @@ public class WebSocketGameController {
                 .pendingDrawCount(session.getPendingDrawCount())
                 .players(playerStates)
                 .hand(hand)  // CRITICAL: Include player's hand
+                .playableCardIds(playableCardIds)  // NEW: Server-calculated playable cards
+                .stackingCount(stackingCount)  // NEW: Number of stacked draw cards
                 .turnOrder(session.getPlayers().stream()
                         .map(Player::getPlayerId)
                         .collect(java.util.stream.Collectors.toList()))
