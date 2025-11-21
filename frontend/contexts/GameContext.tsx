@@ -180,26 +180,54 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
       value: backendState.topCard.value,
     } : null;
 
-    // Calculate playable cards based on top card
-    const playableCardIds: string[] = [];
-    if (topCard && hand.length > 0) {
-      for (const card of hand) {
-        // Wild cards can always be played
-        if (card.type === 'WILD' || card.color === 'WILD') {
-          playableCardIds.push(card.id);
+    // Use backend's playableCardIds if available, otherwise calculate locally
+    let playableCardIds: string[] = [];
+
+    // PRIORITY 1: Use backend's playableCardIds if provided (most reliable)
+    if (backendState.playableCardIds && Array.isArray(backendState.playableCardIds)) {
+      playableCardIds = backendState.playableCardIds;
+      console.log('✅ Using playableCardIds from backend:', playableCardIds.length, 'cards');
+    }
+    // PRIORITY 2: Calculate locally if backend doesn't provide them
+    else {
+      console.log('⚠️ Backend did not send playableCardIds, calculating locally');
+
+      const stackActive = (backendState.stackingCount || 0) > 0;
+
+      if (topCard && hand.length > 0) {
+        for (const card of hand) {
+          // STACKING LOGIC: If there's a stack, only +2 or +4 can be played
+          if (stackActive) {
+            if (card.type === 'DRAW_TWO' || card.type === 'WILD_DRAW_FOUR') {
+              playableCardIds.push(card.id);
+            }
+          }
+          // NORMAL LOGIC: Regular UNO rules
+          else {
+            // Wild cards can always be played
+            if (card.type === 'WILD' || card.type === 'WILD_DRAW_FOUR' || card.color === 'WILD') {
+              playableCardIds.push(card.id);
+            }
+            // Card matches color
+            else if (card.color === topCard.color) {
+              playableCardIds.push(card.id);
+            }
+            // Card matches value (only for NUMBER cards)
+            else if (card.type === 'NUMBER' && topCard.type === 'NUMBER' && card.value === topCard.value) {
+              playableCardIds.push(card.id);
+            }
+            // Card matches type (for special cards: SKIP, REVERSE, DRAW_TWO)
+            else if (card.type === topCard.type && card.type !== 'NUMBER') {
+              playableCardIds.push(card.id);
+            }
+          }
         }
-        // Card matches color
-        else if (card.color === topCard.color) {
-          playableCardIds.push(card.id);
-        }
-        // Card matches value/type
-        else if (card.value === topCard.value || card.type === topCard.type) {
-          playableCardIds.push(card.id);
-        }
+      } else if (hand.length > 0) {
+        // No top card yet, allow all cards
+        playableCardIds.push(...hand.map(c => c.id));
       }
-    } else if (hand.length > 0) {
-      // No top card yet, allow all cards
-      playableCardIds.push(...hand.map(c => c.id));
+
+      console.log('📝 Calculated playableCardIds locally:', playableCardIds.length, 'cards');
     }
 
     // CRITICAL: Backend now uses 'clockwise' boolean instead of 'direction' string
