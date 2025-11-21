@@ -130,7 +130,20 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
      * @return Email address
      */
     private String extractEmail(OAuth2User oauth2User, String provider) {
-        return oauth2User.getAttribute("email");
+        String email = oauth2User.getAttribute("email");
+
+        // GitHub: Si el email es privado o null, usar el email noreply de GitHub
+        if ("GITHUB".equals(provider) && (email == null || email.isEmpty())) {
+            // GitHub siempre proporciona login e id aunque el email real sea privado
+            String login = oauth2User.getAttribute("login");
+            Integer id = oauth2User.getAttribute("id");
+            if (login != null && id != null) {
+                email = id + "+" + login + "@users.noreply.github.com";
+                log.info("GitHub email is private, using noreply email: {}", email);
+            }
+        }
+
+        return email;
     }
 
     /**

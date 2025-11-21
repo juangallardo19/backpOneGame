@@ -104,9 +104,22 @@ export const getTopDiscard = (gameState: SimpleGameState): Card | null => {
 
 export const canPlayCard = (card: Card, topDiscard: Card | null): boolean => {
   if (!topDiscard) return true
+
+  // Wild cards always playable
   if (card.color === CardColor.WILD) return true
+
+  // Same color
   if (card.color === topDiscard.color) return true
+
+  // Same type
   if (card.type === topDiscard.type) return true
+
+  // Same value (ONLY for NUMBER cards to avoid null === null)
+  // Special cards have value: null
+  if (card.type === CardType.NUMBER && topDiscard.type === CardType.NUMBER && card.value === topDiscard.value) {
+    return true
+  }
+
   return false
 }
 
