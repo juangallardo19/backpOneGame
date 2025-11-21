@@ -131,6 +131,17 @@ public class GameEngine {
         // Check ONE call
         oneManager.checkOneCall(player);
 
+        // CRITICAL FIX: Apply UNO penalty if player has 1 card but didn't call UNO
+        // This enforces the rule: when you play down to 1 card, you MUST call UNO
+        // or receive a 2-card penalty
+        if (player.shouldBePenalized()) {
+            log.warn("🚫 [UNO PENALTY] Player {} has 1 card but didn't call UNO! Applying 2-card penalty...",
+                player.getNickname());
+            oneManager.penalizeNoOne(player, session);
+            log.info("✅ [UNO PENALTY] Penalty applied to {}. New hand size: {}",
+                player.getNickname(), player.getHandSize());
+        }
+
         // Check win condition
         Optional<Player> winner = checkWinCondition(session);
         if (winner.isPresent()) {
@@ -572,6 +583,13 @@ public class GameEngine {
                 if (chosenCard != null) {
                     log.info("🃏 Bot {} chose to play: {} {}", bot.getNickname(), chosenCard.getColor(), chosenCard.getValue());
 
+                    // CRITICAL FIX: Check if bot will have 1 card after playing and call ONE BEFORE playing
+                    // This prevents the bot from being penalized for not calling UNO
+                    if (bot.getHandSize() == 2 && botStrategy.shouldCallOne(bot)) {
+                        oneManager.callOne(bot, session);
+                        log.info("🔔 Bot {} called ONE before playing! (will have 1 card left)", bot.getNickname());
+                    }
+
                     // If it's a wild card, let bot choose color
                     if (chosenCard instanceof WildCard wildCard) {
                         CardColor chosenColor = botStrategy.chooseColor(bot);
@@ -587,12 +605,6 @@ public class GameEngine {
 
                     // Process the bot's move (don't trigger more bots to avoid recursion)
                     processMove(bot, chosenCard, session, false);
-
-                    // Check if bot should call ONE
-                    if (bot.getHandSize() == 1 && botStrategy.shouldCallOne(bot)) {
-                        oneManager.callOne(bot, session);
-                        log.info("🔔 Bot {} called ONE!", bot.getNickname());
-                    }
 
                     // CRITICAL FIX: Check if it's still the same bot's turn after playing
                     // This can happen in 2-player games with REVERSE cards
