@@ -111,6 +111,7 @@ export interface GameState {
   canDraw: boolean; // Can draw card?
   canPlay: boolean; // Can play card?
   playableCardIds: string[]; // IDs of cards that can be played
+  stackingCount?: number; // Number of accumulated +2/+4 cards (0 = no stack active)
 }
 
 /**
