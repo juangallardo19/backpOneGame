@@ -594,6 +594,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           color: white;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
           overflow: hidden;
+          background: #000000;
         }
 
         /* Halftone Waves Background */
@@ -604,8 +605,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           pointer-events: none;
         }
 
-        /* Ensure all children are above the halftone background */
-        .game-container > *:not(.halftone-background):not(.modal-overlay) {
+        /* Ensure all children are above the background */
+        .game-container > *:not(.halftone-background):not(.modal-overlay):not(.background-layer) {
           position: relative;
           z-index: 1;
         }
