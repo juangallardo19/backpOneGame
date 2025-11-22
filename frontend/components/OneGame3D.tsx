@@ -263,38 +263,21 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const totalCardsToDrawu = (gameState?.stackingCount ?? 0) * 2;
 
   return (
-    <div className="game-container">
-      {/* Background azul oscuro/negro estático */}
-      {/* Más claro cuando es tu turno, más oscuro cuando no */}
-      <div className="fixed inset-0 overflow-hidden z-0">
-        {/* Gradiente de fondo azul oscuro a negro */}
-        <div className="absolute inset-0 bg-gradient-radial from-blue-900/25 via-blue-950/15 to-black" />
-
-        {/* Esferas animadas sutiles en tonos azules */}
-        <div className="absolute inset-0 opacity-15">
-          <div
-            className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse"
-            style={{ animationDuration: '4s' }}
-          />
-          <div
-            className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-600 rounded-full blur-3xl animate-pulse"
-            style={{ animationDuration: '6s', animationDelay: '1s' }}
-          />
-          <div
-            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-600 rounded-full blur-3xl animate-pulse"
-            style={{ animationDuration: '5s', animationDelay: '2s' }}
-          />
-        </div>
-
-        {/* Overlay oscuro que cambia según el turno */}
-        <div
-          className={`absolute inset-0 transition-opacity duration-500 bg-black ${
-            isMyTurn ? 'opacity-0' : 'opacity-40'
-          }`}
-        />
+    <div className="game-container bg-gradient-radial from-blue-900/20 via-blue-950/20 to-black">
+      {/* Fondo animado - igual que RankingScreen pero en azul */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-400 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
-      {/* Content wrapper with higher z-index */}
+      {/* Overlay oscuro que cambia según el turno */}
+      <div
+        className={`absolute inset-0 transition-opacity duration-500 bg-black ${
+          isMyTurn ? 'opacity-0' : 'opacity-40'
+        }`}
+      />
+
+      {/* Contenido */}
       <div className="relative z-10 w-full h-full">
       {/* Top Bar - Leave Game Button */}
       <div className="top-bar">
