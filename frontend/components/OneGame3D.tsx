@@ -266,7 +266,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
     <div className="game-container">
       {/* Background azul oscuro/negro estático */}
       {/* Más claro cuando es tu turno, más oscuro cuando no */}
-      <div className="fixed inset-0 overflow-hidden -z-10">
+      <div className="fixed inset-0 overflow-hidden z-0">
         {/* Gradiente de fondo azul oscuro a negro */}
         <div className="absolute inset-0 bg-gradient-radial from-blue-900/25 via-blue-950/15 to-black" />
 
@@ -294,6 +294,8 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
         />
       </div>
 
+      {/* Content wrapper with higher z-index */}
+      <div className="relative z-10 w-full h-full">
       {/* Top Bar - Leave Game Button */}
       <div className="top-bar">
         <button className="leave-game-button" onClick={onBack}>
@@ -605,6 +607,7 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
           </div>
         </div>
       )}
+      </div> {/* End of content wrapper */}
 
       <style jsx>{`
         * {
