@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 
 interface AudioContextType {
   masterVolume: number
@@ -47,7 +47,7 @@ export function AudioProvider({ children }: AudioProviderProps) {
     }
   }, [])
 
-  const playSound = (soundType: 'card' | 'effect' | 'music') => {
+  const playSound = useCallback((soundType: 'card' | 'effect' | 'music') => {
     // Verificar si el tipo de sonido está habilitado
     let enabled = false
     switch (soundType) {
@@ -72,10 +72,10 @@ export function AudioProvider({ children }: AudioProviderProps) {
     // const audio = new Audio(`/sounds/${soundType}.mp3`)
     // audio.volume = masterVolume / 100
     // audio.play()
-  }
+  }, [cardSounds, soundEffects, backgroundMusic, masterVolume])
 
   // Función genérica para reproducir cualquier sonido por ruta
-  const playSoundFile = (soundPath: string, volume?: number) => {
+  const playSoundFile = useCallback((soundPath: string, volume?: number) => {
     // Protección SSR: solo reproducir en el navegador
     if (typeof window === 'undefined') return
     if (!soundEffects || masterVolume === 0) return
@@ -89,35 +89,43 @@ export function AudioProvider({ children }: AudioProviderProps) {
     } catch (error) {
       console.error(`Failed to load sound: ${soundPath}`, error)
     }
-  }
+  }, [soundEffects, masterVolume])
 
   // Funciones específicas para los sonidos de UNO
-  const playUnoSound = () => {
+  const playUnoSound = useCallback(() => {
     console.log('🔔 Playing UNO sound!')
     playSoundFile('/sounds/UnoSound.mp3')
-  }
+  }, [playSoundFile])
 
-  const playIncorrectSound = () => {
+  const playIncorrectSound = useCallback(() => {
     console.log('❌ Playing incorrect sound!')
     playSoundFile('/sounds/Incorrect.mp3')
-  }
+  }, [playSoundFile])
+
+  const value = useMemo(() => ({
+    masterVolume,
+    soundEffects,
+    backgroundMusic,
+    cardSounds,
+    setMasterVolume,
+    setSoundEffects,
+    setBackgroundMusic,
+    setCardSounds,
+    playSound,
+    playUnoSound,
+    playIncorrectSound
+  }), [
+    masterVolume,
+    soundEffects,
+    backgroundMusic,
+    cardSounds,
+    playSound,
+    playUnoSound,
+    playIncorrectSound
+  ])
 
   return (
-    <AudioContext.Provider
-      value={{
-        masterVolume,
-        soundEffects,
-        backgroundMusic,
-        cardSounds,
-        setMasterVolume,
-        setSoundEffects,
-        setBackgroundMusic,
-        setCardSounds,
-        playSound,
-        playUnoSound,
-        playIncorrectSound
-      }}
-    >
+    <AudioContext.Provider value={value}>
       {children}
     </AudioContext.Provider>
   )
