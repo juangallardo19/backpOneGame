@@ -263,15 +263,15 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const totalCardsToDrawu = (gameState?.stackingCount ?? 0) * 2;
 
   return (
-    <div className="game-container">
+    <div className="game-container bg-black">
       {/* Background azul oscuro/negro estático */}
       {/* Más claro cuando es tu turno, más oscuro cuando no */}
       <div className="fixed inset-0 overflow-hidden z-0">
         {/* Gradiente de fondo azul oscuro a negro */}
-        <div className="absolute inset-0 bg-gradient-radial from-blue-900/25 via-blue-950/15 to-black" />
+        <div className="absolute inset-0 bg-gradient-radial from-blue-900/60 via-blue-950/40 to-black" />
 
         {/* Esferas animadas sutiles en tonos azules */}
-        <div className="absolute inset-0 opacity-15">
+        <div className="absolute inset-0 opacity-30">
           <div
             className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse"
             style={{ animationDuration: '4s' }}
