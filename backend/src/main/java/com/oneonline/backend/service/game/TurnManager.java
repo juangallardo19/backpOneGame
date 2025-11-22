@@ -115,21 +115,34 @@ public class TurnManager {
     /**
      * Skip next player's turn (Skip card effect)
      *
-     * Advances turn twice, effectively skipping one player.
+     * CRITICAL FIX for 2-player games:
+     * - With 2 players: Advance once (A → B, B plays next)
+     * - With 3+ players: Advance twice (skip one player)
+     *
+     * Bug was: With 2 players, advancing twice (A → B → A) caused the turn
+     * to return to the player who just played, blocking the game.
      *
      * @return Player whose turn it is after skip
      */
     public Player skipNextPlayer() {
         Player skippedPlayer = peekNextPlayer();
+        int playerCount = getPlayerCount();
 
-        // Advance twice (skip one player)
-        nextTurn();  // Skip target
-        Player newCurrentPlayer = nextTurn();  // Land on next player
-
-        log.info("Player {} was skipped. Turn: {}",
-            skippedPlayer.getNickname(), newCurrentPlayer.getNickname());
-
-        return newCurrentPlayer;
+        if (playerCount == 2) {
+            // CRITICAL FIX: With 2 players, SKIP means "other player plays"
+            // Just advance once: A → B
+            Player newCurrentPlayer = nextTurn();
+            log.info("Player {} was skipped (2-player game). Turn: {}",
+                skippedPlayer.getNickname(), newCurrentPlayer.getNickname());
+            return newCurrentPlayer;
+        } else {
+            // With 3+ players, skip one player (advance twice)
+            nextTurn();  // Skip target
+            Player newCurrentPlayer = nextTurn();  // Land on next player
+            log.info("Player {} was skipped. Turn: {}",
+                skippedPlayer.getNickname(), newCurrentPlayer.getNickname());
+            return newCurrentPlayer;
+        }
     }
 
     /**
