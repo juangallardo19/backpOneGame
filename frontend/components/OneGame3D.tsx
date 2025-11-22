@@ -26,6 +26,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import GameChat from './GameChat';
 import GameResultsModal from './GameResultsModal';
 import HalftoneWaves from './halftone-waves';
+import BackgroundBlue from './BackgroundBlue';
 import { Card, Player, CurrentPlayer, isWildCard } from '@/types/game.types';
 
 interface OneGame3DProps {
@@ -263,19 +264,9 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
   const totalCardsToDrawu = (gameState?.stackingCount ?? 0) * 2;
 
   return (
-    <div className="game-container bg-gradient-radial from-blue-900/20 via-blue-950/20 to-black">
-      {/* Fondo animado - igual que RankingScreen pero en azul */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-400 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500 rounded-full blur-3xl animate-pulse delay-1000" />
-      </div>
-
-      {/* Overlay oscuro que cambia según el turno */}
-      <div
-        className={`absolute inset-0 transition-opacity duration-500 bg-black ${
-          isMyTurn ? 'opacity-0' : 'opacity-40'
-        }`}
-      />
+    <div className="game-container">
+      {/* Background azul oscuro con efecto según turno */}
+      <BackgroundBlue isMyTurn={isMyTurn} />
 
       {/* Contenido */}
       <div className="relative z-10 w-full h-full">
