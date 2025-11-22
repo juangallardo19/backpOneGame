@@ -31,9 +31,27 @@ const NotificationContext = createContext<NotificationContextValue | null>(null)
 
 export const useNotification = () => {
   const context = useContext(NotificationContext);
+
+  // Durante SSR o si no hay provider, devolver valores por defecto
   if (!context) {
-    throw new Error('useNotification debe usarse dentro de un NotificationProvider');
+    // En desarrollo, advertir pero no fallar
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.warn('useNotification called outside NotificationProvider, returning defaults');
+    }
+
+    // Devolver valores por defecto seguros para SSR
+    return {
+      notifications: [],
+      addNotification: () => '',
+      removeNotification: () => {},
+      success: () => {},
+      error: () => {},
+      info: () => {},
+      warning: () => {},
+      clearAll: () => {},
+    };
   }
+
   return context;
 };
 

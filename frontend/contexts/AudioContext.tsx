@@ -133,8 +133,29 @@ export function AudioProvider({ children }: AudioProviderProps) {
 
 export function useAudio() {
   const context = useContext(AudioContext)
+
+  // Durante SSR o si no hay provider, devolver valores por defecto
   if (context === undefined) {
-    throw new Error('useAudio must be used within an AudioProvider')
+    // En desarrollo, advertir pero no fallar
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.warn('useAudio called outside AudioProvider, returning defaults')
+    }
+
+    // Devolver valores por defecto seguros para SSR
+    return {
+      masterVolume: 50,
+      soundEffects: true,
+      backgroundMusic: true,
+      cardSounds: true,
+      setMasterVolume: () => {},
+      setSoundEffects: () => {},
+      setBackgroundMusic: () => {},
+      setCardSounds: () => {},
+      playSound: () => {},
+      playUnoSound: () => {},
+      playIncorrectSound: () => {},
+    }
   }
+
   return context
 }
