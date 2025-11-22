@@ -30,13 +30,20 @@ export function AudioProvider({ children }: AudioProviderProps) {
 
   // Cargar configuraciones de audio desde localStorage
   useEffect(() => {
-    const savedSettings = localStorage.getItem('unoGameSettings')
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings)
-      setMasterVolume(settings.masterVolume || 50)
-      setSoundEffects(settings.soundEffects ?? true)
-      setBackgroundMusic(settings.backgroundMusic ?? true)
-      setCardSounds(settings.cardSounds ?? true)
+    // Protección SSR: verificar que estamos en el navegador
+    if (typeof window === 'undefined') return
+
+    try {
+      const savedSettings = localStorage.getItem('unoGameSettings')
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings)
+        setMasterVolume(settings.masterVolume || 50)
+        setSoundEffects(settings.soundEffects ?? true)
+        setBackgroundMusic(settings.backgroundMusic ?? true)
+        setCardSounds(settings.cardSounds ?? true)
+      }
+    } catch (error) {
+      console.error('Error loading audio settings:', error)
     }
   }, [])
 
@@ -69,6 +76,8 @@ export function AudioProvider({ children }: AudioProviderProps) {
 
   // Función genérica para reproducir cualquier sonido por ruta
   const playSoundFile = (soundPath: string, volume?: number) => {
+    // Protección SSR: solo reproducir en el navegador
+    if (typeof window === 'undefined') return
     if (!soundEffects || masterVolume === 0) return
 
     try {
