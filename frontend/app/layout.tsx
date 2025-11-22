@@ -34,14 +34,14 @@ export default function RootLayout({
         {/* Providers anidados en el orden correcto */}
         <NotificationProvider>
           <AuthProvider>
-            <GameProviderWrapper>
-              <AudioProvider>
+            <AudioProvider>
+              <GameProviderWrapper>
                 <Suspense fallback={<div>Loading...</div>}>
                   {children}
                 </Suspense>
                 <Analytics />
-              </AudioProvider>
-            </GameProviderWrapper>
+              </GameProviderWrapper>
+            </AudioProvider>
           </AuthProvider>
           {/* Notificaciones Toast - renderizadas globalmente */}
           <NotificationToast />
