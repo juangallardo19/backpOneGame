@@ -264,9 +264,34 @@ export default function OneGame3D({ onBack }: OneGame3DProps) {
 
   return (
     <div className="game-container">
-      {/* Halftone Waves Background - Always animated, brightness changes with turn */}
-      <div className="halftone-background">
-        <HalftoneWaves animate={true} isMyTurn={isMyTurn} />
+      {/* Background rojizo estático similar al ranking */}
+      {/* Más claro cuando es tu turno, más oscuro cuando no */}
+      <div className="fixed inset-0 overflow-hidden -z-10">
+        {/* Gradiente de fondo */}
+        <div className="absolute inset-0 bg-gradient-radial from-orange-500/20 via-red-600/20 to-black" />
+
+        {/* Esferas animadas sutiles */}
+        <div className="absolute inset-0 opacity-20">
+          <div
+            className="absolute top-0 left-0 w-96 h-96 bg-yellow-500 rounded-full blur-3xl animate-pulse"
+            style={{ animationDuration: '4s' }}
+          />
+          <div
+            className="absolute bottom-0 right-0 w-96 h-96 bg-red-500 rounded-full blur-3xl animate-pulse"
+            style={{ animationDuration: '6s', animationDelay: '1s' }}
+          />
+          <div
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-orange-500 rounded-full blur-3xl animate-pulse"
+            style={{ animationDuration: '5s', animationDelay: '2s' }}
+          />
+        </div>
+
+        {/* Overlay oscuro que cambia según el turno */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-500 bg-black ${
+            isMyTurn ? 'opacity-0' : 'opacity-40'
+          }`}
+        />
       </div>
 
       {/* Top Bar - Leave Game Button */}
