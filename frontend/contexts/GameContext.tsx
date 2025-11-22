@@ -146,28 +146,50 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
 
     // Find current player (YOU) from hand data
     // If backend sent hand data, it means YOU are the player with those cards
-    // Find the player that matches the hand size and is not a bot
     let currentPlayer: CurrentPlayer | null = null;
-    if (hand && hand.length > 0) {
-      // Find player with matching card count that is not a bot
-      const currentPlayerData = players.find(p =>
+    if (hand !== undefined && hand !== null) {
+      let currentPlayerData;
+
+      // STRATEGY 1: Try to match by card count (most reliable when backend is synced)
+      currentPlayerData = players.find(p =>
         !p.isBot && p.cardCount === hand.length
       );
 
+      // STRATEGY 2: If no match, try first non-bot player (fallback)
+      // This handles cases where backend's cardCount is out of sync with actual hand
+      if (!currentPlayerData && hand.length > 0) {
+        console.warn('⚠️ Could not find player with matching cardCount. Backend cardCount may be out of sync.');
+        console.warn('   Hand length:', hand.length);
+        console.warn('   Players cardCounts:', players.map(p => `${p.nickname}: ${p.cardCount}`));
+        console.warn('   Using first non-bot player as fallback');
+        currentPlayerData = players.find(p => !p.isBot);
+      }
+
+      // STRATEGY 3: For empty hands, find non-bot player with 0 cards or just first non-bot
+      if (!currentPlayerData && hand.length === 0) {
+        currentPlayerData = players.find(p => !p.isBot && p.cardCount === 0) ||
+                            players.find(p => !p.isBot);
+      }
+
       if (currentPlayerData) {
-        currentPlayer = {
+        // CRITICAL: Update cardCount to match actual hand length
+        // This ensures UI displays correct count even if backend sent wrong cardCount
+        const correctedPlayer = {
           ...currentPlayerData,
+          cardCount: hand.length,
+        };
+
+        currentPlayer = {
+          ...correctedPlayer,
           hand: hand,
         } as CurrentPlayer;
-      }
-    } else if (hand && hand.length === 0) {
-      // Empty hand but still sent - find non-bot player with 0 cards
-      const currentPlayerData = players.find(p => !p.isBot && p.cardCount === 0);
-      if (currentPlayerData) {
-        currentPlayer = {
-          ...currentPlayerData,
-          hand: [],
-        } as CurrentPlayer;
+
+        if (currentPlayerData.cardCount !== hand.length) {
+          console.warn('🔧 Fixed cardCount mismatch:',
+            `Backend sent cardCount=${currentPlayerData.cardCount} but hand has ${hand.length} cards`);
+        }
+      } else {
+        console.error('❌ Could not identify current player! No non-bot players found.');
       }
     }
 
@@ -189,13 +211,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children, onKicked, 
     // Use backend's playableCardIds if available, otherwise calculate locally
     let playableCardIds: string[] = [];
 
-    // PRIORITY 1: Use backend's playableCardIds if provided (most reliable)
-    if (backendState.playableCardIds && Array.isArray(backendState.playableCardIds)) {
+    // PRIORITY 1: Use backend's playableCardIds if provided AND non-empty
+    if (backendState.playableCardIds && Array.isArray(backendState.playableCardIds) && backendState.playableCardIds.length > 0) {
       playableCardIds = backendState.playableCardIds;
       console.log('✅ Using playableCardIds from backend:', playableCardIds.length, 'cards');
     }
-    // PRIORITY 2: Calculate locally if backend doesn't provide them
+    // PRIORITY 2: If backend sends empty array OR doesn't provide them, calculate locally
+    // This handles cases where backend state is temporarily inconsistent
     else {
+      if (backendState.playableCardIds && Array.isArray(backendState.playableCardIds) && backendState.playableCardIds.length === 0) {
+        console.warn('⚠️ Backend sent empty playableCardIds array. Calculating locally as fallback.');
+      }
       console.log('⚠️ Backend did not send playableCardIds, calculating locally');
       console.log('🔍 DEBUG INFO:');
       console.log('   - stackingCount from backend:', backendState.stackingCount);
